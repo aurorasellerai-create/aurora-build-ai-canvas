@@ -117,12 +117,32 @@ const Dashboard = () => {
           {plan !== "premium" && (
             <Link
               to="/pricing"
-              className="px-4 py-2 border border-primary text-primary font-display text-sm font-bold rounded-lg hover:bg-primary/10 transition-all flex items-center gap-1 self-start"
+              className="px-5 py-2.5 bg-primary text-primary-foreground font-display text-sm font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105 flex items-center gap-1.5 self-start"
             >
               <Crown className="w-4 h-4" /> Fazer upgrade
             </Link>
           )}
         </motion.div>
+
+        {/* Upsell Banner for free users */}
+        {plan === "free" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          >
+            <div>
+              <p className="text-foreground text-sm font-semibold">Você está usando o plano gratuito</p>
+              <p className="text-muted-foreground text-xs">Desbloqueie IA completa, mais builds e recursos premium</p>
+            </div>
+            <Link
+              to="/pricing"
+              className="px-5 py-2 bg-primary text-primary-foreground font-display text-xs font-bold rounded-lg glow-gold transition-all hover:scale-105 shrink-0 text-center"
+            >
+              Fazer upgrade
+            </Link>
+          </motion.div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4 mb-8">
