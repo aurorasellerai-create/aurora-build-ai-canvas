@@ -1,3 +1,4 @@
+import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import BenefitsSection from "@/components/BenefitsSection";
 import ConverterSection from "@/components/ConverterSection";
@@ -7,7 +8,7 @@ import ToolsSection from "@/components/ToolsSection";
 import FooterSection from "@/components/FooterSection";
 
 const HowItWorks = () => (
-  <section className="py-20 px-4">
+  <section id="como-funciona" className="py-20 px-4">
     <div className="max-w-4xl mx-auto text-center">
       <h2 className="text-3xl md:text-5xl font-display font-bold text-gradient-cyan mb-16">
         Como funciona
@@ -34,6 +35,7 @@ const HowItWorks = () => (
 
 const Index = () => (
   <div className="min-h-screen bg-background">
+    <Navbar />
     <HeroSection />
     <BenefitsSection />
     <HowItWorks />
