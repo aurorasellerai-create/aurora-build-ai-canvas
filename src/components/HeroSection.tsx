@@ -1,6 +1,45 @@
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import auroraSymbol from "@/assets/aurora-symbol.png";
+
+function useCountUp(target: number, duration = 2000) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLParagraphElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true;
+          const start = performance.now();
+          const step = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.floor(eased * target));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target, duration]);
+
+  return { count, ref };
+}
+
+const AnimatedCounter = () => {
+  const { count, ref } = useCountUp(1247, 2200);
+  return (
+    <p ref={ref} className="text-xs text-muted-foreground">
+      +<span className="text-foreground font-bold tabular-nums">{count.toLocaleString("pt-BR")}</span> apps criados com a Aurora
+    </p>
+  );
+};
 
 const HeroSection = () => {
   return (
@@ -65,7 +104,7 @@ const HeroSection = () => {
         {/* Urgência + Prova social */}
         <div className="flex flex-col items-center gap-2 pt-2">
           <p className="text-xs font-semibold text-primary animate-pulse">🔥 Acesso gratuito por tempo limitado</p>
-          <p className="text-xs text-muted-foreground">+1.000 apps criados com a Aurora</p>
+          <AnimatedCounter />
         </div>
 
         {/* Aurora Symbol */}
