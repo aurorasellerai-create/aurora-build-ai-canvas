@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      credit_purchases: {
+        Row: {
+          amount: number
+          created_at: string
+          credits_amount: number
+          currency: string
+          id: string
+          package_name: string
+          provider: string
+          provider_transaction_id: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credits_amount: number
+          currency?: string
+          id?: string
+          package_name: string
+          provider?: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credits_amount?: number
+          currency?: string
+          id?: string
+          package_name?: string
+          provider?: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_usage: {
+        Row: {
+          action: string
+          created_at: string
+          credits_used: number
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -62,6 +128,7 @@ export type Database = {
           avatar_url: string | null
           bonus_builds: number
           created_at: string
+          credits_balance: number
           daily_builds_count: number
           display_name: string | null
           id: string
@@ -78,6 +145,7 @@ export type Database = {
           avatar_url?: string | null
           bonus_builds?: number
           created_at?: string
+          credits_balance?: number
           daily_builds_count?: number
           display_name?: string | null
           id?: string
@@ -94,6 +162,7 @@ export type Database = {
           avatar_url?: string | null
           bonus_builds?: number
           created_at?: string
+          credits_balance?: number
           daily_builds_count?: number
           display_name?: string | null
           id?: string
@@ -198,6 +267,10 @@ export type Database = {
     Functions: {
       check_and_increment_build: {
         Args: { p_user_id: string }
+        Returns: boolean
+      }
+      consume_credits: {
+        Args: { p_action: string; p_amount?: number; p_user_id: string }
         Returns: boolean
       }
       has_role: {
