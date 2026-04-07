@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Zap, Sparkles, Rocket, Crown, Check } from "lucide-react";
+import { ArrowLeft, Zap, Sparkles, Rocket, Crown, Check, History, ShoppingCart, Activity } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PACKAGES = [
   {
