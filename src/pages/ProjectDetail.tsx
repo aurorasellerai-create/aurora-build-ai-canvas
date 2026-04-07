@@ -190,6 +190,45 @@ const ProjectDetail = () => {
           </p>
         </motion.div>
 
+        {/* Monetization CTA */}
+        {project.status === "completed" && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="p-5 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 space-y-3 text-center"
+          >
+            <h3 className="font-display font-bold text-foreground text-lg">
+              🚀 Seu app está pronto!
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Agora você pode:
+            </p>
+            <ul className="text-sm text-foreground space-y-1">
+              <li>✔ Publicar seu app</li>
+              <li>✔ Compartilhar com clientes</li>
+              <li>✔ <span className="font-bold">Ganhar dinheiro com ele</span></li>
+            </ul>
+
+            <div className="pt-3 border-t border-primary/20 space-y-2">
+              <p className="text-xs text-muted-foreground font-semibold">
+                💰 Quer monetizar seu app automaticamente?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Conheça o <span className="text-primary font-bold">Aurora Seller AI</span> — sistema completo para afiliados com links automáticos e ganhos recorrentes.
+              </p>
+              <a
+                href="https://aurora-seller.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105 text-sm"
+              >
+                Ativar monetização agora
+              </a>
+            </div>
+          </motion.div>
+        )}
+
         {/* Delete */}
         <button
           onClick={() => {
