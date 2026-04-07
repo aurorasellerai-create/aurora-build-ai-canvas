@@ -30,15 +30,14 @@ const HeroSection = () => {
         transition={{ duration: 0.6 }}
         className="relative z-10 max-w-[700px] mx-auto px-6 text-center space-y-6"
       >
-        <h1 className="font-display font-bold leading-[1.15] text-[28px] sm:text-[36px] md:text-[44px] lg:text-[48px] text-foreground">
-          Transforme qualquer site
+        <h1 className="font-display font-bold leading-[1.15] text-[26px] sm:text-[34px] md:text-[42px] lg:text-[48px] text-foreground">
+          Crie um app que gera vendas todos os dias
           <br />
-          <span className="text-foreground">em </span>
-          <span className="text-gradient-gold">app Android</span>
+          <span className="text-gradient-gold">— sem programar</span>
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-lg mx-auto">
-          Crie APK, AAB ou PWA em minutos — sem programar
+          Sem código, sem complicação — sua renda digital pronta em minutos
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
@@ -46,7 +45,7 @@ const HeroSection = () => {
             to="/auth"
             className="px-8 py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-lg text-sm glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.03] text-center"
           >
-            Criar meu app agora
+            Quero criar meu app e começar a ganhar
           </Link>
           <Link
             to="/auth"
@@ -54,6 +53,19 @@ const HeroSection = () => {
           >
             Testar grátis
           </Link>
+        </div>
+
+        {/* Redução de objeção */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 pt-2 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem precisar aparecer</span>
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem estoque</span>
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem experiência</span>
+        </div>
+
+        {/* Urgência + Prova social */}
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <p className="text-xs font-semibold text-primary animate-pulse">🔥 Acesso gratuito por tempo limitado</p>
+          <p className="text-xs text-muted-foreground">+1.000 apps criados com a Aurora</p>
         </div>
 
         {/* Aurora Symbol */}
