@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import auroraLogo from "@/assets/aurora-logo.jpeg";
+import auroraLogo from "@/assets/aurora-logo.png";
 
 const navLinks = [
   { label: "Benefícios", href: "#beneficios" },
@@ -29,8 +29,8 @@ const Navbar = () => {
           <img
             src={auroraLogo}
             alt="Aurora Build AI"
-            className="h-12 md:h-14 w-auto object-cover transition-all duration-300"
-            style={{ animation: "logo-glow 2.5s ease-in-out infinite" }}
+            className="h-14 md:h-16 w-auto object-contain transition-all duration-300"
+            style={{ animation: "logo-glow 2.5s ease-in-out infinite", background: "transparent", border: "none" }}
           />
           <span className="font-display font-bold text-base md:text-lg tracking-wide">
             <span className="text-foreground">Aurora </span>
