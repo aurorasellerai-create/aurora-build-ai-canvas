@@ -53,7 +53,7 @@ const cards = [
         desc: "Conheça o Aurora Seller AI — sistema completo para afiliados com automação avançada, funis prontos e rastreamento de comissões.",
         buttons: [
           { label: "Criar dentro do Aurora Build", link: "/generator/create", variant: "default" as const },
-          { label: "Conhecer Aurora Seller", link: "https://aurora-seller.com", variant: "outline" as const, external: true },
+          { label: "Conhecer Aurora Seller", link: "https://auroraseller.com.br", variant: "outline" as const, external: true },
         ],
       },
     },

@@ -270,6 +270,26 @@ const Credits = () => {
           </Tabs>
         </motion.div>
 
+        {/* Monetization CTA */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="p-4 rounded-xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-center justify-between gap-3"
+        >
+          <p className="text-sm text-muted-foreground">
+            💰 Você já criou seu app. Agora ative a monetização automática.
+          </p>
+          <a
+            href="https://auroraseller.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-2 bg-primary text-primary-foreground font-display text-xs font-bold rounded-lg glow-gold transition-all hover:scale-105 shrink-0"
+          >
+            Monetizar agora
+          </a>
+        </motion.div>
+
         {/* Social proof */}
         <div className="text-center space-y-2 pb-8">
           <p className="text-xs text-muted-foreground">
