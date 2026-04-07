@@ -120,6 +120,17 @@ Deno.serve(async (req) => {
         .select("*", { count: "exact", head: true })
         .gte("created_at", today);
 
+      // Revenue metrics
+      const { data: allPayments } = await adminClient
+        .from("payments")
+        .select("amount, status, paid_at")
+        .eq("status", "approved");
+
+      const totalRevenue = (allPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+      const todayRevenue = (allPayments || [])
+        .filter((p) => p.paid_at && p.paid_at.startsWith(today))
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
+
       return new Response(
         JSON.stringify({
           metrics: {
@@ -131,6 +142,8 @@ Deno.serve(async (req) => {
             completedProjects: completedProjects || 0,
             todaySignups: todaySignups || 0,
             conversionRate: totalUsers ? (((proUsers || 0) + (premiumUsers || 0)) / totalUsers * 100).toFixed(1) : "0",
+            totalRevenue,
+            todayRevenue,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

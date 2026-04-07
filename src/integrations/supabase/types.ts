@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          paid_at: string | null
+          plan: Database["public"]["Enums"]["user_plan"]
+          provider: string
+          provider_transaction_id: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          plan: Database["public"]["Enums"]["user_plan"]
+          provider?: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paid_at?: string | null
+          plan?: Database["public"]["Enums"]["user_plan"]
+          provider?: string
+          provider_transaction_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ai_credits: number
@@ -24,8 +66,10 @@ export type Database = {
           display_name: string | null
           id: string
           last_build_date: string
+          payment_date: string | null
           plan: Database["public"]["Enums"]["user_plan"]
           referral_code: string | null
+          subscription_status: string | null
           updated_at: string
           user_id: string
         }
@@ -38,8 +82,10 @@ export type Database = {
           display_name?: string | null
           id?: string
           last_build_date?: string
+          payment_date?: string | null
           plan?: Database["public"]["Enums"]["user_plan"]
           referral_code?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id: string
         }
@@ -52,8 +98,10 @@ export type Database = {
           display_name?: string | null
           id?: string
           last_build_date?: string
+          payment_date?: string | null
           plan?: Database["public"]["Enums"]["user_plan"]
           referral_code?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -167,6 +215,7 @@ export type Database = {
     Enums: {
       app_format: "apk" | "aab" | "pwa"
       app_role: "admin" | "moderator" | "user"
+      payment_status: "pending" | "approved" | "refunded" | "cancelled"
       project_status: "pending" | "processing" | "completed" | "error"
       user_plan: "free" | "pro" | "premium"
     }
@@ -298,6 +347,7 @@ export const Constants = {
     Enums: {
       app_format: ["apk", "aab", "pwa"],
       app_role: ["admin", "moderator", "user"],
+      payment_status: ["pending", "approved", "refunded", "cancelled"],
       project_status: ["pending", "processing", "completed", "error"],
       user_plan: ["free", "pro", "premium"],
     },
