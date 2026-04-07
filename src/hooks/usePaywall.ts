@@ -105,6 +105,12 @@ export function usePaywall() {
         case "premium_format":
           blocked = isFree || isPro;
           break;
+        case "export_app":
+          blocked = isFree;
+          break;
+        case "download_apk":
+          blocked = isFree;
+          break;
       }
 
       if (blocked) {
