@@ -9,7 +9,9 @@ export type PaywallFeature =
   | "translation"
   | "viral_system"
   | "publish"
-  | "premium_format";
+  | "premium_format"
+  | "export_app"
+  | "download_apk";
 
 const featureLabels: Record<PaywallFeature, { title: string; trigger: string }> = {
   second_app: {
