@@ -26,14 +26,12 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-5 h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105">
-          <div className="relative rounded-full p-[2px]" style={{ animation: "energy-ring 2.5s ease-in-out infinite" }}>
-            <img
-              src={auroraLogo}
-              alt="Aurora Build AI"
-              className="h-12 md:h-14 w-auto rounded-full object-cover transition-all duration-300"
-              style={{ animation: "logo-glow 2.5s ease-in-out infinite" }}
-            />
-          </div>
+          <img
+            src={auroraLogo}
+            alt="Aurora Build AI"
+            className="h-12 md:h-14 w-auto object-cover transition-all duration-300"
+            style={{ animation: "logo-glow 2.5s ease-in-out infinite" }}
+          />
           <span className="font-display font-bold text-base md:text-lg tracking-wide">
             <span className="text-foreground">Aurora </span>
             <span className="bg-gradient-to-r from-secondary to-[hsl(210,100%,60%)] bg-clip-text text-transparent">Build AI</span>
