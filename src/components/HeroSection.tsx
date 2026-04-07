@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/aurora-hero.jpeg";
 
 const HeroSection = () => {
@@ -64,12 +65,12 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
-          <button className="px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg text-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-105">
+          <Link to="/auth" className="px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg text-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-105 text-center">
             Criar meu app agora
-          </button>
-          <button className="px-8 py-4 border-2 border-secondary text-secondary font-display font-semibold rounded-lg text-lg hover:bg-secondary/10 transition-all duration-300 glow-cyan">
+          </Link>
+          <Link to="/auth" className="px-8 py-4 border-2 border-secondary text-secondary font-display font-semibold rounded-lg text-lg hover:bg-secondary/10 transition-all duration-300 glow-cyan text-center">
             Testar grátis
-          </button>
+          </Link>
         </motion.div>
       </div>
     </section>
