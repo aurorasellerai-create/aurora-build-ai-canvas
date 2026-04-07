@@ -18,8 +18,10 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          daily_builds_count: number
           display_name: string | null
           id: string
+          last_build_date: string
           plan: Database["public"]["Enums"]["user_plan"]
           updated_at: string
           user_id: string
@@ -27,8 +29,10 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          daily_builds_count?: number
           display_name?: string | null
           id?: string
+          last_build_date?: string
           plan?: Database["public"]["Enums"]["user_plan"]
           updated_at?: string
           user_id: string
@@ -36,8 +40,10 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          daily_builds_count?: number
           display_name?: string | null
           id?: string
+          last_build_date?: string
           plan?: Database["public"]["Enums"]["user_plan"]
           updated_at?: string
           user_id?: string
@@ -109,6 +115,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_increment_build: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

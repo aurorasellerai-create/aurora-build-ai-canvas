@@ -2,9 +2,16 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, Globe, Type } from "lucide-react";
+import { Loader2, ArrowLeft, Globe, Type, AlertTriangle } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
+
+const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
+  free: ["apk"],
+  pro: ["apk"],
+  premium: ["apk", "aab", "pwa"],
+};
 
 const Generator = () => {
   const { user } = useAuth();
@@ -15,12 +22,47 @@ const Generator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user!.id)
+        .single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const plan = profile?.plan || "free";
+  const allowedFormats = formatLimits[plan];
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setError("");
     setLoading(true);
 
+    // Check format allowed
+    if (!allowedFormats.includes(format)) {
+      setError(`Formato ${format.toUpperCase()} não disponível no plano ${plan}. Faça upgrade!`);
+      setLoading(false);
+      return;
+    }
+
+    // Check build limit
+    const { data: canBuild } = await supabase.rpc("check_and_increment_build", {
+      p_user_id: user.id,
+    });
+
+    if (!canBuild) {
+      setError("Limite diário atingido! Faça upgrade para mais builds.");
+      setLoading(false);
+      return;
+    }
+
+    // Create project
     const { data, error: insertError } = await supabase
       .from("projects")
       .insert({
@@ -29,6 +71,7 @@ const Generator = () => {
         app_name: appName,
         format,
         status: "processing",
+        progress: 0,
       })
       .select()
       .single();
@@ -39,7 +82,6 @@ const Generator = () => {
       return;
     }
 
-    // Simulate processing
     navigate(`/processing/${data.id}`);
   };
 
@@ -63,7 +105,9 @@ const Generator = () => {
         >
           <div className="text-center mb-4">
             <h2 className="font-display text-2xl font-bold text-foreground">Crie seu app</h2>
-            <p className="text-muted-foreground text-sm mt-1">3 passos simples</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              Plano <span className="text-primary font-semibold capitalize">{plan}</span> · 3 passos simples
+            </p>
           </div>
 
           {/* Step 1 */}
@@ -111,24 +155,41 @@ const Generator = () => {
               Formato
             </label>
             <div className="flex gap-3">
-              {(["apk", "aab", "pwa"] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFormat(f)}
-                  className={`flex-1 py-3 rounded-lg font-display font-semibold text-sm uppercase transition-all duration-300 ${
-                    format === f
-                      ? "bg-primary text-primary-foreground glow-gold"
-                      : "bg-muted text-muted-foreground border border-border hover:border-secondary"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
+              {(["apk", "aab", "pwa"] as const).map((f) => {
+                const allowed = allowedFormats.includes(f);
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => allowed && setFormat(f)}
+                    className={`flex-1 py-3 rounded-lg font-display font-semibold text-sm uppercase transition-all duration-300 ${
+                      format === f
+                        ? "bg-primary text-primary-foreground glow-gold"
+                        : allowed
+                        ? "bg-muted text-muted-foreground border border-border hover:border-secondary"
+                        : "bg-muted/50 text-muted-foreground/40 border border-border cursor-not-allowed line-through"
+                    }`}
+                    title={!allowed ? `Disponível no plano Premium` : ""}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
             </div>
+            {plan !== "premium" && (
+              <p className="text-xs text-muted-foreground mt-2">
+                AAB e PWA disponíveis no plano Premium.{" "}
+                <Link to="/pricing" className="text-primary hover:underline">Fazer upgrade</Link>
+              </p>
+            )}
           </div>
 
-          {error && <p className="text-destructive text-sm text-center">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-destructive text-sm">{error}</p>
+            </div>
+          )}
 
           <button
             type="submit"

@@ -1,15 +1,18 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Download, Calendar, FileType, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Download, Calendar, FileType, CheckCircle2, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const { data: project } = useQuery({
+  const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
     queryFn: async () => {
       const { data } = await supabase
@@ -23,10 +26,46 @@ const ProjectDetail = () => {
     enabled: !!user && !!id,
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("projects").delete().eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast({ title: "Projeto excluído" });
+      navigate("/dashboard");
+    },
+  });
+
+  const handleDownload = () => {
+    if (!project) return;
+    const ext = project.format === "pwa" ? "zip" : project.format;
+    const blob = new Blob([`Aurora Build AI - ${project.app_name}\nURL: ${project.site_url}\nFormato: ${ext.toUpperCase()}\nGerado em: ${new Date(project.created_at).toLocaleDateString("pt-BR")}`], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${project.app_name.replace(/\s+/g, "_")}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Download iniciado!" });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   if (!project) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Projeto não encontrado.</p>
+          <Link to="/dashboard" className="text-primary hover:underline">Voltar ao dashboard</Link>
+        </div>
       </div>
     );
   }
@@ -51,7 +90,7 @@ const ProjectDetail = () => {
               <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
             )}
             <h2 className="font-display text-xl font-bold text-foreground">
-              {project.status === "completed" ? "App pronto!" : "Status: " + project.status}
+              {project.status === "completed" ? "App pronto!" : `Status: ${project.status}`}
             </h2>
           </div>
 
@@ -71,10 +110,25 @@ const ProjectDetail = () => {
           </div>
 
           {project.status === "completed" && (
-            <button className="w-full py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+            <button
+              onClick={handleDownload}
+              className="w-full py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
               <Download className="w-5 h-5" /> Baixar App
             </button>
           )}
+
+          <button
+            onClick={() => {
+              if (confirm("Tem certeza que deseja excluir este projeto?")) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="w-full py-3 border border-destructive/30 text-destructive font-semibold rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" /> Excluir projeto
+          </button>
 
           {project.error_message && (
             <p className="text-destructive text-sm text-center">{project.error_message}</p>
