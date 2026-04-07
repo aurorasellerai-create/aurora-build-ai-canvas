@@ -38,6 +38,14 @@ const featureLabels: Record<PaywallFeature, { title: string; trigger: string }> 
     title: "Formatos Premium",
     trigger: "🔥 Recurso mais usado por quem já está faturando",
   },
+  export_app: {
+    title: "Exportar App",
+    trigger: "🚀 Exporte e comece a faturar com seu app",
+  },
+  download_apk: {
+    title: "Baixar APK",
+    trigger: "📱 Baixe seu app e publique na loja",
+  },
 };
 
 export function usePaywall() {
