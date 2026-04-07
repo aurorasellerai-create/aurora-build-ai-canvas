@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, Globe, Type, AlertTriangle } from "lucide-react";
+import { Loader2, ArrowLeft, Globe, Type, AlertTriangle, Zap } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
+import { useCredits } from "@/hooks/useCredits";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
