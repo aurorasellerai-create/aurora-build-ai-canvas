@@ -41,7 +41,7 @@ const DashboardSection = () => (
             >
               <div className="flex items-center gap-3">
                 {app.status === "pronto" ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                  <CheckCircle2 className="w-5 h-5 text-secondary" />
                 ) : (
                   <Loader2 className="w-5 h-5 text-secondary animate-spin" />
                 )}
