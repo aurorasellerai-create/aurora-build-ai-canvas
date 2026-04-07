@@ -106,6 +106,36 @@
   50% { opacity: 1; }
 }
 
+@keyframes logo-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px hsl(51 100% 50% / 0.3)) drop-shadow(0 0 14px hsl(190 100% 50% / 0.15));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px hsl(51 100% 50% / 0.6)) drop-shadow(0 0 24px hsl(190 100% 50% / 0.35));
+  }
+}
+
+@keyframes energy-ring {
+  0% { box-shadow: 0 0 8px hsl(51 100% 50% / 0.2), 0 0 16px hsl(190 100% 50% / 0.1); }
+  33% { box-shadow: 0 0 12px hsl(190 100% 50% / 0.3), 0 0 24px hsl(51 100% 50% / 0.15); }
+  66% { box-shadow: 0 0 10px hsl(51 100% 50% / 0.25), 0 0 20px hsl(190 100% 50% / 0.2); }
+  100% { box-shadow: 0 0 8px hsl(51 100% 50% / 0.2), 0 0 16px hsl(190 100% 50% / 0.1); }
+}
+
+@keyframes particle-drift {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+}
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 @keyframes particle-drift {
   0% { transform: translateY(0) translateX(0); opacity: 0; }
   20% { opacity: 1; }

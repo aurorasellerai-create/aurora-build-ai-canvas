@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import auroraLogo from "@/assets/aurora-hero.jpeg";
+import auroraLogo from "@/assets/aurora-logo.jpeg";
 
 const navLinks = [
   { label: "Benefícios", href: "#beneficios" },
@@ -26,14 +26,14 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-5 h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-105">
-          <img
-            src={auroraLogo}
-            alt="Aurora Build AI"
-            className="h-12 md:h-14 w-auto rounded-lg object-cover transition-all duration-300"
-            style={{
-              filter: "drop-shadow(0 0 6px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 14px hsl(190 100% 50% / 0.2))",
-            }}
-          />
+          <div className="relative rounded-full p-[2px]" style={{ animation: "energy-ring 2.5s ease-in-out infinite" }}>
+            <img
+              src={auroraLogo}
+              alt="Aurora Build AI"
+              className="h-12 md:h-14 w-auto rounded-full object-cover transition-all duration-300"
+              style={{ animation: "logo-glow 2.5s ease-in-out infinite" }}
+            />
+          </div>
           <span className="font-display font-bold text-base md:text-lg tracking-wide">
             <span className="text-foreground">Aurora </span>
             <span className="bg-gradient-to-r from-secondary to-[hsl(210,100%,60%)] bg-clip-text text-transparent">Build AI</span>
