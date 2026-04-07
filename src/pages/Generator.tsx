@@ -24,6 +24,7 @@ const Generator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature, projectCount } = usePaywall();
+  const { balance, consumeCredits, getCost } = useCredits();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -57,6 +58,13 @@ const Generator = () => {
         return;
       }
       setError(`Formato ${format.toUpperCase()} não disponível no plano ${plan}. Faça upgrade!`);
+      setLoading(false);
+      return;
+    }
+
+    // Consume credits
+    const credited = await consumeCredits("generate_app");
+    if (!credited) {
       setLoading(false);
       return;
     }
@@ -205,10 +213,15 @@ const Generator = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex flex-col items-center justify-center gap-1"
           >
-            {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-            Gerar App
+            <span className="flex items-center gap-2">
+              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+              Gerar App
+            </span>
+            <span className="text-xs opacity-75 flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Consome {getCost("generate_app")} créditos · Saldo: {balance}
+            </span>
           </button>
         </motion.form>
       </div>
