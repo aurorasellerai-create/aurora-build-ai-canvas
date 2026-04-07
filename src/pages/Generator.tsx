@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Loader2, ArrowLeft, Globe, Type, AlertTriangle } from "lucide-react";
 import type { Enums } from "@/integrations/supabase/types";
+import { usePaywall } from "@/hooks/usePaywall";
+import PaywallModal from "@/components/PaywallModal";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -21,6 +23,7 @@ const Generator = () => {
   const [format, setFormat] = useState<Enums<"app_format">>("apk");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature, projectCount } = usePaywall();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -35,17 +38,24 @@ const Generator = () => {
     enabled: !!user,
   });
 
-  const plan = profile?.plan || "free";
-  const allowedFormats = formatLimits[plan];
+  const allowedFormats = formatLimits[plan as Enums<"user_plan">];
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setError("");
+
+    // Paywall: check if creating second+ app on free
+    if (!checkAccess("second_app")) return;
+
     setLoading(true);
 
     // Check format allowed
     if (!allowedFormats.includes(format)) {
+      if (!checkAccess("premium_format")) {
+        setLoading(false);
+        return;
+      }
       setError(`Formato ${format.toUpperCase()} não disponível no plano ${plan}. Faça upgrade!`);
       setLoading(false);
       return;
@@ -87,6 +97,8 @@ const Generator = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} feature={paywallFeature} />
+
       <header className="border-b border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -161,27 +173,26 @@ const Generator = () => {
                   <button
                     key={f}
                     type="button"
-                    onClick={() => allowed && setFormat(f)}
+                    onClick={() => {
+                      if (allowed) {
+                        setFormat(f);
+                      } else {
+                        checkAccess("premium_format");
+                      }
+                    }}
                     className={`flex-1 py-3 rounded-lg font-display font-semibold text-sm uppercase transition-all duration-300 ${
                       format === f
                         ? "bg-primary text-primary-foreground glow-gold"
                         : allowed
                         ? "bg-muted text-muted-foreground border border-border hover:border-secondary"
-                        : "bg-muted/50 text-muted-foreground/40 border border-border cursor-not-allowed line-through"
+                        : "bg-muted/50 text-muted-foreground/40 border border-border cursor-pointer"
                     }`}
-                    title={!allowed ? `Disponível no plano Premium` : ""}
                   >
-                    {f}
+                    {f} {!allowed && "🔒"}
                   </button>
                 );
               })}
             </div>
-            {plan !== "premium" && (
-              <p className="text-xs text-muted-foreground mt-2">
-                AAB e PWA disponíveis no plano Premium.{" "}
-                <Link to="/pricing" className="text-primary hover:underline">Fazer upgrade</Link>
-              </p>
-            )}
           </div>
 
           {error && (

@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { usePaywall } from "@/hooks/usePaywall";
+import PaywallModal from "@/components/PaywallModal";
+import type { PaywallFeature } from "@/hooks/usePaywall";
 
 const appNameSuggestions = [
   "QuickApp Pro", "SmartSite Mobile", "AppBuilder One", "WebToApp Express",
@@ -35,18 +38,23 @@ interface ToolCardProps {
   icon: React.ElementType;
   placeholder: string;
   onGenerate: (input: string) => string;
+  locked?: boolean;
+  onLocked?: () => void;
 }
 
-const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate }: ToolCardProps) => {
+const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked }: ToolCardProps) => {
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
+    if (locked && onLocked) {
+      onLocked();
+      return;
+    }
     setLoading(true);
     setResult("");
-    // Simulate AI processing
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1500));
     setResult(onGenerate(input));
     setLoading(false);
@@ -60,15 +68,16 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate }: T
   };
 
   return (
-    <div className="card-aurora space-y-4">
+    <div className={`card-aurora space-y-4 ${locked ? "opacity-80" : ""}`}>
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
           <Icon className="w-5 h-5 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h3 className="font-display text-sm font-bold text-foreground">{title}</h3>
           <p className="text-muted-foreground text-xs">{description}</p>
         </div>
+        {locked && <Lock className="w-4 h-4 text-primary" />}
       </div>
 
       <input
@@ -85,7 +94,7 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate }: T
         className="w-full py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {loading ? "Gerando..." : "Gerar com IA"}
+        {locked ? "🔒 Desbloquear" : loading ? "Gerando..." : "Gerar com IA"}
       </button>
 
       {result && (
@@ -106,102 +115,118 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate }: T
   );
 };
 
-const Tools = () => (
-  <div className="min-h-screen bg-background">
-    <header className="border-b border-border px-4 py-4">
-      <div className="max-w-4xl mx-auto flex items-center gap-4">
-        <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <h1 className="font-display font-bold text-lg text-gradient-gold">Ferramentas IA</h1>
+const Tools = () => {
+  const { isFree, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
+
+  return (
+    <div className="min-h-screen bg-background">
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} feature={paywallFeature} />
+
+      <header className="border-b border-border px-4 py-4">
+        <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="font-display font-bold text-lg text-gradient-gold">Ferramentas IA</h1>
+        </div>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
+        <motion.h2
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-2xl font-display font-bold text-center text-gradient-cyan mb-8"
+        >
+          Inteligência Artificial Integrada
+        </motion.h2>
+
+        {/* Free tools */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <ToolCard
+            title="Gerador de Nomes"
+            description="Nomes criativos para seu app"
+            icon={PenTool}
+            placeholder="Tema do app (ex: delivery, fitness, educação)"
+            onGenerate={() => {
+              const names: string[] = [];
+              for (let i = 0; i < 5; i++) {
+                names.push(appNameSuggestions[Math.floor(Math.random() * appNameSuggestions.length)]);
+              }
+              return [...new Set(names)].join("\n");
+            }}
+          />
+        </motion.div>
+
+        {/* Locked for free users */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <ToolCard
+            title="Gerador de Ideias"
+            description="Descubra nichos lucrativos"
+            icon={Lightbulb}
+            placeholder="Segmento (ex: saúde, educação, comércio)"
+            locked={isFree}
+            onLocked={() => checkAccess("advanced_ai")}
+            onGenerate={() => {
+              const ideas: string[] = [];
+              for (let i = 0; i < 3; i++) {
+                ideas.push(`${i + 1}. ${appIdeas[Math.floor(Math.random() * appIdeas.length)]}`);
+              }
+              return ideas.join("\n\n");
+            }}
+          />
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <ToolCard
+            title="Descrição Play Store"
+            description="Textos otimizados para conversão"
+            icon={FileText}
+            placeholder="Nome do seu app"
+            locked={isFree}
+            onLocked={() => checkAccess("advanced_ai")}
+            onGenerate={(input) => {
+              const base = playStoreDescriptions[Math.floor(Math.random() * playStoreDescriptions.length)];
+              return input ? base.replace("Nosso app", input).replace("O app", input) : base;
+            }}
+          />
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <ToolCard
+            title="Gerador de Ícones"
+            description="Ícone profissional para seu app"
+            icon={Image}
+            placeholder="Descreva o ícone (ex: ícone azul moderno de delivery)"
+            locked={isFree}
+            onLocked={() => checkAccess("advanced_ai")}
+            onGenerate={(input) => {
+              const styles = ["Flat Design", "Material Design", "Glassmorphism", "Gradient", "Minimal"];
+              const colors = ["Azul", "Dourado", "Verde", "Roxo", "Vermelho"];
+              const style = styles[Math.floor(Math.random() * styles.length)];
+              const color = colors[Math.floor(Math.random() * colors.length)];
+              return `✅ Ícone gerado com sucesso!\n\n📐 Estilo: ${style}\n🎨 Cor dominante: ${color}\n📏 Tamanho: 512x512px\n📄 Formato: PNG (transparente)\n\n💡 Tema: ${input || "App genérico"}\n\n⬇️ O ícone está pronto para uso na Play Store.`;
+            }}
+          />
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <ToolCard
+            title="Splash Screen"
+            description="Tela de abertura personalizada"
+            icon={Smartphone}
+            placeholder="Nome do app e cor principal (ex: MeuApp, azul)"
+            locked={isFree}
+            onLocked={() => checkAccess("advanced_ai")}
+            onGenerate={(input) => {
+              const layouts = ["Logo centralizado com gradiente", "Logo + nome com animação fade-in", "Fullscreen com brand color", "Minimalista com ícone"];
+              const layout = layouts[Math.floor(Math.random() * layouts.length)];
+              return `✅ Splash Screen gerada!\n\n📐 Layout: ${layout}\n📏 Resolução: 1080x1920px\n🎨 Adaptada para: ${input || "seu app"}\n⏱️ Duração sugerida: 2 segundos\n\n📱 Compatível com Android 8+\n⬇️ Pronta para integração.`;
+            }}
+          />
+        </motion.div>
       </div>
-    </header>
-
-    <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
-      <motion.h2
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-2xl font-display font-bold text-center text-gradient-cyan mb-8"
-      >
-        Inteligência Artificial Integrada
-      </motion.h2>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-        <ToolCard
-          title="Gerador de Nomes"
-          description="Nomes criativos para seu app"
-          icon={PenTool}
-          placeholder="Tema do app (ex: delivery, fitness, educação)"
-          onGenerate={() => {
-            const names = [];
-            for (let i = 0; i < 5; i++) {
-              names.push(appNameSuggestions[Math.floor(Math.random() * appNameSuggestions.length)]);
-            }
-            return [...new Set(names)].join("\n");
-          }}
-        />
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <ToolCard
-          title="Gerador de Ideias"
-          description="Descubra nichos lucrativos"
-          icon={Lightbulb}
-          placeholder="Segmento (ex: saúde, educação, comércio)"
-          onGenerate={() => {
-            const ideas = [];
-            for (let i = 0; i < 3; i++) {
-              ideas.push(`${i + 1}. ${appIdeas[Math.floor(Math.random() * appIdeas.length)]}`);
-            }
-            return ideas.join("\n\n");
-          }}
-        />
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-        <ToolCard
-          title="Descrição Play Store"
-          description="Textos otimizados para conversão"
-          icon={FileText}
-          placeholder="Nome do seu app"
-          onGenerate={(input) => {
-            const base = playStoreDescriptions[Math.floor(Math.random() * playStoreDescriptions.length)];
-            return input ? base.replace("Nosso app", input).replace("O app", input) : base;
-          }}
-        />
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <ToolCard
-          title="Gerador de Ícones"
-          description="Ícone profissional para seu app"
-          icon={Image}
-          placeholder="Descreva o ícone (ex: ícone azul moderno de delivery)"
-          onGenerate={(input) => {
-            const styles = ["Flat Design", "Material Design", "Glassmorphism", "Gradient", "Minimal"];
-            const colors = ["Azul", "Dourado", "Verde", "Roxo", "Vermelho"];
-            const style = styles[Math.floor(Math.random() * styles.length)];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            return `✅ Ícone gerado com sucesso!\n\n📐 Estilo: ${style}\n🎨 Cor dominante: ${color}\n📏 Tamanho: 512x512px\n📄 Formato: PNG (transparente)\n\n💡 Tema: ${input || "App genérico"}\n\n⬇️ O ícone está pronto para uso na Play Store.`;
-          }}
-        />
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <ToolCard
-          title="Splash Screen"
-          description="Tela de abertura personalizada"
-          icon={Smartphone}
-          placeholder="Nome do app e cor principal (ex: MeuApp, azul)"
-          onGenerate={(input) => {
-            const layouts = ["Logo centralizado com gradiente", "Logo + nome com animação fade-in", "Fullscreen com brand color", "Minimalista com ícone"];
-            const layout = layouts[Math.floor(Math.random() * layouts.length)];
-            return `✅ Splash Screen gerada!\n\n📐 Layout: ${layout}\n📏 Resolução: 1080x1920px\n🎨 Adaptada para: ${input || "seu app"}\n⏱️ Duração sugerida: 2 segundos\n\n📱 Compatível com Android 8+\n⬇️ Pronta para integração.`;
-          }}
-        />
-      </motion.div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Tools;
