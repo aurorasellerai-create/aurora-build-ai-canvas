@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import auroraLogo from "@/assets/aurora-hero.jpeg";
 
 const navLinks = [
   { label: "Benefícios", href: "#beneficios" },
@@ -24,8 +25,15 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/70 border-b border-border/40">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-5 h-16">
         {/* Logo */}
-        <Link to="/" className="font-display font-bold text-lg tracking-wide text-foreground">
-          Aurora<span className="text-primary"> Build AI</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <img
+            src={auroraLogo}
+            alt="Aurora Build AI"
+            className="h-9 md:h-11 w-auto rounded-md object-cover transition-all duration-300 group-hover:shadow-[0_0_12px_hsl(var(--primary)/0.5)]"
+          />
+          <span className="font-display font-bold text-base md:text-lg tracking-wide text-foreground transition-colors group-hover:text-primary">
+            Aurora<span className="text-primary"> Build AI</span>
+          </span>
         </Link>
 
         {/* Desktop links */}
