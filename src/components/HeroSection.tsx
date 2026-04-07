@@ -4,74 +4,69 @@ import heroImage from "@/assets/aurora-hero.jpeg";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+    <section className="relative min-h-screen flex items-center overflow-hidden">
+      {/* Background Image with strong overlay */}
       <div className="absolute inset-0">
         <img
           src={heroImage}
           alt="Aurora Build AI"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-background/70" />
         <div
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at center, transparent 30%, hsl(225 80% 4%) 80%)",
+              "linear-gradient(to right, rgba(5,8,22,0.92) 0%, rgba(5,8,22,0.85) 50%, rgba(5,8,22,0.5) 100%)",
           }}
         />
       </div>
 
-      {/* Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-aurora-gold"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `particle-drift ${5 + Math.random() * 10}s linear infinite`,
-              animationDelay: `${Math.random() * 5}s`,
-              opacity: 0.4,
-            }}
+      {/* Content - two column layout */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-20 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left - Text */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7 }}
+            className="space-y-8"
+          >
+            <h1 className="font-display font-bold leading-tight text-[28px] sm:text-[36px] md:text-[48px] lg:text-[56px]">
+              <span className="text-foreground">Transforme qualquer site</span>
+              <br />
+              <span className="text-foreground">em </span>
+              <span className="text-gradient-gold">app Android</span>
+            </h1>
+
+            <p className="text-lg md:text-xl max-w-lg" style={{ color: "#CFCFCF" }}>
+              Crie APK, AAB ou PWA em minutos — sem programar
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
+              <Link
+                to="/auth"
+                className="px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg text-base glow-gold glow-gold-hover transition-all duration-300 hover:scale-105 text-center"
+              >
+                Criar meu app agora
+              </Link>
+              <Link
+                to="/auth"
+                className="px-8 py-4 border-2 border-secondary text-secondary font-display font-semibold rounded-lg text-base hover:bg-secondary/10 transition-all duration-300 text-center"
+              >
+                Testar grátis
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Right - visible on lg+ as decorative space where image shows through */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="hidden lg:block"
+            aria-hidden="true"
           />
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-display font-bold text-gradient-gold mb-6 leading-tight"
-        >
-          Transforme qualquer site em app Android
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
-        >
-          Crie APK, AAB ou PWA em minutos — sem programar
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-        >
-          <Link to="/auth" className="px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg text-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-105 text-center">
-            Criar meu app agora
-          </Link>
-          <Link to="/auth" className="px-8 py-4 border-2 border-secondary text-secondary font-display font-semibold rounded-lg text-lg hover:bg-secondary/10 transition-all duration-300 glow-cyan text-center">
-            Testar grátis
-          </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
