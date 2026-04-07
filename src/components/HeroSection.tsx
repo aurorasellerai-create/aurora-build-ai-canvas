@@ -8,9 +8,27 @@ const HeroSection = () => {
       style={{
         paddingTop: 100,
         paddingBottom: 100,
-        background: "linear-gradient(180deg, #050816 0%, #0D1B3D 100%)",
       }}
     >
+      {/* Background image – blurred & faded */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('/aurora-hero-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(6px)",
+          opacity: 0.25,
+          transform: "scale(1.05)",
+        }}
+      />
+      {/* Dark overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "linear-gradient(180deg, rgba(5,8,22,0.9) 0%, rgba(13,27,61,0.85) 100%)",
+        }}
+      />
       {/* Subtle radial glow */}
       <div
         className="absolute inset-0 pointer-events-none"
