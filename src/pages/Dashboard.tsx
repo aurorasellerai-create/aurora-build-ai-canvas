@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock, LogOut, Sparkles, Trash2, Crown } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
+import ReferralCard from "@/components/ReferralCard";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -155,6 +156,11 @@ const Dashboard = () => {
             </div>
           </motion.div>
         )}
+
+        {/* Referral */}
+        <div className="mb-8">
+          <ReferralCard />
+        </div>
 
         {/* Projects */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="card-aurora">
