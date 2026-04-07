@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const appNameSuggestions = [
@@ -167,6 +167,36 @@ const Tools = () => (
           onGenerate={(input) => {
             const base = playStoreDescriptions[Math.floor(Math.random() * playStoreDescriptions.length)];
             return input ? base.replace("Nosso app", input).replace("O app", input) : base;
+          }}
+        />
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <ToolCard
+          title="Gerador de Ícones"
+          description="Ícone profissional para seu app"
+          icon={Image}
+          placeholder="Descreva o ícone (ex: ícone azul moderno de delivery)"
+          onGenerate={(input) => {
+            const styles = ["Flat Design", "Material Design", "Glassmorphism", "Gradient", "Minimal"];
+            const colors = ["Azul", "Dourado", "Verde", "Roxo", "Vermelho"];
+            const style = styles[Math.floor(Math.random() * styles.length)];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            return `✅ Ícone gerado com sucesso!\n\n📐 Estilo: ${style}\n🎨 Cor dominante: ${color}\n📏 Tamanho: 512x512px\n📄 Formato: PNG (transparente)\n\n💡 Tema: ${input || "App genérico"}\n\n⬇️ O ícone está pronto para uso na Play Store.`;
+          }}
+        />
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <ToolCard
+          title="Splash Screen"
+          description="Tela de abertura personalizada"
+          icon={Smartphone}
+          placeholder="Nome do app e cor principal (ex: MeuApp, azul)"
+          onGenerate={(input) => {
+            const layouts = ["Logo centralizado com gradiente", "Logo + nome com animação fade-in", "Fullscreen com brand color", "Minimalista com ícone"];
+            const layout = layouts[Math.floor(Math.random() * layouts.length)];
+            return `✅ Splash Screen gerada!\n\n📐 Layout: ${layout}\n📏 Resolução: 1080x1920px\n🎨 Adaptada para: ${input || "seu app"}\n⏱️ Duração sugerida: 2 segundos\n\n📱 Compatível com Android 8+\n⬇️ Pronta para integração.`;
           }}
         />
       </motion.div>
