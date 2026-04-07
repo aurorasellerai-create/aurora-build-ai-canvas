@@ -32,6 +32,15 @@ function useCountUp(target: number, duration = 2000) {
   return { count, ref };
 }
 
+const AnimatedCounter = () => {
+  const { count, ref } = useCountUp(1247, 2200);
+  return (
+    <p ref={ref} className="text-xs text-muted-foreground">
+      +<span className="text-foreground font-bold tabular-nums">{count.toLocaleString("pt-BR")}</span> apps criados com a Aurora
+    </p>
+  );
+};
+
 const HeroSection = () => {
   return (
     <section
