@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock, LogOut, Sparkles, Trash2, Crown } from "lucide-react";
+import {
+  Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock,
+  LogOut, Sparkles, Trash2, Crown, Zap, TrendingUp, ShieldCheck,
+} from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
@@ -17,6 +20,7 @@ const statusConfig = {
 
 const planLabels = { free: "Free", pro: "Pro", premium: "Premium" };
 const planLimits = { free: 1, pro: 5, premium: 999999 };
+const planCreditDefaults = { free: 5, pro: 50, premium: 500 };
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -76,11 +80,18 @@ const Dashboard = () => {
     URL.revokeObjectURL(url);
   };
 
-  const plan = profile?.plan || "free";
+  const plan = (profile?.plan || "free") as keyof typeof planLabels;
   const buildsUsed = profile?.daily_builds_count || 0;
   const buildsLimit = planLimits[plan];
   const isToday = profile?.last_build_date === new Date().toISOString().split("T")[0];
   const currentBuilds = isToday ? buildsUsed : 0;
+
+  // Credits
+  const creditsBalance = profile?.credits_balance ?? 0;
+  const creditsMax = planCreditDefaults[plan];
+  const creditPercent = Math.min(100, creditsMax > 0 ? (creditsBalance / creditsMax) * 100 : 0);
+  const creditsLow = creditsBalance <= 2;
+  const creditsCritical = creditsBalance === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,6 +100,9 @@ const Dashboard = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="font-display font-bold text-lg text-gradient-gold">Aurora Build AI</Link>
           <div className="flex items-center gap-4">
+            <Link to="/credits" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <Zap className="w-4 h-4" /> Créditos
+            </Link>
             <Link to="/tools" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
               <Sparkles className="w-4 h-4" /> IA
             </Link>
@@ -102,7 +116,7 @@ const Dashboard = () => {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Welcome + Plan info */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
               Olá, {profile?.display_name || "Usuário"}!
@@ -124,22 +138,116 @@ const Dashboard = () => {
           )}
         </motion.div>
 
+        {/* Credits Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className={`mb-6 p-4 rounded-xl border ${
+            creditsCritical
+              ? "border-destructive/40 bg-destructive/5"
+              : creditsLow
+              ? "border-yellow-500/30 bg-yellow-500/5"
+              : "border-border bg-muted/30"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Zap className={`w-4 h-4 ${creditsCritical ? "text-destructive" : creditsLow ? "text-yellow-500" : "text-primary"}`} />
+              <span className="text-sm font-semibold text-foreground">Créditos de IA</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-lg font-display font-bold ${
+                creditsCritical ? "text-destructive" : creditsLow ? "text-yellow-500" : "text-primary"
+              }`}>
+                {creditsBalance}
+              </span>
+              <Link
+                to="/credits"
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                + Comprar
+              </Link>
+            </div>
+          </div>
+          <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${creditPercent}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className={`h-full rounded-full ${
+                creditsCritical ? "bg-destructive" : creditsLow ? "bg-yellow-500" : "bg-primary"
+              }`}
+            />
+          </div>
+          {creditsCritical && (
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-xs text-destructive font-medium animate-pulse">
+                ⚠️ Créditos esgotados — suas ações de IA estão bloqueadas
+              </p>
+              <Link
+                to="/credits"
+                className="px-4 py-1.5 bg-destructive text-destructive-foreground text-xs font-bold rounded-lg hover:opacity-90 transition-all shrink-0"
+              >
+                Recarregar agora
+              </Link>
+            </div>
+          )}
+          {creditsLow && !creditsCritical && (
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-xs text-yellow-600 font-medium">
+                ⚡ Últimos créditos — evite bloqueio
+              </p>
+              <Link
+                to="/credits"
+                className="px-4 py-1.5 bg-yellow-500 text-black text-xs font-bold rounded-lg hover:opacity-90 transition-all shrink-0"
+              >
+                Comprar créditos
+              </Link>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Social Proof Banner */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground"
+        >
+          <span className="flex items-center gap-1">
+            <TrendingUp className="w-3 h-3 text-primary" />
+            +1.247 apps criados esta semana
+          </span>
+          <span className="hidden sm:inline text-border">•</span>
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-3 h-3 text-secondary" />
+            Usuários PRO criam 3x mais rápido
+          </span>
+          <span className="hidden sm:inline text-border">•</span>
+          <span className="flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-primary" />
+            IA automatizada com resultados reais
+          </span>
+        </motion.div>
+
         {/* Upsell Banner for free users */}
         {plan === "free" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
             className="mb-6 p-4 rounded-lg border border-primary/30 bg-primary/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
           >
             <div>
-              <p className="text-foreground text-sm font-semibold">Você está usando o plano gratuito</p>
-              <p className="text-muted-foreground text-xs">Desbloqueie IA completa, mais builds e recursos premium</p>
+              <p className="text-foreground text-sm font-semibold">🔓 Desbloqueie todo o potencial da Aurora</p>
+              <p className="text-muted-foreground text-xs">IA completa, mais builds, exportação e publicação — tudo liberado</p>
             </div>
             <Link
               to="/pricing"
               className="px-5 py-2 bg-primary text-primary-foreground font-display text-xs font-bold rounded-lg glow-gold transition-all hover:scale-105 shrink-0 text-center"
             >
-              Fazer upgrade
+              Desbloquear agora
             </Link>
           </motion.div>
         )}
@@ -157,6 +265,12 @@ const Dashboard = () => {
             className="px-6 py-3 border border-primary text-primary font-display font-bold rounded-lg hover:bg-primary/10 transition-all hover:scale-105 flex items-center gap-2"
           >
             <Sparkles className="w-5 h-5" /> Criar Negócio com IA
+          </Link>
+          <Link
+            to="/credits"
+            className="px-6 py-3 border border-border text-foreground font-display font-bold rounded-lg hover:border-primary/50 transition-all hover:scale-105 flex items-center gap-2"
+          >
+            <Zap className="w-5 h-5" /> Comprar créditos
           </Link>
         </div>
 
@@ -240,6 +354,23 @@ const Dashboard = () => {
             </div>
           )}
         </motion.div>
+
+        {/* Bottom upsell - only for non-premium */}
+        {plan !== "premium" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 text-center space-y-3"
+          >
+            <p className="text-xs text-muted-foreground">
+              💬 "Desde que ativei o PRO, criei 12 apps e já estou faturando" — <span className="text-foreground">Lucas M.</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              💬 "A IA faz em 2 minutos o que levaria horas" — <span className="text-foreground">Ana C.</span>
+            </p>
+          </motion.div>
+        )}
       </div>
     </div>
   );
