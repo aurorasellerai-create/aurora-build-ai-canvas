@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Mail, Lock, User } from "lucide-react";
 
@@ -14,6 +14,12 @@ const Auth = () => {
   const [message, setMessage] = useState("");
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get("ref");
+
+  useEffect(() => {
+    if (referralCode) setIsLogin(false);
+  }, [referralCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +32,7 @@ const Auth = () => {
       if (error) setError(error.message);
       else navigate("/dashboard");
     } else {
-      const { error } = await signUp(email, password, displayName);
+      const { error } = await signUp(email, password, displayName, referralCode || undefined);
       if (error) setError(error.message);
       else setMessage("Cadastro realizado! Verifique seu email para confirmar.");
     }
