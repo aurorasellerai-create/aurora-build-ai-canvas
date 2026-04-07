@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, Loader2, Target, DollarSign, Users, Lightbulb, TrendingUp, Smartphone, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { usePaywall } from "@/hooks/usePaywall";
+import PaywallModal from "@/components/PaywallModal";
 
 interface BusinessPlan {
   name: string;
@@ -39,12 +41,16 @@ const BusinessGenerator = () => {
   const [result, setResult] = useState<BusinessPlan | null>(null);
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
+  const { isFree, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
 
   const handleGenerate = async () => {
     if (!businessType.trim()) {
       toast({ title: "Digite o tipo de negócio", variant: "destructive" });
       return;
     }
+
+    // Paywall check for free users
+    if (isFree && !checkAccess("advanced_ai")) return;
 
     setLoading(true);
     setResult(null);
@@ -84,6 +90,7 @@ const BusinessGenerator = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} feature={paywallFeature} />
       <header className="border-b border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
