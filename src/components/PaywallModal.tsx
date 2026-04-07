@@ -10,6 +10,8 @@ const featureTriggers: Record<PaywallFeature, string> = {
   viral_system: "🚀 Comece a escalar seu negócio hoje",
   publish: "💰 Apps publicados geram receita real",
   premium_format: "🔥 Recurso mais usado por quem já está faturando",
+  export_app: "🚀 Exporte e comece a faturar com seu app",
+  download_apk: "📱 Baixe seu app e publique na loja",
 };
 
 const plans = [
