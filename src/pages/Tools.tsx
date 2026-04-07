@@ -134,6 +134,8 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
 
 const Tools = () => {
   const { isFree, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
+  const { balance, consumeCredits, getCost } = useCredits();
+  const creditProps = { consumeCredits, balance };
 
   return (
     <div className="min-h-screen bg-background">
