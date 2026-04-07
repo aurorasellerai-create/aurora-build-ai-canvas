@@ -18,6 +18,7 @@ const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Tools = lazy(() => import("./pages/Tools"));
 const BusinessGenerator = lazy(() => import("./pages/BusinessGenerator"));
+const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
