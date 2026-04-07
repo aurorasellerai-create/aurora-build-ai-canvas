@@ -101,10 +101,17 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="w-full py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex flex-col items-center justify-center gap-1"
       >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {locked ? "🔒 Desbloquear" : loading ? "Gerando..." : "Gerar com IA"}
+        <span className="flex items-center gap-2">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {locked ? "🔒 Desbloquear" : loading ? "Gerando..." : "Gerar com IA"}
+        </span>
+        {!locked && (
+          <span className="text-xs opacity-75 flex items-center gap-1">
+            <Zap className="w-3 h-3" /> {creditCost} crédito(s) · Saldo: {balance}
+          </span>
+        )}
       </button>
 
       {result && (
