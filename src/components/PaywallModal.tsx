@@ -10,6 +10,8 @@ const featureTriggers: Record<PaywallFeature, string> = {
   viral_system: "🚀 Comece a escalar seu negócio hoje",
   publish: "💰 Apps publicados geram receita real",
   premium_format: "🔥 Recurso mais usado por quem já está faturando",
+  export_app: "🚀 Exporte e comece a faturar com seu app",
+  download_apk: "📱 Baixe seu app e publique na loja",
 };
 
 const plans = [
@@ -74,10 +76,10 @@ const PaywallModal = ({ open, onClose, feature }: PaywallModalProps) => {
                 <Crown className="w-7 h-7 text-primary" />
               </div>
               <h2 className="text-xl md:text-2xl font-display font-bold text-foreground mb-2">
-                Desbloqueie todo o potencial da Aurora
+                Seu app está pronto 🚀
               </h2>
               <p className="text-sm text-muted-foreground">
-                Você chegou ao limite do plano gratuito. Para continuar criando apps que geram vendas, faça upgrade agora.
+                Ative agora para liberar todas as funções e começar a faturar.
               </p>
             </div>
 
@@ -130,7 +132,7 @@ const PaywallModal = ({ open, onClose, feature }: PaywallModalProps) => {
               to="/pricing"
               className="block w-full py-3.5 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] text-center"
             >
-              Desbloquear agora
+              Ativar agora
             </Link>
 
             <Link

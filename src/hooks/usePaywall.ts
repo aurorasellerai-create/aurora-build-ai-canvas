@@ -9,7 +9,9 @@ export type PaywallFeature =
   | "translation"
   | "viral_system"
   | "publish"
-  | "premium_format";
+  | "premium_format"
+  | "export_app"
+  | "download_apk";
 
 const featureLabels: Record<PaywallFeature, { title: string; trigger: string }> = {
   second_app: {
@@ -35,6 +37,14 @@ const featureLabels: Record<PaywallFeature, { title: string; trigger: string }> 
   premium_format: {
     title: "Formatos Premium",
     trigger: "🔥 Recurso mais usado por quem já está faturando",
+  },
+  export_app: {
+    title: "Exportar App",
+    trigger: "🚀 Exporte e comece a faturar com seu app",
+  },
+  download_apk: {
+    title: "Baixar APK",
+    trigger: "📱 Baixe seu app e publique na loja",
   },
 };
 
@@ -94,6 +104,12 @@ export function usePaywall() {
           break;
         case "premium_format":
           blocked = isFree || isPro;
+          break;
+        case "export_app":
+          blocked = isFree;
+          break;
+        case "download_apk":
+          blocked = isFree;
           break;
       }
 
