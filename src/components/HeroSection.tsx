@@ -1,14 +1,12 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import auroraSymbol from "@/assets/aurora-symbol.png";
 
 const HeroSection = () => {
   return (
     <section
       className="relative flex items-center justify-center overflow-hidden"
-      style={{
-        paddingTop: 100,
-        paddingBottom: 100,
-      }}
+      style={{ paddingTop: 100, paddingBottom: 100 }}
     >
       {/* Background image – blurred & faded */}
       <div
@@ -69,6 +67,25 @@ const HeroSection = () => {
             Testar grátis
           </Link>
         </div>
+
+        {/* Aurora Symbol */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="pt-10 flex justify-center"
+        >
+          <img
+            src={auroraSymbol}
+            alt="Aurora Build AI"
+            className="w-[200px] sm:w-[280px] md:w-[340px] lg:w-[400px] h-auto object-contain"
+            style={{
+              filter:
+                "drop-shadow(0 0 20px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 40px hsl(190 100% 50% / 0.2))",
+              animation: "symbol-pulse 3s ease-in-out infinite",
+            }}
+          />
+        </motion.div>
       </motion.div>
     </section>
   );
