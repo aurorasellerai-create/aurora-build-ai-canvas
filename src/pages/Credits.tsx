@@ -57,6 +57,34 @@ const Credits = () => {
     enabled: !!user,
   });
 
+  const { data: purchases = [] } = useQuery({
+    queryKey: ["credit-purchases", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("credit_purchases")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: usage = [] } = useQuery({
+    queryKey: ["credit-usage", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("credit_usage")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
   const balance = profile?.credits_balance ?? 0;
   const plan = profile?.plan ?? "free";
 
