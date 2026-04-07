@@ -1,16 +1,34 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, ArrowRight } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, ArrowRight, Lightbulb, CheckCircle2 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 
 type ConversionType = null | "apk-to-aab" | "aab-to-apk" | "to-pwa";
 
 const CONVERSIONS = [
-  { id: "apk-to-aab" as const, label: "APK → AAB", desc: "Converter APK para o formato da Play Store", icon: Smartphone },
-  { id: "aab-to-apk" as const, label: "AAB → APK", desc: "Converter AAB para instalação direta", icon: Smartphone },
-  { id: "to-pwa" as const, label: "Converter para PWA", desc: "Gerar versão web instalável do seu app", icon: Globe },
+  {
+    id: "apk-to-aab" as const,
+    label: "APK → AAB",
+    desc: "Converter APK para o formato da Play Store",
+    icon: Smartphone,
+    tip: "Necessário para publicar na Google Play",
+  },
+  {
+    id: "aab-to-apk" as const,
+    label: "AAB → APK",
+    desc: "Converter AAB para instalação direta",
+    icon: Smartphone,
+    tip: "Usado para testes em dispositivos",
+  },
+  {
+    id: "to-pwa" as const,
+    label: "Converter para PWA",
+    desc: "Gerar versão web instalável do seu app",
+    icon: Globe,
+    tip: "Funciona em Android e iPhone",
+  },
 ];
 
 const ConvertFile = () => {
@@ -26,8 +44,6 @@ const ConvertFile = () => {
     if (!credited) return;
 
     setConverting(true);
-
-    // Simulate conversion (real implementation would use an edge function)
     setTimeout(() => {
       setConverting(false);
       toast({
@@ -38,6 +54,7 @@ const ConvertFile = () => {
   };
 
   const currentStep = conversionType === null ? 1 : !file ? 2 : 3;
+  const selectedConversion = CONVERSIONS.find((c) => c.id === conversionType);
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,7 +89,7 @@ const ConvertFile = () => {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pb-12">
+      <div className="max-w-lg mx-auto px-4 pb-12 space-y-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-aurora space-y-6">
           <div className="text-center">
             <RefreshCw className="w-8 h-8 text-accent-foreground mx-auto mb-2" />
@@ -84,14 +101,14 @@ const ConvertFile = () => {
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-3">
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
-              Tipo de conversão
+              O que você quer converter?
             </label>
             <div className="space-y-2">
               {CONVERSIONS.map((c) => (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setConversionType(c.id)}
+                  onClick={() => { setConversionType(c.id); setFile(null); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${
                     conversionType === c.id
                       ? "bg-primary text-primary-foreground glow-gold"
@@ -103,10 +120,15 @@ const ConvertFile = () => {
                     <p className="font-display font-bold">{c.label}</p>
                     <p className={`text-xs ${conversionType === c.id ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{c.desc}</p>
                   </div>
-                  {conversionType === c.id && <ArrowRight className="w-4 h-4 shrink-0" />}
+                  {conversionType === c.id && <CheckCircle2 className="w-4 h-4 shrink-0" />}
                 </button>
               ))}
             </div>
+            {selectedConversion && (
+              <p className="text-xs text-primary flex items-center gap-1 mt-2">
+                <Lightbulb className="w-3 h-3" /> {selectedConversion.tip}
+              </p>
+            )}
           </div>
 
           {/* Step 2: File upload */}
@@ -119,12 +141,15 @@ const ConvertFile = () => {
               <label className="flex flex-col items-center justify-center p-8 rounded-lg border-2 border-dashed border-border bg-muted/30 hover:border-primary/40 transition-colors cursor-pointer">
                 <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                 {file ? (
-                  <p className="text-sm text-foreground font-semibold">{file.name}</p>
+                  <div className="text-center">
+                    <p className="text-sm text-foreground font-semibold">{file.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                  </div>
                 ) : (
                   <>
                     <p className="text-sm text-foreground font-semibold">Clique para selecionar</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"}
+                      Arquivo {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"}
                     </p>
                   </>
                 )}
@@ -160,28 +185,63 @@ const ConvertFile = () => {
                     <RefreshCw className="w-5 h-5 animate-spin" /> Convertendo...
                   </>
                 ) : (
-                  "Converter"
+                  "Converter agora"
                 )}
               </button>
             </motion.div>
           )}
+        </motion.div>
 
-          {/* Info */}
-          <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-2">
-            <p className="text-xs text-foreground font-semibold flex items-center gap-1.5">
-              <Info className="w-3 h-3 text-primary" /> Dicas importantes
-            </p>
-            <ul className="space-y-1">
-              {[
-                "APK → AAB: Necessário para publicar na Google Play",
-                "AAB → APK: Útil para testes em dispositivos",
-                "A Play Store exige exclusivamente o formato AAB",
-              ].map((t, i) => (
-                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                  <span className="text-primary shrink-0">•</span> {t}
-                </li>
-              ))}
+        {/* Education block */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="space-y-4"
+        >
+          {/* Warnings */}
+          <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+            <h3 className="font-display font-bold text-xs text-foreground flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-destructive" /> Atenção
+            </h3>
+            <ul className="space-y-1.5">
+              <li className="text-xs text-foreground font-bold flex items-start gap-1.5">
+                <span className="text-destructive shrink-0">⚠️</span> A Play Store NÃO aceita APK
+              </li>
+              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <span className="text-destructive shrink-0">⚠️</span> Se você tentar enviar APK, seu app será recusado
+              </li>
+              <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <span className="text-destructive shrink-0">⚠️</span> Use a conversão APK → AAB antes de publicar
+              </li>
             </ul>
+          </div>
+
+          {/* Tips */}
+          <div className="p-4 rounded-xl border border-border bg-muted/20">
+            <h3 className="font-display font-bold text-xs text-foreground flex items-center gap-2 mb-2">
+              <Info className="w-4 h-4 text-primary" /> Quando usar cada conversão
+            </h3>
+            <div className="space-y-2">
+              {[
+                { label: "APK → AAB", desc: "Quando você já tem um APK e quer publicar na Play Store" },
+                { label: "AAB → APK", desc: "Quando você tem um AAB e quer testar no seu celular" },
+                { label: "Para PWA", desc: "Quando você quer distribuir como app web sem precisar de loja" },
+              ].map((t) => (
+                <div key={t.label} className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground"><strong className="text-foreground">{t.label}:</strong> {t.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced tip */}
+          <div className="p-3 rounded-xl border border-border bg-muted/10">
+            <p className="text-xs text-muted-foreground">
+              🔧 <strong>Alternativa avançada:</strong> Você pode gerar AAB usando o Android Studio (Build → Generate Signed Bundle).
+              Mas no Aurora Build AI você faz tudo automático, sem configurar nada.
+            </p>
           </div>
         </motion.div>
       </div>
