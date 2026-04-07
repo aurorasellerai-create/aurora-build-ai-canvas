@@ -5,6 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Credit packages mapping
+const CREDIT_PACKAGES: Record<string, number> = {
+  starter: 100,
+  pro: 500,
+  scale: 2000,
+};
+
+// Plan credit bonuses on upgrade
+const PLAN_CREDITS: Record<string, number> = {
+  pro: 50,
+  premium: 500,
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -36,7 +49,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Kiwify sends different event types
     const orderStatus = body?.order_status || body?.subscription_status || body?.status;
     const customerEmail = body?.Customer?.email || body?.customer?.email || body?.email;
     const transactionId = body?.order_id || body?.transaction_id || body?.id;
@@ -44,14 +56,7 @@ Deno.serve(async (req) => {
                       body?.product?.price || body?.amount || "0";
     const amount = Math.round(parseFloat(String(amountRaw).replace(",", ".")) * 100);
 
-    // Determine plan from product name or custom field
     const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
-    let plan: "pro" | "premium" = "pro";
-    if (productName.includes("premium") || productName.includes("elite")) {
-      plan = "premium";
-    }
-
-    console.log(`Processing: email=${customerEmail}, status=${orderStatus}, plan=${plan}, amount=${amount}`);
 
     if (!customerEmail) {
       return new Response(JSON.stringify({ error: "Customer email not found" }), {
@@ -85,31 +90,103 @@ Deno.serve(async (req) => {
     if (isApproved) paymentStatus = "approved";
     else if (isRefunded) paymentStatus = "refunded";
 
-    // Record payment
-    await adminClient.from("payments").insert({
-      user_id: user.id,
-      plan,
-      amount,
-      provider: "kiwify",
-      provider_transaction_id: transactionId,
-      status: paymentStatus,
-      paid_at: isApproved ? new Date().toISOString() : null,
-    });
+    // Detect if this is a credit package purchase or a plan upgrade
+    const isCreditPurchase = productName.includes("crédito") || productName.includes("credito") || 
+                             productName.includes("credit") || productName.includes("starter") || 
+                             productName.includes("scale");
+    
+    if (isCreditPurchase) {
+      // --- CREDIT PACKAGE PURCHASE ---
+      let packageName = "starter";
+      let creditsAmount = 100;
+      
+      if (productName.includes("scale") || productName.includes("2000")) {
+        packageName = "scale";
+        creditsAmount = 2000;
+      } else if (productName.includes("pro") || productName.includes("500")) {
+        packageName = "pro";
+        creditsAmount = 500;
+      }
 
-    // Update user profile based on status
-    if (isApproved) {
-      await adminClient.from("profiles").update({
+      // Record credit purchase
+      await adminClient.from("credit_purchases").insert({
+        user_id: user.id,
+        package_name: packageName,
+        credits_amount: creditsAmount,
+        amount,
+        provider: "kiwify",
+        provider_transaction_id: transactionId,
+        status: paymentStatus,
+      });
+
+      if (isApproved) {
+        // Add credits to user balance
+        const { data: profile } = await adminClient
+          .from("profiles")
+          .select("credits_balance")
+          .eq("user_id", user.id)
+          .single();
+
+        await adminClient.from("profiles").update({
+          credits_balance: (profile?.credits_balance || 0) + creditsAmount,
+        }).eq("user_id", user.id);
+
+        console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
+      } else if (isRefunded) {
+        // Remove credits on refund
+        const { data: profile } = await adminClient
+          .from("profiles")
+          .select("credits_balance")
+          .eq("user_id", user.id)
+          .single();
+
+        await adminClient.from("profiles").update({
+          credits_balance: Math.max(0, (profile?.credits_balance || 0) - creditsAmount),
+        }).eq("user_id", user.id);
+
+        console.log(`⚠️ Removed ${creditsAmount} credits from ${customerEmail} (refund)`);
+      }
+    } else {
+      // --- PLAN UPGRADE ---
+      let plan: "pro" | "premium" = "pro";
+      if (productName.includes("premium") || productName.includes("elite")) {
+        plan = "premium";
+      }
+
+      // Record payment
+      await adminClient.from("payments").insert({
+        user_id: user.id,
         plan,
-        subscription_status: "active",
-        payment_date: new Date().toISOString(),
-      }).eq("user_id", user.id);
-      console.log(`✅ User ${customerEmail} upgraded to ${plan}`);
-    } else if (isRefunded) {
-      await adminClient.from("profiles").update({
-        plan: "free",
-        subscription_status: "cancelled",
-      }).eq("user_id", user.id);
-      console.log(`⚠️ User ${customerEmail} downgraded to free (refund)`);
+        amount,
+        provider: "kiwify",
+        provider_transaction_id: transactionId,
+        status: paymentStatus,
+        paid_at: isApproved ? new Date().toISOString() : null,
+      });
+
+      if (isApproved) {
+        const planCredits = PLAN_CREDITS[plan] || 0;
+        const { data: profile } = await adminClient
+          .from("profiles")
+          .select("credits_balance")
+          .eq("user_id", user.id)
+          .single();
+
+        await adminClient.from("profiles").update({
+          plan,
+          subscription_status: "active",
+          payment_date: new Date().toISOString(),
+          credits_balance: (profile?.credits_balance || 0) + planCredits,
+        }).eq("user_id", user.id);
+
+        console.log(`✅ User ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
+      } else if (isRefunded) {
+        await adminClient.from("profiles").update({
+          plan: "free",
+          subscription_status: "cancelled",
+        }).eq("user_id", user.id);
+        console.log(`⚠️ User ${customerEmail} downgraded to free (refund)`);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, status: paymentStatus }), {
