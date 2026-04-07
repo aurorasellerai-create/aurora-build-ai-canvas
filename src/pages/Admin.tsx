@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Users, TrendingUp, Crown, Shield,
-  Loader2, Search,
+  Loader2, Search, DollarSign,
 } from "lucide-react";
 import {
   Select,
@@ -43,6 +43,8 @@ interface Metrics {
   completedProjects: number;
   todaySignups: number;
   conversionRate: string;
+  totalRevenue: number;
+  todayRevenue: number;
 }
 
 interface GrowthPoint {
@@ -200,15 +202,17 @@ const Admin = () => {
         {/* Metrics */}
         <section>
           <h2 className="font-display font-bold text-foreground mb-4">Métricas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <MetricCard label="Receita Total" value={metrics?.totalRevenue != null ? `R$ ${(metrics.totalRevenue / 100).toFixed(2)}` : "—"} icon={DollarSign} accent />
+            <MetricCard label="Receita Hoje" value={metrics?.todayRevenue != null ? `R$ ${(metrics.todayRevenue / 100).toFixed(2)}` : "—"} icon={DollarSign} />
             <MetricCard label="Total Usuários" value={metrics?.totalUsers ?? "—"} icon={Users} accent />
+            <MetricCard label="Pagantes" value={metrics ? (metrics.proUsers + metrics.premiumUsers) : "—"} icon={Crown} accent />
+            <MetricCard label="Conversão" value={metrics?.conversionRate ? `${metrics.conversionRate}%` : "—"} icon={TrendingUp} accent />
             <MetricCard label="Hoje" value={metrics?.todaySignups ?? "—"} icon={TrendingUp} />
             <MetricCard label="Pro" value={metrics?.proUsers ?? "—"} icon={Crown} />
             <MetricCard label="Premium" value={metrics?.premiumUsers ?? "—"} icon={Crown} accent />
             <MetricCard label="Free" value={metrics?.freeUsers ?? "—"} icon={Users} />
-            <MetricCard label="Conversão" value={metrics?.conversionRate ? `${metrics.conversionRate}%` : "—"} icon={TrendingUp} accent />
             <MetricCard label="Total Apps" value={metrics?.totalProjects ?? "—"} icon={TrendingUp} />
-            <MetricCard label="Apps Prontos" value={metrics?.completedProjects ?? "—"} icon={TrendingUp} />
           </div>
         </section>
 
