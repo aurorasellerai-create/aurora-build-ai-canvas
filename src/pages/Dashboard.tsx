@@ -131,6 +131,12 @@ const Dashboard = () => {
           >
             <Plus className="w-5 h-5" /> Criar novo app
           </Link>
+          <Link
+            to="/business"
+            className="px-6 py-3 border border-primary text-primary font-display font-bold rounded-lg hover:bg-primary/10 transition-all hover:scale-105 flex items-center gap-2"
+          >
+            <Sparkles className="w-5 h-5" /> Criar Negócio com IA
+          </Link>
         </div>
 
         {/* Build limit warning */}

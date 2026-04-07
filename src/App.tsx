@@ -17,6 +17,7 @@ const Processing = lazy(() => import("./pages/Processing"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Tools = lazy(() => import("./pages/Tools"));
+const BusinessGenerator = lazy(() => import("./pages/BusinessGenerator"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/project/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
+              <Route path="/business" element={<ProtectedRoute><BusinessGenerator /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
