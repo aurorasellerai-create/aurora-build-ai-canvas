@@ -78,7 +78,7 @@ const HeroSection = () => {
           <img
             src={auroraSymbol}
             alt="Aurora Build AI"
-            className="w-[200px] sm:w-[280px] md:w-[340px] lg:w-[400px] h-auto object-contain"
+            className="w-[260px] sm:w-[340px] md:w-[420px] lg:w-[500px] h-auto object-contain"
             style={{
               filter:
                 "drop-shadow(0 0 20px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 40px hsl(190 100% 50% / 0.2))",
