@@ -205,6 +205,71 @@ const Credits = () => {
           </div>
         </div>
 
+        {/* History */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <h2 className="font-display font-bold text-foreground text-center mb-6 flex items-center justify-center gap-2">
+            <History className="w-5 h-5 text-primary" /> Histórico
+          </h2>
+
+          <Tabs defaultValue="usage" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="usage" className="flex items-center gap-1.5">
+                <Activity className="w-4 h-4" /> Uso de créditos
+              </TabsTrigger>
+              <TabsTrigger value="purchases" className="flex items-center gap-1.5">
+                <ShoppingCart className="w-4 h-4" /> Compras
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="usage" className="card-aurora p-4">
+              {usage.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhum uso registrado ainda.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {usage.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground capitalize">{item.action.replace(/_/g, " ")}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-destructive">-{item.credits_used}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="purchases" className="card-aurora p-4">
+              {purchases.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">Nenhuma compra realizada ainda.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {purchases.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{item.package_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {" · "}
+                          <span className={item.status === "approved" ? "text-secondary" : "text-muted-foreground"}>
+                            {item.status === "approved" ? "Aprovado" : item.status === "pending" ? "Pendente" : item.status}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-primary">+{item.credits_amount}</span>
+                        <p className="text-xs text-muted-foreground">R$ {(item.amount / 100).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </motion.div>
+
         {/* Social proof */}
         <div className="text-center space-y-2 pb-8">
           <p className="text-xs text-muted-foreground">
