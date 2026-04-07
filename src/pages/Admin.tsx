@@ -199,6 +199,55 @@ const Admin = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* System Diagnostic Panel */}
+        <section>
+          <h2 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" /> Painel de Diagnóstico do Sistema
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                label: "Sistema",
+                ok: true,
+                detail: "Operacional",
+              },
+              {
+                label: "Webhook Kiwify",
+                ok: metrics != null,
+                detail: metrics != null ? "Conectado" : "Verificando...",
+              },
+              {
+                label: "Pagamentos",
+                ok: metrics?.totalRevenue != null,
+                detail: metrics?.totalRevenue != null ? `R$ ${(metrics.totalRevenue / 100).toFixed(2)} total` : "Sem dados",
+              },
+              {
+                label: "Créditos",
+                ok: metrics?.totalUsers != null && metrics.totalUsers > 0,
+                detail: metrics?.totalUsers ? `${metrics.totalUsers} usuários` : "Verificando...",
+              },
+            ].map((item) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-4 rounded-xl border ${
+                  item.ok ? "border-secondary/30 bg-secondary/5" : "border-destructive/30 bg-destructive/5"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2.5 h-2.5 rounded-full ${item.ok ? "bg-secondary animate-pulse" : "bg-destructive"}`} />
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider">{item.label}</span>
+                </div>
+                <p className={`text-sm font-semibold ${item.ok ? "text-secondary" : "text-destructive"}`}>
+                  {item.ok ? "OK" : "Atenção"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
         {/* Metrics */}
         <section>
           <h2 className="font-display font-bold text-foreground mb-4">Métricas</h2>

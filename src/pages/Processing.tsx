@@ -31,19 +31,26 @@ const Processing = () => {
     intervalRef.current = setInterval(() => {
       setProgress((p) => {
         const next = Math.min(p + increment, 100);
-        if (next >= 100) {
-          clearInterval(intervalRef.current);
-          // Update project in DB
-          const ext = "apk"; // will be overridden by actual format
-          supabase
-            .from("projects")
-            .update({
-              status: "completed" as const,
-              progress: 100,
-              download_url: `https://aurora-build-ai.app/downloads/${id}.${ext}`,
-            })
-            .eq("id", id!)
-            .then(() => setDone(true));
+          if (next >= 100) {
+            clearInterval(intervalRef.current);
+            // Update project in DB — fetch actual format first
+            supabase
+              .from("projects")
+              .select("format")
+              .eq("id", id!)
+              .single()
+              .then(({ data: proj }) => {
+                const ext = proj?.format === "pwa" ? "zip" : (proj?.format || "apk");
+                return supabase
+                  .from("projects")
+                  .update({
+                    status: "completed" as const,
+                    progress: 100,
+                    download_url: `https://aurora-build-ai.app/downloads/${id}.${ext}`,
+                  })
+                  .eq("id", id!);
+              })
+              .then(() => setDone(true));
         }
         return next;
       });
