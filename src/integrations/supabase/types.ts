@@ -16,35 +16,44 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          ai_credits: number
           avatar_url: string | null
+          bonus_builds: number
           created_at: string
           daily_builds_count: number
           display_name: string | null
           id: string
           last_build_date: string
           plan: Database["public"]["Enums"]["user_plan"]
+          referral_code: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          ai_credits?: number
           avatar_url?: string | null
+          bonus_builds?: number
           created_at?: string
           daily_builds_count?: number
           display_name?: string | null
           id?: string
           last_build_date?: string
           plan?: Database["public"]["Enums"]["user_plan"]
+          referral_code?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          ai_credits?: number
           avatar_url?: string | null
+          bonus_builds?: number
           created_at?: string
           daily_builds_count?: number
           display_name?: string | null
           id?: string
           last_build_date?: string
           plan?: Database["public"]["Enums"]["user_plan"]
+          referral_code?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -92,6 +101,30 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_id: string
+          referrer_id: string
+          rewarded: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_id: string
+          referrer_id: string
+          rewarded?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          rewarded?: boolean
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -125,6 +158,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      process_referral_rewards: {
+        Args: { p_referrer_id: string }
+        Returns: undefined
       }
     }
     Enums: {
