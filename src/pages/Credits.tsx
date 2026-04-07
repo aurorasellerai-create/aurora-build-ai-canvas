@@ -9,34 +9,34 @@ import { ArrowLeft, Zap, Sparkles, Rocket, Crown, Check } from "lucide-react";
 const PACKAGES = [
   {
     name: "starter",
-    label: "Starter",
+    label: "100 Créditos IA",
     credits: 100,
-    price: "R$ 19,90",
+    price: "R$ 29,90",
     icon: Zap,
     highlight: false,
-    perCredit: "R$ 0,19",
-    kiwifyLink: "", // placeholder
+    perCredit: "R$ 0,29",
+    kiwifyLink: "https://pay.kiwify.com.br/I8aRx0x",
   },
   {
     name: "pro",
-    label: "Pro",
+    label: "500 Créditos IA",
     credits: 500,
-    price: "R$ 49,90",
+    price: "R$ 97,00",
     icon: Sparkles,
     highlight: true,
     badge: "Mais popular",
-    perCredit: "R$ 0,09",
-    kiwifyLink: "", // placeholder
+    perCredit: "R$ 0,19",
+    kiwifyLink: "https://pay.kiwify.com.br/ZYX5C2o",
   },
   {
     name: "scale",
-    label: "Scale",
+    label: "2000 Créditos IA",
     credits: 2000,
-    price: "R$ 149,90",
+    price: "R$ 197,00",
     icon: Rocket,
     highlight: false,
-    perCredit: "R$ 0,07",
-    kiwifyLink: "", // placeholder
+    perCredit: "R$ 0,09",
+    kiwifyLink: "https://pay.kiwify.com.br/rLikcLm",
   },
 ];
 
