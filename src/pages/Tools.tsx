@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const appNameSuggestions = [
