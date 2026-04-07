@@ -117,7 +117,7 @@ const Dashboard = () => {
           {plan !== "premium" && (
             <Link
               to="/pricing"
-              className="px-4 py-2 border border-primary text-primary font-display text-sm font-bold rounded-lg hover:bg-primary/10 transition-all flex items-center gap-1 self-start"
+              className="px-5 py-2.5 bg-primary text-primary-foreground font-display text-sm font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105 flex items-center gap-1.5 self-start"
             >
               <Crown className="w-4 h-4" /> Fazer upgrade
             </Link>
