@@ -60,6 +60,11 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
     }
     setLoading(true);
     setResult("");
+    const credited = await consumeCredits(creditAction);
+    if (!credited) {
+      setLoading(false);
+      return;
+    }
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1500));
     setResult(onGenerate(input));
     setLoading(false);
