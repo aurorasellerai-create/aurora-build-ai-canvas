@@ -3,14 +3,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
-import { ArrowLeft, Download, Calendar, FileType, CheckCircle2, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Calendar, FileType, CheckCircle2, AlertCircle, Trash2, Loader2, Smartphone, Store, Globe, AlertTriangle, Info, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useCredits } from "@/hooks/useCredits";
+
+const FORMAT_DETAILS: Record<string, { label: string; desc: string; warning?: string; tip?: string }> = {
+  apk: {
+    label: "APK — Teste Local",
+    desc: "Instale diretamente no seu celular Android para testes.",
+    warning: "Não é aceito na Google Play Store. Use AAB para publicar.",
+  },
+  aab: {
+    label: "AAB — Google Play",
+    desc: "Formato oficial para publicação na Google Play Store.",
+    tip: "Envie pelo Google Play Console com sua conta de desenvolvedor.",
+  },
+  pwa: {
+    label: "PWA — App Web",
+    desc: "App instalável pelo navegador. Funciona em Android e iPhone.",
+    tip: "Distribua diretamente via link, sem loja de aplicativos.",
+  },
+};
 
 const ProjectDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { balance, consumeCredits, getCost } = useCredits();
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", id],
@@ -41,7 +61,10 @@ const ProjectDetail = () => {
   const handleDownload = () => {
     if (!project) return;
     const ext = project.format === "pwa" ? "zip" : project.format;
-    const blob = new Blob([`Aurora Build AI - ${project.app_name}\nURL: ${project.site_url}\nFormato: ${ext.toUpperCase()}\nGerado em: ${new Date(project.created_at).toLocaleDateString("pt-BR")}`], { type: "application/octet-stream" });
+    const blob = new Blob(
+      [`Aurora Build AI - ${project.app_name}\nURL: ${project.site_url}\nFormato: ${ext.toUpperCase()}\nGerado em: ${new Date(project.created_at).toLocaleDateString("pt-BR")}`],
+      { type: "application/octet-stream" }
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -70,6 +93,8 @@ const ProjectDetail = () => {
     );
   }
 
+  const fmt = FORMAT_DETAILS[project.format] || FORMAT_DETAILS.apk;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-4 py-4">
@@ -81,7 +106,8 @@ const ProjectDetail = () => {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 py-12">
+      <div className="max-w-lg mx-auto px-4 py-12 space-y-6">
+        {/* Status Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card-aurora space-y-6">
           <div className="text-center">
             {project.status === "completed" ? (
@@ -108,32 +134,78 @@ const ProjectDetail = () => {
               <span className="text-secondary text-sm truncate max-w-[200px]">{project.site_url}</span>
             </div>
           </div>
+        </motion.div>
 
-          {project.status === "completed" && (
+        {/* Format Info Card */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2">
+          <h3 className="font-display font-bold text-sm text-foreground">{fmt.label}</h3>
+          <p className="text-xs text-muted-foreground">{fmt.desc}</p>
+          {fmt.warning && (
+            <p className="text-xs text-destructive flex items-center gap-1.5">
+              <AlertTriangle className="w-3 h-3 shrink-0" /> {fmt.warning}
+            </p>
+          )}
+          {fmt.tip && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Info className="w-3 h-3 text-primary shrink-0" /> {fmt.tip}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Export Actions */}
+        {project.status === "completed" && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-3">
+            <h3 className="font-display font-bold text-foreground text-center">Exportar aplicativo</h3>
+
             <button
               onClick={handleDownload}
               className="w-full py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
             >
-              <Download className="w-5 h-5" /> Baixar App
+              <Download className="w-5 h-5" />
+              Baixar {project.format.toUpperCase()}
             </button>
-          )}
 
-          <button
-            onClick={() => {
-              if (confirm("Tem certeza que deseja excluir este projeto?")) {
-                deleteMutation.mutate();
-              }
-            }}
-            disabled={deleteMutation.isPending}
-            className="w-full py-3 border border-destructive/30 text-destructive font-semibold rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" /> Excluir projeto
-          </button>
+            {project.format === "apk" && (
+              <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 text-center">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Precisa publicar na Play Store? Gere a versão AAB.
+                </p>
+                <Link
+                  to="/generator"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary font-bold hover:underline"
+                >
+                  <Store className="w-3 h-3" /> Criar versão AAB
+                </Link>
+              </div>
+            )}
+          </motion.div>
+        )}
 
-          {project.error_message && (
-            <p className="text-destructive text-sm text-center">{project.error_message}</p>
-          )}
+        {/* Credit info */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-center">
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+            <Zap className="w-3 h-3 text-primary" /> Saldo: {balance} créditos
+            <span className="text-border mx-1">·</span>
+            <Link to="/credits" className="text-primary hover:underline font-semibold">Comprar mais</Link>
+          </p>
         </motion.div>
+
+        {/* Delete */}
+        <button
+          onClick={() => {
+            if (confirm("Tem certeza que deseja excluir este projeto?")) {
+              deleteMutation.mutate();
+            }
+          }}
+          disabled={deleteMutation.isPending}
+          className="w-full py-3 border border-destructive/30 text-destructive font-semibold rounded-lg hover:bg-destructive/10 transition-all flex items-center justify-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" /> Excluir projeto
+        </button>
+
+        {project.error_message && (
+          <p className="text-destructive text-sm text-center">{project.error_message}</p>
+        )}
       </div>
     </div>
   );
