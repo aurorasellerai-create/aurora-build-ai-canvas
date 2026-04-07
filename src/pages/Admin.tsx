@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Users, TrendingUp, Crown, Shield,
-  Loader2, Search, ChevronDown,
+  Loader2, Search,
 } from "lucide-react";
 import {
   Select,
@@ -16,6 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+} from "recharts";
 
 interface AdminUser {
   user_id: string;
@@ -41,6 +45,16 @@ interface Metrics {
   conversionRate: string;
 }
 
+interface GrowthPoint {
+  date: string;
+  label: string;
+  total: number;
+  pro: number;
+  premium: number;
+}
+
+const PIE_COLORS = ["hsl(var(--muted-foreground))", "hsl(var(--primary))", "hsl(var(--secondary))"];
+
 const MetricCard = ({ label, value, icon: Icon, accent = false }: {
   label: string; value: string | number; icon: any; accent?: boolean;
 }) => (
@@ -57,12 +71,26 @@ const MetricCard = ({ label, value, icon: Icon, accent = false }: {
   </motion.div>
 );
 
+const fetchAdmin = async (action: string) => {
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-data?action=${action}`,
+    {
+      headers: {
+        Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+    }
+  );
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error);
+  return json;
+};
+
 const Admin = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
 
-  // Check admin role
   const { data: isAdmin, isLoading: checkingRole } = useQuery({
     queryKey: ["admin-role", user?.id],
     queryFn: async () => {
@@ -75,53 +103,24 @@ const Admin = () => {
     enabled: !!user,
   });
 
-  // Fetch metrics
   const { data: metrics } = useQuery<Metrics>({
     queryKey: ["admin-metrics"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-data", {
-        body: null,
-        method: "GET",
-      });
-      if (error) throw error;
-      // Edge function uses query params, but invoke sends body. Use fetch directly.
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-data?action=metrics`,
-        {
-          headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        }
-      );
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.metrics;
-    },
+    queryFn: async () => (await fetchAdmin("metrics")).metrics,
     enabled: isAdmin === true,
   });
 
-  // Fetch users
   const { data: users = [], isLoading: loadingUsers } = useQuery<AdminUser[]>({
     queryKey: ["admin-users"],
-    queryFn: async () => {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-data?action=list`,
-        {
-          headers: {
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-        }
-      );
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      return json.users;
-    },
+    queryFn: async () => (await fetchAdmin("list")).users,
     enabled: isAdmin === true,
   });
 
-  // Update plan mutation
+  const { data: growthData = [] } = useQuery<GrowthPoint[]>({
+    queryKey: ["admin-growth"],
+    queryFn: async () => (await fetchAdmin("growth")).growth,
+    enabled: isAdmin === true,
+  });
+
   const updatePlan = useMutation({
     mutationFn: async ({ user_id, plan }: { user_id: string; plan: string }) => {
       const res = await fetch(
@@ -177,11 +176,13 @@ const Admin = () => {
         u.display_name?.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const planColors: Record<string, string> = {
-    free: "text-muted-foreground",
-    pro: "text-primary",
-    premium: "text-secondary",
-  };
+  const pieData = metrics
+    ? [
+        { name: "Free", value: metrics.freeUsers },
+        { name: "Pro", value: metrics.proUsers },
+        { name: "Premium", value: metrics.premiumUsers },
+      ].filter((d) => d.value > 0)
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,6 +209,72 @@ const Admin = () => {
             <MetricCard label="Conversão" value={metrics?.conversionRate ? `${metrics.conversionRate}%` : "—"} icon={TrendingUp} accent />
             <MetricCard label="Total Apps" value={metrics?.totalProjects ?? "—"} icon={TrendingUp} />
             <MetricCard label="Apps Prontos" value={metrics?.completedProjects ?? "—"} icon={TrendingUp} />
+          </div>
+        </section>
+
+        {/* Charts */}
+        <section className="grid md:grid-cols-3 gap-6">
+          {/* User Growth Chart */}
+          <div className="md:col-span-2 card-aurora p-5">
+            <h3 className="font-display font-bold text-foreground mb-4 text-sm">Cadastros — Últimos 30 dias</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={growthData}>
+                  <defs>
+                    <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    name="Cadastros"
+                    stroke="hsl(var(--primary))"
+                    fill="url(#gradTotal)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Plan Distribution Pie */}
+          <div className="card-aurora p-5">
+            <h3 className="font-display font-bold text-foreground mb-4 text-sm">Distribuição de Planos</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </section>
 
@@ -242,7 +309,6 @@ const Admin = () => {
                     <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Apps</th>
                     <th className="text-center px-4 py-3 font-semibold text-muted-foreground">IA</th>
                     <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Desde</th>
-                    <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -274,16 +340,11 @@ const Admin = () => {
                       <td className="px-4 py-3 text-center text-muted-foreground text-xs">
                         {new Date(u.created_at).toLocaleDateString("pt-BR")}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`text-xs font-semibold capitalize ${planColors[u.plan] || ""}`}>
-                          {u.plan}
-                        </span>
-                      </td>
                     </tr>
                   ))}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <td colSpan={6} className="text-center py-8 text-muted-foreground">
                         Nenhum usuário encontrado
                       </td>
                     </tr>
