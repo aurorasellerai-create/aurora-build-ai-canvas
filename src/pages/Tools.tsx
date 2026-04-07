@@ -41,6 +41,10 @@ interface ToolCardProps {
   onGenerate: (input: string) => string;
   locked?: boolean;
   onLocked?: () => void;
+  creditAction: string;
+  consumeCredits: (action: string) => Promise<boolean>;
+  creditCost: number;
+  balance: number;
 }
 
 const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked }: ToolCardProps) => {
