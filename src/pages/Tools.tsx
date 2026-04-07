@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import type { PaywallFeature } from "@/hooks/usePaywall";
+import { useCredits } from "@/hooks/useCredits";
 
 const appNameSuggestions = [
   "QuickApp Pro", "SmartSite Mobile", "AppBuilder One", "WebToApp Express",
@@ -40,9 +41,13 @@ interface ToolCardProps {
   onGenerate: (input: string) => string;
   locked?: boolean;
   onLocked?: () => void;
+  creditAction: string;
+  consumeCredits: (action: string) => Promise<boolean>;
+  creditCost: number;
+  balance: number;
 }
 
-const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked }: ToolCardProps) => {
+const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked, creditAction, consumeCredits, creditCost, balance }: ToolCardProps) => {
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,6 +60,11 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
     }
     setLoading(true);
     setResult("");
+    const credited = await consumeCredits(creditAction);
+    if (!credited) {
+      setLoading(false);
+      return;
+    }
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1500));
     setResult(onGenerate(input));
     setLoading(false);
@@ -91,10 +101,17 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
       <button
         onClick={handleGenerate}
         disabled={loading}
-        className="w-full py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex flex-col items-center justify-center gap-1"
       >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        {locked ? "🔒 Desbloquear" : loading ? "Gerando..." : "Gerar com IA"}
+        <span className="flex items-center gap-2">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {locked ? "🔒 Desbloquear" : loading ? "Gerando..." : "Gerar com IA"}
+        </span>
+        {!locked && (
+          <span className="text-xs opacity-75 flex items-center gap-1">
+            <Zap className="w-3 h-3" /> {creditCost} crédito(s) · Saldo: {balance}
+          </span>
+        )}
       </button>
 
       {result && (
@@ -117,6 +134,8 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
 
 const Tools = () => {
   const { isFree, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
+  const { balance, consumeCredits, getCost } = useCredits();
+  const creditProps = { consumeCredits, balance };
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,6 +166,9 @@ const Tools = () => {
             description="Nomes criativos para seu app"
             icon={PenTool}
             placeholder="Tema do app (ex: delivery, fitness, educação)"
+            creditAction="ai_tool_names"
+            creditCost={getCost("ai_tool_names")}
+            {...creditProps}
             onGenerate={() => {
               const names: string[] = [];
               for (let i = 0; i < 5; i++) {
@@ -166,6 +188,9 @@ const Tools = () => {
             placeholder="Segmento (ex: saúde, educação, comércio)"
             locked={isFree}
             onLocked={() => checkAccess("advanced_ai")}
+            creditAction="ai_tool_ideas"
+            creditCost={getCost("ai_tool_ideas")}
+            {...creditProps}
             onGenerate={() => {
               const ideas: string[] = [];
               for (let i = 0; i < 3; i++) {
@@ -184,6 +209,9 @@ const Tools = () => {
             placeholder="Nome do seu app"
             locked={isFree}
             onLocked={() => checkAccess("advanced_ai")}
+            creditAction="ai_tool_description"
+            creditCost={getCost("ai_tool_description")}
+            {...creditProps}
             onGenerate={(input) => {
               const base = playStoreDescriptions[Math.floor(Math.random() * playStoreDescriptions.length)];
               return input ? base.replace("Nosso app", input).replace("O app", input) : base;
@@ -199,6 +227,9 @@ const Tools = () => {
             placeholder="Descreva o ícone (ex: ícone azul moderno de delivery)"
             locked={isFree}
             onLocked={() => checkAccess("advanced_ai")}
+            creditAction="ai_tool_icon"
+            creditCost={getCost("ai_tool_icon")}
+            {...creditProps}
             onGenerate={(input) => {
               const styles = ["Flat Design", "Material Design", "Glassmorphism", "Gradient", "Minimal"];
               const colors = ["Azul", "Dourado", "Verde", "Roxo", "Vermelho"];
@@ -217,6 +248,9 @@ const Tools = () => {
             placeholder="Nome do app e cor principal (ex: MeuApp, azul)"
             locked={isFree}
             onLocked={() => checkAccess("advanced_ai")}
+            creditAction="ai_tool_splash"
+            creditCost={getCost("ai_tool_splash")}
+            {...creditProps}
             onGenerate={(input) => {
               const layouts = ["Logo centralizado com gradiente", "Logo + nome com animação fade-in", "Fullscreen com brand color", "Minimalista com ícone"];
               const layout = layouts[Math.floor(Math.random() * layouts.length)];
