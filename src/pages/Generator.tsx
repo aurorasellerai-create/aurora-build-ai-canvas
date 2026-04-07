@@ -175,8 +175,12 @@ const Generator = () => {
               <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
               Formato
             </label>
-            <div className="flex gap-3">
-              {(["apk", "aab", "pwa"] as const).map((f) => {
+            <div className="space-y-2">
+              {([
+                { f: "apk" as const, label: "APK", hint: "Para testes no celular" },
+                { f: "aab" as const, label: "AAB", hint: "Para Google Play Store" },
+                { f: "pwa" as const, label: "PWA", hint: "App web instalável" },
+              ]).map(({ f, label, hint }) => {
                 const allowed = allowedFormats.includes(f);
                 return (
                   <button
@@ -189,19 +193,25 @@ const Generator = () => {
                         checkAccess("premium_format");
                       }
                     }}
-                    className={`flex-1 py-3 rounded-lg font-display font-semibold text-sm uppercase transition-all duration-300 ${
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg font-display text-sm transition-all duration-300 ${
                       format === f
                         ? "bg-primary text-primary-foreground glow-gold"
                         : allowed
-                        ? "bg-muted text-muted-foreground border border-border hover:border-secondary"
+                        ? "bg-muted text-foreground border border-border hover:border-secondary"
                         : "bg-muted/50 text-muted-foreground/40 border border-border cursor-pointer"
                     }`}
                   >
-                    {f} {!allowed && "🔒"}
+                    <span className="font-bold">{label} {!allowed && "🔒"}</span>
+                    <span className={`text-xs ${format === f ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{hint}</span>
                   </button>
                 );
               })}
             </div>
+            {format === "apk" && (
+              <p className="text-xs text-destructive/80 flex items-center gap-1 mt-1">
+                <AlertTriangle className="w-3 h-3" /> APK não é aceito na Play Store — use AAB para publicar
+              </p>
+            )}
           </div>
 
           {error && (
