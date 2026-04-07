@@ -10,6 +10,7 @@ import {
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
+import CreditHistoryWidget from "@/components/CreditHistoryWidget";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -290,6 +291,9 @@ const Dashboard = () => {
             </div>
           </motion.div>
         )}
+
+        {/* Credit History */}
+        <CreditHistoryWidget />
 
         {/* Referral */}
         <div className="mb-8">
