@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import type { PaywallFeature } from "@/hooks/usePaywall";
+import { useCredits } from "@/hooks/useCredits";
 
 const appNameSuggestions = [
   "QuickApp Pro", "SmartSite Mobile", "AppBuilder One", "WebToApp Express",
