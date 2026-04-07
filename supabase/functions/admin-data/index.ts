@@ -137,6 +137,43 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === "growth") {
+      // Get signups per day for last 30 days
+      const { data: profiles } = await adminClient
+        .from("profiles")
+        .select("created_at, plan")
+        .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: true });
+
+      const dailyMap: Record<string, { total: number; pro: number; premium: number }> = {};
+      
+      // Fill last 30 days
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const key = d.toISOString().split("T")[0];
+        dailyMap[key] = { total: 0, pro: 0, premium: 0 };
+      }
+
+      (profiles || []).forEach((p) => {
+        const day = p.created_at.split("T")[0];
+        if (dailyMap[day]) {
+          dailyMap[day].total++;
+          if (p.plan === "pro") dailyMap[day].pro++;
+          if (p.plan === "premium") dailyMap[day].premium++;
+        }
+      });
+
+      const growth = Object.entries(dailyMap).map(([date, counts]) => ({
+        date,
+        label: new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        ...counts,
+      }));
+
+      return new Response(JSON.stringify({ growth }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "update_plan" && req.method === "POST") {
       const { user_id, plan } = await req.json();
       if (!user_id || !plan) {
