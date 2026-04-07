@@ -47,7 +47,7 @@ interface ToolCardProps {
   balance: number;
 }
 
-const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked }: ToolCardProps) => {
+const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, locked, onLocked, creditAction, consumeCredits, creditCost, balance }: ToolCardProps) => {
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
