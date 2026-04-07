@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, Loader2, Target, DollarSign, Users, Lightbulb, TrendingUp, Smartphone, Copy, Check } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Target, DollarSign, Users, Lightbulb, TrendingUp, Smartphone, Copy, Check, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
+import { useCredits } from "@/hooks/useCredits";
 
 interface BusinessPlan {
   name: string;
@@ -42,6 +43,7 @@ const BusinessGenerator = () => {
   const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
   const { isFree, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
+  const { balance, consumeCredits, getCost } = useCredits();
 
   const handleGenerate = async () => {
     if (!businessType.trim()) {
@@ -54,6 +56,13 @@ const BusinessGenerator = () => {
 
     setLoading(true);
     setResult(null);
+
+    // Consume credits
+    const credited = await consumeCredits("generate_business");
+    if (!credited) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-business", {
@@ -146,10 +155,15 @@ const BusinessGenerator = () => {
           <button
             onClick={handleGenerate}
             disabled={loading || !businessType.trim()}
-            className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold transition-all hover:scale-[1.02] disabled:opacity-50 flex flex-col items-center justify-center gap-1"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {loading ? "Gerando seu negócio..." : "Gerar Negócio com IA"}
+            <span className="flex items-center gap-2">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+              {loading ? "Gerando seu negócio..." : "Gerar Negócio com IA"}
+            </span>
+            <span className="text-xs opacity-75 flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Consome {getCost("generate_business")} créditos · Saldo: {balance}
+            </span>
           </button>
         </motion.div>
 
