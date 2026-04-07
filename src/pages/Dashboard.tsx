@@ -295,6 +295,33 @@ const Dashboard = () => {
         {/* Credit History */}
         <CreditHistoryWidget />
 
+        {/* Monetization */}
+        {projects.some((p) => p.status === "completed") && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-8 p-5 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 flex flex-col sm:flex-row items-center justify-between gap-4"
+          >
+            <div>
+              <h3 className="font-display font-bold text-foreground flex items-center gap-2">
+                💰 Monetização
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Seu app já está pronto. Agora transforme-o em fonte de renda.
+              </p>
+            </div>
+            <a
+              href="https://auroraseller.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105 shrink-0"
+            >
+              Ativar monetização
+            </a>
+          </motion.div>
+        )}
+
         {/* Referral */}
         <div className="mb-8">
           <ReferralCard />

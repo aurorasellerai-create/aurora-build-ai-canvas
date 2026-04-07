@@ -218,7 +218,7 @@ const ProjectDetail = () => {
                 Conheça o <span className="text-primary font-bold">Aurora Seller AI</span> — sistema completo para afiliados com links automáticos e ganhos recorrentes.
               </p>
               <a
-                href="https://aurora-seller.com"
+                href="https://auroraseller.com.br"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105 text-sm"
