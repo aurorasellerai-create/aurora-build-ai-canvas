@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
+import AuthBackButton from "@/components/AuthBackButton";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -37,7 +38,8 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
+      <AuthBackButton to="/auth" label="Voltar ao login" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

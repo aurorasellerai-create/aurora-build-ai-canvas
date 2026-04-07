@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Loader2, Mail, Lock, User } from "lucide-react";
+import AuthBackButton from "@/components/AuthBackButton";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -41,15 +42,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
-      {/* Back button */}
-      <Link
-        to="/"
-        className="absolute top-5 left-5 md:top-8 md:left-8 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-secondary transition-all duration-300 hover:scale-105 group"
-        style={{ filter: "drop-shadow(0 0 6px hsl(190 100% 50% / 0.3))" }}
-      >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-300" />
-        <span className="hidden sm:inline">Voltar para início</span>
-      </Link>
+      <AuthBackButton to="/" label="Voltar para início" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

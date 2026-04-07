@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Mail } from "lucide-react";
+import AuthBackButton from "@/components/AuthBackButton";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -22,7 +23,8 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
+      <AuthBackButton to="/auth" label="Voltar ao login" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
