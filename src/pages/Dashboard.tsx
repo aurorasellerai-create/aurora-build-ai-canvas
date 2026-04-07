@@ -1,10 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock, LogOut, Sparkles } from "lucide-react";
+import { Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock, LogOut, Sparkles, Trash2, Crown } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import { toast } from "@/hooks/use-toast";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -14,10 +15,12 @@ const statusConfig = {
 };
 
 const planLabels = { free: "Free", pro: "Pro", premium: "Premium" };
+const planLimits = { free: 1, pro: 5, premium: 999999 };
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -32,7 +35,7 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects", user?.id],
     queryFn: async () => {
       const { data } = await supabase
@@ -45,10 +48,38 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      const { error } = await supabase.from("projects").delete().eq("id", projectId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast({ title: "Projeto excluído" });
+    },
+  });
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
   };
+
+  const handleDownload = (project: Tables<"projects">) => {
+    const ext = project.format === "pwa" ? "zip" : project.format;
+    const blob = new Blob([`Aurora Build AI - ${project.app_name}\nURL: ${project.site_url}\nFormato: ${ext.toUpperCase()}`], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${project.app_name.replace(/\s+/g, "_")}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const plan = profile?.plan || "free";
+  const buildsUsed = profile?.daily_builds_count || 0;
+  const buildsLimit = planLimits[plan];
+  const isToday = profile?.last_build_date === new Date().toISOString().split("T")[0];
+  const currentBuilds = isToday ? buildsUsed : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,6 +88,9 @@ const Dashboard = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link to="/" className="font-display font-bold text-lg text-gradient-gold">Aurora Build AI</Link>
           <div className="flex items-center gap-4">
+            <Link to="/tools" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <Sparkles className="w-4 h-4" /> IA
+            </Link>
             <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</Link>
             <button onClick={handleSignOut} className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
               <LogOut className="w-4 h-4" /> Sair
@@ -66,14 +100,27 @@ const Dashboard = () => {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Welcome */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-            Olá, {profile?.display_name || "Usuário"}!
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Plano: <span className="text-primary font-semibold">{planLabels[profile?.plan || "free"]}</span>
-          </p>
+        {/* Welcome + Plan info */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">
+              Olá, {profile?.display_name || "Usuário"}!
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Plano: <span className="text-primary font-semibold">{planLabels[plan]}</span>
+              {plan !== "premium" && (
+                <> · Builds hoje: <span className={currentBuilds >= buildsLimit ? "text-destructive" : "text-foreground"}>{currentBuilds}/{buildsLimit}</span></>
+              )}
+            </p>
+          </div>
+          {plan !== "premium" && (
+            <Link
+              to="/pricing"
+              className="px-4 py-2 border border-primary text-primary font-display text-sm font-bold rounded-lg hover:bg-primary/10 transition-all flex items-center gap-1 self-start"
+            >
+              <Crown className="w-4 h-4" /> Fazer upgrade
+            </Link>
+          )}
         </motion.div>
 
         {/* Actions */}
@@ -84,18 +131,34 @@ const Dashboard = () => {
           >
             <Plus className="w-5 h-5" /> Criar novo app
           </Link>
-          <Link
-            to="/tools"
-            className="px-6 py-3 border border-secondary text-secondary font-display font-semibold rounded-lg hover:bg-secondary/10 transition-all flex items-center gap-2"
-          >
-            <Sparkles className="w-5 h-5" /> Ferramentas IA
-          </Link>
         </div>
+
+        {/* Build limit warning */}
+        {plan !== "premium" && currentBuilds >= buildsLimit && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-3"
+          >
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+            <div>
+              <p className="text-foreground font-semibold text-sm">Limite diário atingido!</p>
+              <p className="text-muted-foreground text-xs">
+                Faça <Link to="/pricing" className="text-primary hover:underline">upgrade</Link> para mais builds.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Projects */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="card-aurora">
-          <h2 className="font-display text-lg font-bold text-foreground mb-4">Seus Apps</h2>
-          {projects.length === 0 ? (
+          <h2 className="font-display text-lg font-bold text-foreground mb-4">Meus Apps</h2>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : projects.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               Nenhum app criado ainda. <Link to="/generator" className="text-primary hover:underline">Criar primeiro app</Link>
             </p>
@@ -115,13 +178,13 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {project.status === "completed" && project.download_url && (
-                        <a
-                          href={project.download_url}
+                      {project.status === "completed" && (
+                        <button
+                          onClick={() => handleDownload(project)}
                           className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-lg glow-gold hover:scale-105 transition-all flex items-center gap-1"
                         >
                           <Download className="w-4 h-4" /> Baixar
-                        </a>
+                        </button>
                       )}
                       <Link
                         to={`/project/${project.id}`}
@@ -129,6 +192,15 @@ const Dashboard = () => {
                       >
                         <Eye className="w-4 h-4" /> Detalhes
                       </Link>
+                      <button
+                        onClick={() => {
+                          if (confirm("Excluir este projeto?")) deleteMutation.mutate(project.id);
+                        }}
+                        className="px-3 py-2 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );
