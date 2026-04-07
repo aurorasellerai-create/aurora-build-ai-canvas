@@ -9,7 +9,7 @@ const features = [
 ];
 
 const AISection = () => (
-  <section className="py-20 px-4 bg-aurora-gradient">
+  <section id="ia" className="py-20 px-4 bg-aurora-gradient">
     <div className="max-w-6xl mx-auto text-center">
       <motion.h2
         initial={{ opacity: 0 }}
