@@ -1,0 +1,21 @@
+{
+  "name": "aurora-aab-worker",
+  "version": "1.0.0",
+  "description": "Worker para conversão automática Link → AAB (Aurora Build AI)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/android": "^6.1.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "bullmq": "^5.12.0",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "sharp": "^0.33.4",
+    "dotenv": "^16.4.5"
+  }
+}
