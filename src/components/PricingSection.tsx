@@ -175,16 +175,31 @@ const PricingSection = () => {
                   )}
                 </AnimatePresence>
 
-                <Link
-                  to="/auth"
-                  className={`w-full py-3 rounded-lg font-display font-bold text-sm transition-all duration-300 hover:scale-105 text-center block ${
-                    plan.highlighted
-                      ? "bg-primary text-primary-foreground glow-gold glow-gold-hover"
-                      : "border border-secondary text-secondary hover:bg-secondary/10"
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
+                {plan.external ? (
+                  <a
+                    href={plan.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`w-full py-3 rounded-lg font-display font-bold text-sm transition-all duration-300 hover:scale-105 text-center block ${
+                      plan.highlighted
+                        ? "bg-primary text-primary-foreground glow-gold glow-gold-hover"
+                        : "border border-secondary text-secondary hover:bg-secondary/10"
+                    }`}
+                  >
+                    {plan.cta}
+                  </a>
+                ) : (
+                  <Link
+                    to={plan.href}
+                    className={`w-full py-3 rounded-lg font-display font-bold text-sm transition-all duration-300 hover:scale-105 text-center block ${
+                      plan.highlighted
+                        ? "bg-primary text-primary-foreground glow-gold glow-gold-hover"
+                        : "border border-secondary text-secondary hover:bg-secondary/10"
+                    }`}
+                  >
+                    {plan.cta}
+                  </Link>
+                )}
               </motion.div>
             );
           })}
