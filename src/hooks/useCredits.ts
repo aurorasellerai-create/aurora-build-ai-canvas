@@ -12,6 +12,8 @@ const ACTION_COSTS: Record<string, number> = {
   ai_tool_description: 1,
   ai_tool_icon: 1,
   ai_tool_splash: 1,
+  ai_video_5s: 5,
+  ai_video_10s: 8,
 };
 
 export function useCredits() {
