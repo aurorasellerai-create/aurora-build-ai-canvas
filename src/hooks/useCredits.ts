@@ -86,7 +86,8 @@ export function useCredits() {
     [user, isAdmin, balance, queryClient]
   );
 
-  const getCost = (action: string) => ACTION_COSTS[action] ?? 1;
+  const getCost = (action: string) => isAdmin ? 0 : (ACTION_COSTS[action] ?? 1);
+  const displayBalance = isAdmin ? 9999 : balance;
 
-  return { balance, consumeCredits, getCost, ACTION_COSTS };
+  return { balance: displayBalance, consumeCredits, getCost, ACTION_COSTS, isAdmin };
 }
