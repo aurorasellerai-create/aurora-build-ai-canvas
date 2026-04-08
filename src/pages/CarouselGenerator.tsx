@@ -46,7 +46,12 @@ const CarouselGenerator = () => {
   const confirmGenerate = async () => {
     setShowConfirm(false);
     if (!isAdmin && balance < creditCost) {
-      toast({ title: "Créditos insuficientes", description: `Você precisa de ${creditCost} crédito(s). Saldo: ${balance}.`, variant: "destructive" });
+      toast({
+        title: "Créditos insuficientes",
+        description: "Você precisa de créditos para criar carrosséis.",
+        variant: "destructive",
+        action: <Link to="/credits" className="text-primary font-bold text-xs underline">Comprar créditos</Link>,
+      });
       return;
     }
 
