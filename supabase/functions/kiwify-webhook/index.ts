@@ -18,6 +18,10 @@ const PLAN_CREDITS: Record<string, number> = {
   premium: 500,
 };
 
+// Simple in-memory rate limiter (per isolate lifetime)
+const recentRequests = new Map<string, number>();
+const RATE_LIMIT_MS = 5000;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -34,14 +38,14 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log("Kiwify webhook received:", JSON.stringify(body));
 
-    // Validate webhook token if configured
+    // Validate webhook token
     const webhookToken = Deno.env.get("KIWIFY_WEBHOOK_TOKEN");
     if (webhookToken) {
       const signature = req.headers.get("x-kiwify-signature") || 
                         req.headers.get("signature") ||
                         body?.signature;
       if (signature !== webhookToken) {
-        console.error("Invalid webhook signature");
+        console.error("❌ Invalid webhook signature — possible unauthorized attempt");
         return new Response(JSON.stringify({ error: "Invalid signature" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -59,10 +63,35 @@ Deno.serve(async (req) => {
     const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
 
     if (!customerEmail) {
+      console.error("❌ Missing customer email in webhook payload");
       return new Response(JSON.stringify({ error: "Customer email not found" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (!transactionId) {
+      console.error("❌ Missing transaction ID in webhook payload");
+      return new Response(JSON.stringify({ error: "Transaction ID not found" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Rate limit: reject rapid duplicate calls with same transactionId
+    const now = Date.now();
+    const lastSeen = recentRequests.get(transactionId);
+    if (lastSeen && now - lastSeen < RATE_LIMIT_MS) {
+      console.warn(`⚠️ Rate limited: duplicate request for ${transactionId} within ${RATE_LIMIT_MS}ms`);
+      return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    recentRequests.set(transactionId, now);
+    // Cleanup old entries
+    for (const [key, ts] of recentRequests) {
+      if (now - ts > 60000) recentRequests.delete(key);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -74,7 +103,7 @@ Deno.serve(async (req) => {
     const user = users?.find((u) => u.email === customerEmail);
 
     if (!user) {
-      console.error(`User not found for email: ${customerEmail}`);
+      console.error(`❌ User not found for email: ${customerEmail}`);
       return new Response(JSON.stringify({ error: "User not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -97,6 +126,21 @@ Deno.serve(async (req) => {
     
     if (isCreditPurchase) {
       // --- CREDIT PACKAGE PURCHASE ---
+      // Deduplication: check if this transaction already exists
+      const { data: existingPurchase } = await adminClient
+        .from("credit_purchases")
+        .select("id")
+        .eq("provider_transaction_id", transactionId)
+        .maybeSingle();
+
+      if (existingPurchase) {
+        console.warn(`⚠️ Duplicate credit purchase detected: ${transactionId} — skipping`);
+        return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       let packageName = "starter";
       let creditsAmount = 100;
       
@@ -120,7 +164,6 @@ Deno.serve(async (req) => {
       });
 
       if (isApproved) {
-        // Add credits to user balance
         const { data: profile } = await adminClient
           .from("profiles")
           .select("credits_balance")
@@ -133,7 +176,6 @@ Deno.serve(async (req) => {
 
         console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
       } else if (isRefunded) {
-        // Remove credits on refund
         const { data: profile } = await adminClient
           .from("profiles")
           .select("credits_balance")
@@ -148,6 +190,21 @@ Deno.serve(async (req) => {
       }
     } else {
       // --- PLAN UPGRADE ---
+      // Deduplication: check if this transaction already exists
+      const { data: existingPayment } = await adminClient
+        .from("payments")
+        .select("id")
+        .eq("provider_transaction_id", transactionId)
+        .maybeSingle();
+
+      if (existingPayment) {
+        console.warn(`⚠️ Duplicate plan payment detected: ${transactionId} — skipping`);
+        return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       let plan: "pro" | "premium" = "pro";
       if (productName.includes("premium") || productName.includes("elite")) {
         plan = "premium";
@@ -194,7 +251,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error("❌ Webhook error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
