@@ -68,13 +68,13 @@ const HeroSection = () => {
         className="relative z-10 max-w-[750px] mx-auto px-6 text-center space-y-5"
       >
         <h1 className="font-display font-bold leading-[1.12] text-[24px] sm:text-[32px] md:text-[40px] lg:text-[46px] text-foreground">
-          Crie um app automático que gera vendas 24h
+          Crie apps, vídeos e conteúdos com IA
           <br />
-          <span className="text-gradient-gold">— mesmo começando do zero</span>
+          <span className="text-gradient-gold">— tudo em um só lugar</span>
         </h1>
 
         <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-          A Aurora cria, estrutura e prepara seu app para vender — sem código, sem experiência e sem complicação.
+          Crie seu app, vídeo ou carrossel com IA — sem código, sem experiência e sem complicação.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-3 justify-center">
@@ -82,7 +82,7 @@ const HeroSection = () => {
             to="/auth"
             className="px-7 py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-lg text-sm glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.03] text-center"
           >
-            Criar meu app e começar a faturar agora
+            Começar grátis
           </Link>
           <Link
             to="/auth"

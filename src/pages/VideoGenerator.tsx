@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Video, Sparkles, Clock, Palette, Loader2, Zap, AlertTriangle, RefreshCw, Music } from "lucide-react";
+import UpsellPrompt from "@/components/UpsellPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { useCredits } from "@/hooks/useCredits";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -315,6 +316,8 @@ const VideoGenerator = () => {
               </button>
             </motion.div>
           )}
+
+          <UpsellPrompt balance={balance} type={balance === 0 ? "no-credits" : "post-generation"} />
         </motion.div>
       </div>
     </div>

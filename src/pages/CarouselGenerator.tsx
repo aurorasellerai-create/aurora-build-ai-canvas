@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, Zap, Copy, Check, LayoutGrid } from "lucide-react";
+import UpsellPrompt from "@/components/UpsellPrompt";
 import { toast } from "@/hooks/use-toast";
 import { useCredits } from "@/hooks/useCredits";
 import { usePaywall } from "@/hooks/usePaywall";
@@ -241,6 +242,8 @@ const CarouselGenerator = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {result && <UpsellPrompt balance={balance} type={balance === 0 ? "no-credits" : "post-generation"} />}
       </div>
     </div>
   );
