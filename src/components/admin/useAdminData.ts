@@ -78,6 +78,15 @@ export function useAdminFinancial(enabled: boolean) {
   });
 }
 
+export function useAdminSystemHealth(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin-system-health"],
+    queryFn: () => fetchAdmin("system_health"),
+    enabled,
+    refetchInterval: 30000,
+  });
+}
+
 export function useUpdatePlan() {
   const qc = useQueryClient();
   return useMutation({
