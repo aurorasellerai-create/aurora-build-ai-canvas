@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Check, Crown, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const plans = [
   {
@@ -14,6 +14,8 @@ const plans = [
     period: "",
     features: ["1 build por dia", "Apenas APK", "Acesso limitado"],
     highlighted: false,
+    href: "/auth",
+    external: false,
   },
   {
     name: "Pro",
@@ -22,6 +24,8 @@ const plans = [
     period: "/mês",
     features: ["5 builds por dia", "APK liberado", "Gerador de nomes ilimitado", "Gerador de ideias limitado"],
     highlighted: false,
+    href: "https://pay.kiwify.com.br/rnou5oN",
+    external: true,
   },
   {
     name: "Premium",
@@ -38,12 +42,13 @@ const plans = [
       "Maior velocidade",
     ],
     highlighted: true,
+    href: "https://pay.kiwify.com.br/edN32V9",
+    external: true,
   },
 ];
 
 const Pricing = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const { data: profile } = useQuery({
@@ -61,27 +66,12 @@ const Pricing = () => {
 
   const currentPlan = profile?.plan || "free";
 
-  const handleUpgrade = async (planKey: "free" | "pro" | "premium") => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    if (planKey === currentPlan) return;
-
-    // Simulated checkout
-    toast({ title: "Processando pagamento...", description: "Simulação de checkout" });
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ plan: planKey })
-      .eq("user_id", user.id);
-
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+  const handleClick = (plan: typeof plans[number]) => {
+    if (plan.external) {
+      toast.success("Redirecionando para pagamento...");
+      window.open(plan.href, "_blank", "noopener,noreferrer");
     } else {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: `Plano atualizado para ${planKey.toUpperCase()}!`, description: "Aproveite seus novos recursos." });
+      navigate(plan.href);
     }
   };
 
@@ -143,14 +133,14 @@ const Pricing = () => {
                   ))}
                 </ul>
                 <button
-                  onClick={() => handleUpgrade(plan.key)}
+                  onClick={() => handleClick(plan)}
                   disabled={!!isCurrent}
                   className={`w-full py-3 rounded-lg font-display font-bold transition-all duration-300 ${
                     isCurrent
                       ? "bg-muted text-muted-foreground cursor-default"
                       : plan.highlighted
-                      ? "bg-primary text-primary-foreground glow-gold glow-gold-hover hover:scale-105"
-                      : "border border-secondary text-secondary hover:bg-secondary/10 hover:scale-105"
+                      ? "bg-primary text-primary-foreground glow-gold glow-gold-hover hover:scale-105 hover:shadow-lg"
+                      : "border border-secondary text-secondary hover:bg-secondary/10 hover:scale-105 hover:shadow-lg"
                   }`}
                 >
                   {isCurrent ? "Plano atual" : plan.price === "Grátis" ? "Começar grátis" : "Assinar agora"}
