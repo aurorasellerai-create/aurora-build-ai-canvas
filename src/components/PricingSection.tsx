@@ -37,28 +37,31 @@ const plans = [
     cta: "Começar grátis",
     href: "/auth",
     external: false,
+    subtitle: null,
   },
   {
     name: "Pro",
     price: "R$39",
     period: "/mês",
-    features: ["5 builds por dia", "APK liberado", "Acesso à IA", "Ferramentas extras", "Suporte padrão"],
-    highlighted: true,
-    badge: "🔥 Mais escolhido",
+    features: ["Uso limitado diário", "APK liberado", "IA com limitações", "Ferramentas básicas", "Suporte padrão"],
+    highlighted: false,
+    badge: null,
     cta: "Começar agora",
     href: "https://pay.kiwify.com.br/rnou5oN",
     external: true,
+    subtitle: null,
   },
   {
     name: "Premium",
     price: "R$59",
     period: "/mês",
-    features: ["Builds ilimitados", "APK + AAB + PWA", "IA ilimitada", "Prioridade total", "Maior velocidade"],
-    highlighted: false,
-    badge: "💰 Máximo desempenho",
+    features: ["Builds ilimitados (sem bloqueios)", "APK + AAB + PWA liberados", "IA sem limites", "Prioridade máxima", "Maior velocidade", "Acesso total às ferramentas"],
+    highlighted: true,
+    badge: "⭐ Mais escolhido",
     cta: "Começar agora",
     href: "https://pay.kiwify.com.br/edN32V9",
     external: true,
+    subtitle: "Plano completo para escalar sem limites",
   },
 ];
 
@@ -118,6 +121,9 @@ const PricingSection = () => {
                 <h3 className={`font-display text-2xl font-bold mb-1 ${plan.highlighted ? "text-gradient-gold" : "text-foreground"}`}>
                   {plan.name}
                 </h3>
+                {plan.subtitle && (
+                  <p className="text-xs text-primary/80 font-medium mb-2">{plan.subtitle}</p>
+                )}
                 <div className="mb-5">
                   <span className={`text-4xl font-display font-bold ${plan.highlighted ? "text-primary" : "text-foreground"}`}>
                     {plan.price}
