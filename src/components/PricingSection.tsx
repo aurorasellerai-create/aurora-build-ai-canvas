@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, Wrench, Unlock, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 const expandedDetails: Record<string, { sections: { emoji: string; title: string; items: string[] }[] }> = {
   Free: {
@@ -39,7 +40,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "R$29",
+    price: "R$39",
     period: "/mês",
     features: ["5 builds por dia", "APK liberado", "Acesso à IA", "Ferramentas extras", "Suporte padrão"],
     highlighted: true,
@@ -50,7 +51,7 @@ const plans = [
   },
   {
     name: "Premium",
-    price: "R$49",
+    price: "R$59",
     period: "/mês",
     features: ["Builds ilimitados", "APK + AAB + PWA", "IA ilimitada", "Prioridade total", "Maior velocidade"],
     highlighted: false,
@@ -180,7 +181,8 @@ const PricingSection = () => {
                     href={plan.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`w-full py-3 rounded-lg font-display font-bold text-sm transition-all duration-300 hover:scale-105 text-center block ${
+                    onClick={() => toast.success("Redirecionando para pagamento...")}
+                    className={`w-full py-3 rounded-lg font-display font-bold text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg text-center block ${
                       plan.highlighted
                         ? "bg-primary text-primary-foreground glow-gold glow-gold-hover"
                         : "border border-secondary text-secondary hover:bg-secondary/10"
