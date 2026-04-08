@@ -27,6 +27,7 @@ const BusinessGenerator = lazy(() => import("./pages/BusinessGenerator"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Credits = lazy(() => import("./pages/Credits"));
 const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
+const CarouselGenerator = lazy(() => import("./pages/CarouselGenerator"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/business" element={<ProtectedRoute><BusinessGenerator /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
+              <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
