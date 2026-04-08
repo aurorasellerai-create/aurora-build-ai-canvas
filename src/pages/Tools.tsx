@@ -58,6 +58,15 @@ const ToolCard = ({ title, description, icon: Icon, placeholder, onGenerate, loc
       onLocked();
       return;
     }
+    // Check balance before consuming
+    if (balance < creditCost) {
+      toast({
+        title: "Créditos insuficientes",
+        description: `Esta ação custa ${creditCost} crédito(s). Você tem ${balance}. Compre mais créditos.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     setResult("");
     const credited = await consumeCredits(creditAction);
