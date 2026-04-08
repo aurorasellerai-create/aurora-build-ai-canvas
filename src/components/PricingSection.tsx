@@ -7,19 +7,19 @@ import { toast } from "sonner";
 const expandedDetails: Record<string, { sections: { emoji: string; title: string; items: string[] }[] }> = {
   Free: {
     sections: [
-      { emoji: "🔓", title: "Acesso incluído", items: ["Criar 1 app por dia", "Exportar APK básico"] },
+      { emoji: "🔓", title: "Acesso incluído", items: ["Acesso básico ao sistema", "1 geração de vídeo para teste", "1 geração de carrossel para teste"] },
     ],
   },
   Pro: {
     sections: [
-      { emoji: "🔓", title: "Acesso incluído", items: ["Criar apps automaticamente", "Converter site em app", "Exportar APK"] },
+      { emoji: "🔓", title: "Acesso incluído", items: ["Gerador de vídeos com IA", "Gerador de carrossel automático", "Converter site em app", "Exportar APK"] },
       { emoji: "⚙️", title: "Ferramentas", items: ["Gerador de nomes", "Gerador de ideias", "Tradução automática", "Criador de logo", "Remover fundo de imagem", "Estrutura de vendas"] },
       { emoji: "💰", title: "Créditos", items: ["As ferramentas utilizam créditos conforme o uso", "50 créditos inclusos no plano"] },
     ],
   },
   Premium: {
     sections: [
-      { emoji: "🔓", title: "Acesso incluído", items: ["Gerador de vídeos com IA", "APK + AAB + PWA", "IA avançada", "Prioridade no processamento", "Melhor desempenho"] },
+      { emoji: "🔓", title: "Acesso incluído", items: ["Gerador de vídeos com IA", "Gerador de carrossel automático", "APK + AAB + PWA", "IA avançada", "Prioridade no processamento"] },
       { emoji: "⚙️", title: "Ferramentas", items: ["Gerador de nomes", "Gerador de ideias", "Tradução automática", "Criador de logo", "Remover fundo de imagem", "Estrutura de vendas"] },
       { emoji: "💰", title: "Créditos", items: ["Ferramentas de IA com créditos", "500 créditos inclusos no plano"] },
     ],
