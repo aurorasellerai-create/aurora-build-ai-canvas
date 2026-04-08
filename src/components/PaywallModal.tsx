@@ -1,27 +1,55 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
-import { X, Crown, Check, Zap, Shield } from "lucide-react";
+import { X, Crown, Zap, Shield, Lock, Rocket, CheckCircle2 } from "lucide-react";
 import type { PaywallFeature } from "@/hooks/usePaywall";
+import { toast } from "sonner";
 
-const featureTriggers: Record<PaywallFeature, string> = {
-  second_app: "🔥 Recurso mais usado por quem já está faturando",
-  advanced_ai: "🚀 Usuários PRO criam até 5x mais rápido",
-  translation: "💰 Apps completos geram mais resultados",
-  viral_system: "🚀 Comece a escalar seu negócio hoje",
-  publish: "💰 Apps publicados geram receita real",
-  premium_format: "🔥 Recurso mais usado por quem já está faturando",
-  export_app: "🚀 Exporte e comece a faturar com seu app",
-  download_apk: "📱 Baixe seu app e publique na loja",
+const featureMessages: Record<PaywallFeature, { title: string; subtitle: string }> = {
+  second_app: {
+    title: "Você atingiu o limite do seu plano",
+    subtitle: "Seu plano permite apenas 1 app. Desbloqueie apps ilimitados agora.",
+  },
+  advanced_ai: {
+    title: "IA Avançada bloqueada",
+    subtitle: "Desbloqueie a IA completa para criar apps profissionais em minutos.",
+  },
+  translation: {
+    title: "Tradução Automática bloqueada",
+    subtitle: "Traduza seu app para qualquer idioma com um clique.",
+  },
+  viral_system: {
+    title: "Sistema Viral bloqueado",
+    subtitle: "Ative o sistema viral para escalar seu negócio automaticamente.",
+  },
+  publish: {
+    title: "Publicação bloqueada",
+    subtitle: "Publique seu app nas lojas e comece a faturar.",
+  },
+  premium_format: {
+    title: "Formato não disponível no seu plano",
+    subtitle: "AAB e PWA estão disponíveis apenas no plano Premium.",
+  },
+  export_app: {
+    title: "Exportação bloqueada",
+    subtitle: "Exporte seu app e publique em qualquer plataforma.",
+  },
+  download_apk: {
+    title: "Download bloqueado",
+    subtitle: "Baixe o APK do seu app para testar no celular.",
+  },
 };
 
-const comparison = [
-  { feature: "Apps por dia", free: "1", pro: "5", premium: "Ilimitado" },
-  { feature: "Créditos de IA", free: "5", pro: "50", premium: "500" },
-  { feature: "Exportação", free: "—", pro: "APK", premium: "APK + AAB + PWA" },
-  { feature: "Velocidade de IA", free: "Básica", pro: "3x mais rápida", premium: "Máxima" },
-  { feature: "Tradução automática", free: "—", pro: "—", premium: "✓" },
-  { feature: "Suporte", free: "Básico", pro: "Prioritário", premium: "VIP" },
+const premiumBenefits = [
+  "Builds ilimitados (sem bloqueios)",
+  "APK + AAB + PWA liberados",
+  "IA sem limites",
+  "Prioridade máxima",
+  "Maior velocidade",
+  "Acesso total às ferramentas",
+  "500 créditos inclusos",
+  "Suporte VIP",
 ];
+
+const PREMIUM_LINK = "https://pay.kiwify.com.br/edN32V9";
 
 interface PaywallModalProps {
   open: boolean;
@@ -30,6 +58,13 @@ interface PaywallModalProps {
 }
 
 const PaywallModal = ({ open, onClose, feature }: PaywallModalProps) => {
+  const handleUpgrade = () => {
+    toast.success("Redirecionando para pagamento...", { duration: 2000 });
+    setTimeout(() => {
+      window.open(PREMIUM_LINK, "_blank", "noopener,noreferrer");
+    }, 600);
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -47,7 +82,7 @@ const PaywallModal = ({ open, onClose, feature }: PaywallModalProps) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="relative w-full max-w-2xl bg-background border border-border rounded-2xl p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-md bg-background border border-border rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -58,87 +93,99 @@ const PaywallModal = ({ open, onClose, feature }: PaywallModalProps) => {
             </button>
 
             {/* Header */}
-            <div className="text-center mb-6">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Crown className="w-7 h-7 text-primary" />
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-3">
+                <Lock className="w-7 h-7 text-destructive" />
               </div>
-              <h2 className="text-xl md:text-2xl font-display font-bold text-foreground mb-2">
-                Seu app está quase pronto 🚀
+              <h2 className="text-lg md:text-xl font-display font-bold text-foreground">
+                {featureMessages[feature].title}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Para finalizar e publicar, ative o modo PRO.
-              </p>
-              <p className="text-sm font-semibold text-primary mt-2">
-                {featureTriggers[feature]}
+              <p className="text-sm text-muted-foreground mt-1.5">
+                {featureMessages[feature].subtitle}
               </p>
             </div>
 
-            {/* Comparison Table */}
-            <div className="mb-6 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-2 text-muted-foreground font-medium">Recurso</th>
-                    <th className="text-center py-2 px-2 text-muted-foreground font-medium">Free</th>
-                    <th className="text-center py-2 px-2 text-primary font-bold">Pro ⭐</th>
-                    <th className="text-center py-2 px-2 text-muted-foreground font-medium">Premium</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparison.map((row) => (
-                    <tr key={row.feature} className="border-b border-border/50">
-                      <td className="py-2 px-2 text-foreground">{row.feature}</td>
-                      <td className="py-2 px-2 text-center text-muted-foreground">{row.free}</td>
-                      <td className="py-2 px-2 text-center text-primary font-semibold">{row.pro}</td>
-                      <td className="py-2 px-2 text-center text-muted-foreground">{row.premium}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* Comparison */}
+            <div className="mb-5 grid grid-cols-2 gap-3">
+              {/* Current plan */}
+              <div className="p-3 rounded-xl border border-border bg-muted/30 text-center">
+                <p className="text-xs font-bold text-muted-foreground mb-2">Seu plano atual</p>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-destructive flex items-center gap-1 justify-center">
+                    <X className="w-3 h-3" /> Limitado
+                  </p>
+                  <p className="text-xs text-destructive flex items-center gap-1 justify-center">
+                    <X className="w-3 h-3" /> Restrições ativas
+                  </p>
+                  <p className="text-xs text-destructive flex items-center gap-1 justify-center">
+                    <X className="w-3 h-3" /> Sem prioridade
+                  </p>
+                </div>
+              </div>
 
-            {/* Cost per credit hint */}
-            <div className="mb-5 flex items-center justify-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-primary" /> Gerar app = 1 crédito</span>
-              <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-primary" /> Criar copy = 1 crédito</span>
-              <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-primary" /> Tradução = 2 créditos</span>
-            </div>
-
-            {/* CTAs */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <Link
-                to="/pricing"
-                className="py-3.5 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] text-center"
-              >
-                Ativar PRO agora
-              </Link>
-              <Link
-                to="/credits"
-                className="py-3.5 border border-primary text-primary font-display font-bold text-sm rounded-lg hover:bg-primary/10 transition-all hover:scale-[1.02] text-center flex items-center justify-center gap-2"
-              >
-                <Zap className="w-4 h-4" /> Comprar créditos
-              </Link>
-            </div>
-
-            {/* Urgency + Social Proof */}
-            <div className="text-center space-y-1.5">
-              <p className="text-xs text-secondary font-medium">⏳ Liberação imediata após upgrade</p>
-              <p className="text-xs text-muted-foreground animate-pulse">⚠️ Oferta ativa hoje — pode sair do ar a qualquer momento</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                🔥 +1.247 pessoas ativaram o PRO esta semana
-              </p>
-              <div className="flex items-center justify-center gap-1 mt-1">
-                <Shield className="w-3 h-3 text-secondary" />
-                <span className="text-[10px] text-muted-foreground">Pagamento seguro · Liberação instantânea · Sem compromisso</span>
+              {/* Premium */}
+              <div className="p-3 rounded-xl border-2 border-primary bg-primary/5 text-center relative">
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full whitespace-nowrap">
+                  ⭐ Recomendado
+                </div>
+                <p className="text-xs font-bold text-primary mb-2">Premium</p>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-secondary flex items-center gap-1 justify-center">
+                    <CheckCircle2 className="w-3 h-3" /> Sem limites
+                  </p>
+                  <p className="text-xs text-secondary flex items-center gap-1 justify-center">
+                    <CheckCircle2 className="w-3 h-3" /> Acesso completo
+                  </p>
+                  <p className="text-xs text-secondary flex items-center gap-1 justify-center">
+                    <CheckCircle2 className="w-3 h-3" /> Maior velocidade
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Testimonial */}
-            <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border text-center">
-              <p className="text-xs text-muted-foreground italic">
-                "Ativei o PRO e em 2 dias já tinha meu primeiro app gerando receita. A IA faz tudo sozinha."
+            {/* Benefits list */}
+            <div className="mb-5 p-3 rounded-xl bg-muted/20 border border-border">
+              <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-primary" /> Tudo incluído no Premium:
               </p>
-              <p className="text-xs text-foreground font-semibold mt-1">— Rafael S., empreendedor digital</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {premiumBenefits.map((benefit) => (
+                  <p key={benefit} className="text-xs text-muted-foreground flex items-start gap-1">
+                    <Zap className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+                    {benefit}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            {/* Primary CTA */}
+            <button
+              onClick={handleUpgrade}
+              className="w-full py-3.5 bg-primary text-primary-foreground font-display font-bold text-sm rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              <Rocket className="w-4 h-4" />
+              Desbloquear tudo agora — R$59/mês
+            </button>
+
+            {/* Secondary CTA */}
+            <button
+              onClick={onClose}
+              className="w-full mt-2 py-2.5 text-muted-foreground text-xs font-medium hover:text-foreground transition-colors"
+            >
+              Continuar com limitações
+            </button>
+
+            {/* Micro copy */}
+            <div className="mt-3 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1">
+                <Shield className="w-3 h-3 text-secondary" />
+                <span className="text-[10px] text-muted-foreground">
+                  Leva menos de 1 minuto · Acesso imediato · Sem burocracia
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                🔥 +1.247 pessoas já desbloquearam esta semana
+              </p>
             </div>
           </motion.div>
         </motion.div>
