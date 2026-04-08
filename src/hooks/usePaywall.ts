@@ -53,6 +53,19 @@ export function usePaywall() {
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature>("second_app");
 
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: user!.id,
+        _role: "admin",
+      });
+      return !!data;
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -78,12 +91,13 @@ export function usePaywall() {
     enabled: !!user,
   });
 
-  const plan = profile?.plan || "free";
-  const isFree = plan === "free";
-  const isPro = plan === "pro";
+  const plan = isAdmin ? "premium" : (profile?.plan || "free");
+  const isFree = !isAdmin && plan === "free";
+  const isPro = !isAdmin && plan === "pro";
 
   const checkAccess = useCallback(
     (feature: PaywallFeature): boolean => {
+      if (isAdmin) return true;
       let blocked = false;
 
       switch (feature) {
@@ -120,13 +134,14 @@ export function usePaywall() {
       }
       return true;
     },
-    [isFree, isPro, projectCount]
+    [isAdmin, isFree, isPro, projectCount]
   );
 
   return {
     plan,
     isFree,
     isPro,
+    isAdmin,
     paywallOpen,
     setPaywallOpen,
     paywallFeature,
