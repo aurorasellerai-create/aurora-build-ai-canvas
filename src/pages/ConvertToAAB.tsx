@@ -194,8 +194,7 @@ const ConvertToAAB = () => {
           )}
         </AnimatePresence>
 
-          <ConvertInfoBlocks />
-        )}
+        {jobStatus === "idle" && <ConvertInfoBlocks />}
       </div>
     </div>
   );
