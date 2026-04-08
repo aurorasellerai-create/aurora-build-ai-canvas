@@ -47,8 +47,34 @@ app.post("/webhook/convert", async (req, res) => {
 });
 
 // Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", queue: "convert-aab" });
+app.get("/health", async (req, res) => {
+  try {
+    const waiting = await convertQueue.getWaitingCount();
+    const active = await convertQueue.getActiveCount();
+    const completed = await convertQueue.getCompletedCount();
+    const failed = await convertQueue.getFailedCount();
+    const redisOk = redis.status === "ready";
+
+    res.json({
+      status: redisOk ? "ok" : "degraded",
+      uptime: Math.floor(process.uptime()),
+      redis: redisOk ? "connected" : redis.status,
+      queue: {
+        name: "convert-aab",
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      memory: {
+        rss_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        heap_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(503).json({ status: "error", error: err.message });
+  }
 });
 
 // Start worker + server
