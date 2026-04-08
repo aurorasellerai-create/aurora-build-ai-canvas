@@ -194,17 +194,7 @@ const ConvertToAAB = () => {
           )}
         </AnimatePresence>
 
-        {jobStatus === "idle" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="space-y-4">
-            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
-              <h3 className="font-display font-bold text-xs text-foreground flex items-center gap-2 mb-2">
-                <Smartphone className="w-4 h-4 text-primary" /> Formato AAB
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                O formato <strong className="text-primary">AAB (Android App Bundle)</strong> é o formato oficial exigido pela Google Play Store. Apps em AAB são otimizados automaticamente para cada dispositivo.
-              </p>
-            </div>
-          </motion.div>
+          <ConvertInfoBlocks />
         )}
       </div>
     </div>
