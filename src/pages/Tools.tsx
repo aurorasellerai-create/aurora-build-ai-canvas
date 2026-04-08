@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock, Zap, Video, Sparkles } from "lucide-react";
+import { ArrowLeft, PenTool, Lightbulb, FileText, Loader2, Copy, Check, Image, Smartphone, Lock, Zap, Video, Sparkles, LayoutGrid } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
@@ -182,6 +182,27 @@ const Tools = () => {
                     <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-bold uppercase">Novo</span>
                   </h3>
                   <p className="text-muted-foreground text-xs mt-0.5">Crie qualquer tipo de vídeo com IA — sem edição</p>
+                </div>
+                <Sparkles className="w-5 h-5 text-primary opacity-50 group-hover:opacity-100 transition" />
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+
+        {/* Carousel Generator Card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <Link to="/carousel" className="block">
+            <div className="card-aurora p-5 hover:border-primary/40 transition-all group cursor-pointer">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition">
+                  <LayoutGrid className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                    Gerador de Carrossel IA
+                    <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-bold uppercase">Novo</span>
+                  </h3>
+                  <p className="text-muted-foreground text-xs mt-0.5">Crie carrosséis prontos para redes sociais automaticamente</p>
                 </div>
                 <Sparkles className="w-5 h-5 text-primary opacity-50 group-hover:opacity-100 transition" />
               </div>

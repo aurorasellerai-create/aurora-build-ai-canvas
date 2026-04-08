@@ -19,9 +19,9 @@ const expandedDetails: Record<string, { sections: { emoji: string; title: string
   },
   Premium: {
     sections: [
-      { emoji: "🔓", title: "Acesso incluído", items: ["Builds ilimitados", "APK + AAB + PWA", "IA ilimitada", "Prioridade na fila", "Maior velocidade"] },
+      { emoji: "🔓", title: "Acesso incluído", items: ["Gerador de vídeos com IA", "APK + AAB + PWA", "IA avançada", "Prioridade no processamento", "Melhor desempenho"] },
       { emoji: "⚙️", title: "Ferramentas", items: ["Gerador de nomes", "Gerador de ideias", "Tradução automática", "Criador de logo", "Remover fundo de imagem", "Estrutura de vendas"] },
-      { emoji: "💰", title: "Créditos", items: ["Todas as ferramentas de IA incluídas", "500 créditos inclusos no plano"] },
+      { emoji: "💰", title: "Créditos", items: ["Ferramentas de IA com créditos", "500 créditos inclusos no plano"] },
     ],
   },
 };
@@ -43,7 +43,7 @@ const plans = [
     name: "Pro",
     price: "R$39",
     period: "/mês",
-    features: ["Uso limitado diário", "APK liberado", "IA com limitações", "Ferramentas básicas", "Suporte padrão"],
+    features: ["Gerador de vídeos com IA", "APK liberado", "IA integrada", "Acesso às ferramentas", "Recursos essenciais"],
     highlighted: false,
     badge: null,
     cta: "Começar agora",
@@ -55,13 +55,13 @@ const plans = [
     name: "Premium",
     price: "R$59",
     period: "/mês",
-    features: ["Builds ilimitados (sem bloqueios)", "APK + AAB + PWA liberados", "IA sem limites", "Prioridade máxima", "Maior velocidade", "Acesso total às ferramentas"],
+    features: ["Gerador de vídeos com IA", "APK + AAB + PWA liberados", "IA avançada", "Prioridade no processamento", "Melhor desempenho", "Experiência otimizada"],
     highlighted: true,
     badge: "⭐ Mais escolhido",
     cta: "Começar agora",
     href: "https://pay.kiwify.com.br/edN32V9",
     external: true,
-    subtitle: "Plano completo para escalar sem limites",
+    subtitle: "Máximo desempenho para criar e escalar",
   },
 ];
 
@@ -221,7 +221,7 @@ const PricingSection = () => {
           className="mt-10 text-center space-y-2"
         >
           <p className="text-xs text-muted-foreground">
-            💡 <span className="text-foreground font-semibold">Desbloqueie mais recursos</span> no plano Pro · <span className="text-foreground font-semibold">Ative IA completa</span> no plano Premium
+            💡 Algumas funcionalidades utilizam créditos conforme o uso.
           </p>
           <p className="text-xs text-muted-foreground">
             💰 Potencial de renda ativa · 🚀 Comece em minutos
