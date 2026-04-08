@@ -67,13 +67,15 @@ Deno.serve(async (req) => {
     }
 
     // Send to external worker via webhook
-    const workerUrl = Deno.env.get("WORKER_URL");
-    const workerSecret = Deno.env.get("WORKER_SECRET");
+    const workerUrl = Deno.env.get("WORKER_URL")?.trim().replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
+    const workerSecret = Deno.env.get("WORKER_SECRET")?.trim();
 
     if (workerUrl && workerSecret) {
       // PRODUCTION: send to real worker
       try {
-        const workerResp = await fetch(`${workerUrl}/webhook/convert`, {
+        const cleanUrl = `${workerUrl}/webhook/convert`.replace(/([^:]\/)\/+/g, "$1");
+        console.log("Sending to worker:", cleanUrl);
+        const workerResp = await fetch(cleanUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
