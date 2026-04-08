@@ -12,7 +12,7 @@ const plans = [
     key: "free" as const,
     price: "Grátis",
     period: "",
-    features: ["1 build por dia", "Apenas APK", "Acesso limitado"],
+    features: ["Acesso básico ao sistema", "🎬 1 geração de vídeo (teste)", "🎠 1 geração de carrossel (teste)"],
     highlighted: false,
     href: "/auth",
     external: false,
@@ -23,7 +23,7 @@ const plans = [
     key: "pro" as const,
     price: "R$39",
     period: "/mês",
-    features: ["Gerador de vídeos com IA", "APK liberado", "IA integrada", "Acesso às ferramentas"],
+    features: ["Gerador de vídeos com IA", "Gerador de carrossel automático", "IA integrada", "APK liberado"],
     highlighted: false,
     href: "https://pay.kiwify.com.br/rnou5oN",
     external: true,
@@ -37,11 +37,11 @@ const plans = [
     badge: "⭐ Mais escolhido",
     features: [
       "Gerador de vídeos com IA",
+      "Gerador de carrossel automático",
       "APK + AAB + PWA liberados",
       "IA avançada",
       "Prioridade no processamento",
       "Melhor desempenho",
-      "Experiência otimizada",
     ],
     highlighted: true,
     href: "https://pay.kiwify.com.br/edN32V9",
@@ -155,6 +155,10 @@ const Pricing = () => {
             );
           })}
         </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          💡 Algumas funcionalidades utilizam créditos conforme o uso.
+        </p>
       </div>
     </div>
   );
