@@ -18,6 +18,19 @@ export function useCredits() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: user!.id,
+        _role: "admin",
+      });
+      return !!data;
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const { data: balance = 0 } = useQuery({
     queryKey: ["credits-balance", user?.id],
     queryFn: async () => {
@@ -34,6 +47,7 @@ export function useCredits() {
   const consumeCredits = useCallback(
     async (action: string, customAmount?: number): Promise<boolean> => {
       if (!user) return false;
+      if (isAdmin) return true;
 
       const amount = customAmount ?? ACTION_COSTS[action] ?? 1;
 
@@ -69,10 +83,11 @@ export function useCredits() {
 
       return true;
     },
-    [user, balance, queryClient]
+    [user, isAdmin, balance, queryClient]
   );
 
-  const getCost = (action: string) => ACTION_COSTS[action] ?? 1;
+  const getCost = (action: string) => isAdmin ? 0 : (ACTION_COSTS[action] ?? 1);
+  const displayBalance = isAdmin ? 9999 : balance;
 
-  return { balance, consumeCredits, getCost, ACTION_COSTS };
+  return { balance: displayBalance, consumeCredits, getCost, ACTION_COSTS, isAdmin };
 }
