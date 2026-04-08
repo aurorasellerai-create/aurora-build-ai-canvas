@@ -18,7 +18,7 @@ const plans = [
   {
     name: "Pro",
     key: "pro" as const,
-    price: "R$29",
+    price: "R$39",
     period: "/mês",
     features: ["5 builds por dia", "APK liberado", "Gerador de nomes ilimitado", "Gerador de ideias limitado"],
     highlighted: false,
@@ -26,7 +26,7 @@ const plans = [
   {
     name: "Premium",
     key: "premium" as const,
-    price: "R$49",
+    price: "R$59",
     period: "/mês",
     badge: "Mais escolhido",
     features: [
