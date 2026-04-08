@@ -34,6 +34,8 @@ const plans = [
     highlighted: false,
     badge: null,
     cta: "Começar grátis",
+    href: "/auth",
+    external: false,
   },
   {
     name: "Pro",
@@ -43,6 +45,8 @@ const plans = [
     highlighted: true,
     badge: "🔥 Mais escolhido",
     cta: "Começar agora",
+    href: "https://pay.kiwify.com.br/rnou5oN",
+    external: true,
   },
   {
     name: "Premium",
@@ -52,6 +56,8 @@ const plans = [
     highlighted: false,
     badge: "💰 Máximo desempenho",
     cta: "Começar agora",
+    href: "https://pay.kiwify.com.br/edN32V9",
+    external: true,
   },
 ];
 
