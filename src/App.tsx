@@ -65,6 +65,7 @@ const App = () => (
               <Route path="/generator/site" element={<ProtectedRoute><ConvertSite /></ProtectedRoute>} />
               <Route path="/generator/convert" element={<ProtectedRoute><ConvertFile /></ProtectedRoute>} />
               <Route path="/generator/convert-aab" element={<ProtectedRoute><ConvertToAAB /></ProtectedRoute>} />
+              <Route path="/converter-app" element={<ProtectedRoute><ConvertToAAB /></ProtectedRoute>} />
               <Route path="/generator/legacy" element={<ProtectedRoute><Generator /></ProtectedRoute>} />
               <Route path="/processing/:id" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
               <Route path="/project/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
