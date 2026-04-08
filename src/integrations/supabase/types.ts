@@ -242,6 +242,42 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          category: string
+          created_at: string
+          details: Json | null
+          id: string
+          message: string
+          resolution_method: string | null
+          resolved: boolean
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message: string
+          resolution_method?: string | null
+          resolved?: boolean
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          message?: string
+          resolution_method?: string | null
+          resolved?: boolean
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
