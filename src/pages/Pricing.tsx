@@ -23,7 +23,7 @@ const plans = [
     key: "pro" as const,
     price: "R$39",
     period: "/mês",
-    features: ["Uso limitado diário", "APK liberado", "IA com limitações", "Ferramentas básicas"],
+    features: ["Gerador de vídeos com IA", "APK liberado", "IA integrada", "Acesso às ferramentas"],
     highlighted: false,
     href: "https://pay.kiwify.com.br/rnou5oN",
     external: true,
@@ -36,17 +36,17 @@ const plans = [
     period: "/mês",
     badge: "⭐ Mais escolhido",
     features: [
-      "Builds ilimitados (sem bloqueios)",
+      "Gerador de vídeos com IA",
       "APK + AAB + PWA liberados",
-      "IA sem limites",
-      "Prioridade máxima",
-      "Maior velocidade",
-      "Acesso total às ferramentas",
+      "IA avançada",
+      "Prioridade no processamento",
+      "Melhor desempenho",
+      "Experiência otimizada",
     ],
     highlighted: true,
     href: "https://pay.kiwify.com.br/edN32V9",
     external: true,
-    subtitle: "Plano completo para escalar sem limites",
+    subtitle: "Máximo desempenho para criar e escalar",
   },
 ];
 
@@ -98,7 +98,7 @@ const Pricing = () => {
           Escolha seu plano
         </motion.h2>
         <p className="text-muted-foreground text-center mb-16 max-w-md mx-auto">
-          Upgrade para desbloquear todos os recursos e criar apps sem limites
+          Upgrade para desbloquear todos os recursos e criar com máximo desempenho
         </p>
 
         <div className="grid md:grid-cols-3 gap-6 items-end">
