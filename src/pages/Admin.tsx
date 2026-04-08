@@ -13,7 +13,7 @@ import AdminAiUsage from "@/components/admin/AdminAiUsage";
 import AdminApps from "@/components/admin/AdminApps";
 import AdminFinancial from "@/components/admin/AdminFinancial";
 import AdminTools from "@/components/admin/AdminTools";
-import AdminSystem from "@/components/admin/AdminSystem";
+import AdminSystemHealth from "@/components/admin/AdminSystemHealth";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -62,7 +62,7 @@ const Admin = () => {
       case "apps": return <AdminApps enabled={true} />;
       case "financial": return <AdminFinancial enabled={true} />;
       case "tools": return <AdminTools />;
-      case "system": return <AdminSystem />;
+      case "system": return <AdminSystemHealth enabled={true} />;
       default: return <AdminDashboard enabled={true} />;
     }
   };

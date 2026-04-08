@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { useMonitoring } from "@/hooks/useMonitoring";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -34,15 +36,22 @@ const Loading = () => (
   </div>
 );
 
+const MonitoringInit = () => {
+  useMonitoring();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <MonitoringInit />
         <BrowserRouter>
-          <Suspense fallback={<Loading />}>
-            <Routes>
+          <ErrorBoundary>
+            <Suspense fallback={<Loading />}>
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -62,7 +71,8 @@ const App = () => (
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
+            </Suspense>
+          </ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
