@@ -6,6 +6,7 @@ import {
   Loader2, ArrowLeft, Globe, AlertTriangle, Zap, Shield,
   CheckCircle2, Smartphone, Clock, Download, RefreshCw
 } from "lucide-react";
+import ConvertInfoBlocks from "@/components/ConvertInfoBlocks";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
