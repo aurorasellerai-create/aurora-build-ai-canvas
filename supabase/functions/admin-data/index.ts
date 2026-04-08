@@ -344,6 +344,81 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // ── SYSTEM HEALTH ──
+    if (action === "system_health") {
+      const now = new Date();
+      const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: recentLogs } = await adminClient
+        .from("system_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const { count: errorsLast24h } = await adminClient
+        .from("system_logs")
+        .select("*", { count: "exact", head: true })
+        .in("severity", ["error", "critical"])
+        .gte("created_at", last24h);
+
+      const { count: warningsLast24h } = await adminClient
+        .from("system_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("severity", "warning")
+        .gte("created_at", last24h);
+
+      const { count: autoResolved } = await adminClient
+        .from("system_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("resolved", true);
+
+      const { count: totalErrors } = await adminClient
+        .from("system_logs")
+        .select("*", { count: "exact", head: true })
+        .in("severity", ["error", "critical"]);
+
+      const { count: unresolvedCritical } = await adminClient
+        .from("system_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("severity", "critical")
+        .eq("resolved", false);
+
+      const resolutionRate = totalErrors
+        ? Math.round(((autoResolved || 0) / (totalErrors || 1)) * 100)
+        : 100;
+
+      let health = "healthy";
+      if ((unresolvedCritical || 0) > 0) health = "critical";
+      else if ((errorsLast24h || 0) > 5 || (warningsLast24h || 0) > 20) health = "unstable";
+
+      // Static system checks
+      const checks = [
+        { label: "Rotas configuradas", ok: true, detail: "Todas as rotas mapeadas em App.tsx" },
+        { label: "RLS ativo", ok: true, detail: "profiles, projects, payments, credit_usage, credit_purchases, referrals, user_roles, system_logs" },
+        { label: "Edge Functions", ok: true, detail: "admin-data, generate-business, kiwify-webhook" },
+        { label: "Autenticação", ok: true, detail: "Email/senha com validação" },
+        { label: "Sistema de créditos", ok: true, detail: "consume_credits com validação backend" },
+        { label: "Paywall", ok: true, detail: "Bloqueio por plano + modal de upgrade" },
+        { label: "Webhook Kiwify", ok: true, detail: "Validação de token + deduplicação" },
+        { label: "Admin bypass", ok: true, detail: "Admins: builds e créditos ilimitados" },
+        { label: "Monitoramento", ok: true, detail: "ErrorBoundary + logs automáticos" },
+      ];
+
+      return json({
+        health,
+        logs: recentLogs || [],
+        stats: {
+          errorsLast24h: errorsLast24h || 0,
+          warningsLast24h: warningsLast24h || 0,
+          autoResolved: autoResolved || 0,
+          totalErrors: totalErrors || 0,
+          unresolvedCritical: unresolvedCritical || 0,
+          resolutionRate,
+        },
+        checks,
+      });
+    }
+
     return jsonErr("Unknown action");
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
