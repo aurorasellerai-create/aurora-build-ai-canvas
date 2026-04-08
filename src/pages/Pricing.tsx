@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Check, Crown, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const plans = [
   {
