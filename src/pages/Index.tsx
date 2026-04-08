@@ -9,6 +9,8 @@ import PublishGuideSection from "@/components/PublishGuideSection";
 import ViralSection from "@/components/ViralSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import PricingSection from "@/components/PricingSection";
+import CreditsInfoSection from "@/components/CreditsInfoSection";
+import AIToolsSection from "@/components/AIToolsSection";
 import FinalCTASection from "@/components/FinalCTASection";
 import FooterSection from "@/components/FooterSection";
 
@@ -20,11 +22,13 @@ const Index = () => (
     <ProductFeaturesSection />
     <WhyItWorksSection />
     <DifferentialSection />
+    <AIToolsSection />
     <FormatGuideSection />
     <PublishGuideSection />
+    <PricingSection />
+    <CreditsInfoSection />
     <ViralSection />
     <TestimonialsSection />
-    <PricingSection />
     <FinalCTASection />
     <FooterSection />
   </div>
