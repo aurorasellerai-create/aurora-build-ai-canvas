@@ -119,9 +119,12 @@ const Pricing = () => {
                     <Crown className="w-3 h-3" /> {plan.badge}
                   </div>
                 )}
-                <h3 className={`font-display text-2xl font-bold mb-2 ${plan.highlighted ? "text-gradient-gold" : "text-foreground"}`}>
+                <h3 className={`font-display text-2xl font-bold mb-1 ${plan.highlighted ? "text-gradient-gold" : "text-foreground"}`}>
                   {plan.name}
                 </h3>
+                {plan.subtitle && (
+                  <p className="text-xs text-primary/80 font-medium mb-2">{plan.subtitle}</p>
+                )}
                 <div className="mb-6">
                   <span className={`text-4xl font-display font-bold ${plan.highlighted ? "text-primary" : "text-foreground"}`}>
                     {plan.price}
