@@ -18,6 +18,7 @@ const CreateHub = lazy(() => import("./pages/CreateHub"));
 const CreateFromScratch = lazy(() => import("./pages/CreateFromScratch"));
 const ConvertSite = lazy(() => import("./pages/ConvertSite"));
 const ConvertFile = lazy(() => import("./pages/ConvertFile"));
+const ConvertToAAB = lazy(() => import("./pages/ConvertToAAB"));
 const Generator = lazy(() => import("./pages/Generator"));
 const Processing = lazy(() => import("./pages/Processing"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/generator/create" element={<ProtectedRoute><CreateFromScratch /></ProtectedRoute>} />
               <Route path="/generator/site" element={<ProtectedRoute><ConvertSite /></ProtectedRoute>} />
               <Route path="/generator/convert" element={<ProtectedRoute><ConvertFile /></ProtectedRoute>} />
+              <Route path="/generator/convert-aab" element={<ProtectedRoute><ConvertToAAB /></ProtectedRoute>} />
               <Route path="/generator/legacy" element={<ProtectedRoute><Generator /></ProtectedRoute>} />
               <Route path="/processing/:id" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
               <Route path="/project/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
