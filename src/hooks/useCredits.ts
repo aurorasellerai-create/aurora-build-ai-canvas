@@ -18,7 +18,7 @@ const ACTION_COSTS: Record<string, number> = {
   ai_video_30s: 60,
   ai_video_continue: 30,
   ai_carousel: 5,
-  convert_aab: 5,
+  convert_aab: 100,
 };
 
 export function useCredits() {

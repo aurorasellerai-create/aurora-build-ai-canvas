@@ -1,101 +1,115 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, ArrowLeft, Globe, AlertTriangle, Zap, Shield,
-  CheckCircle2, Smartphone, Clock, ArrowRight
+  CheckCircle2, Smartphone, Clock, Download, RefreshCw
 } from "lucide-react";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
+import { toast } from "@/hooks/use-toast";
 
-const PROGRESS_STEPS = [
-  { threshold: 0, label: "Analisando aplicativo..." },
-  { threshold: 15, label: "Verificando compatibilidade mobile..." },
-  { threshold: 30, label: "Preparando versão Android..." },
-  { threshold: 50, label: "Gerando APK..." },
-  { threshold: 70, label: "Convertendo para AAB..." },
-  { threshold: 90, label: "Finalizando..." },
-];
-
-function getStepLabel(progress: number) {
-  for (let i = PROGRESS_STEPS.length - 1; i >= 0; i--) {
-    if (progress >= PROGRESS_STEPS[i].threshold) return PROGRESS_STEPS[i].label;
-  }
-  return PROGRESS_STEPS[0].label;
-}
+type JobStatus = "idle" | "starting" | "processing" | "done" | "error";
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [appUrl, setAppUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
   const [progress, setProgress] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [stepLabel, setStepLabel] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
 
   const isValidUrl = appUrl.startsWith("https://") && appUrl.length > 12;
 
+  // Realtime subscription for job updates
+  useEffect(() => {
+    if (!jobId) return;
+
+    const channel = supabase
+      .channel(`conversion-${jobId}`)
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "conversion_jobs",
+        filter: `id=eq.${jobId}`,
+      }, (payload) => {
+        const row = payload.new as any;
+        setProgress(row.progress ?? 0);
+        setStepLabel(row.step_label ?? "");
+
+        if (row.status === "done") {
+          setJobStatus("done");
+          setDownloadUrl(row.download_url);
+          toast({ title: "App Android pronto! 🚀", description: "Seu arquivo AAB está disponível para download." });
+        } else if (row.status === "error") {
+          setJobStatus("error");
+          setErrorMsg(row.error_message || "Erro ao gerar o app. Tente novamente.");
+        } else {
+          setJobStatus("processing");
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [jobId]);
+
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !isValidUrl) return;
-    setError("");
+    setErrorMsg("");
+    setDownloadUrl(null);
 
     if (!checkAccess("second_app")) return;
 
     setLoading(true);
 
-    // Consume credits
     const credited = await consumeCredits("convert_aab");
     if (!credited) { setLoading(false); return; }
 
-    // Check build limit
     const { data: canBuild } = await supabase.rpc("check_and_increment_build", { p_user_id: user.id });
     if (!canBuild) {
-      setError("Limite diário atingido! Faça upgrade para mais conversões.");
+      setErrorMsg("Limite diário atingido! Faça upgrade para mais conversões.");
       setLoading(false);
       return;
     }
 
-    // Create project
-    const { data, error: insertError } = await supabase
-      .from("projects")
-      .insert({
-        user_id: user.id,
-        site_url: appUrl,
-        app_name: new URL(appUrl).hostname.replace("www.", ""),
-        format: "aab" as const,
-        status: "processing",
-        progress: 0,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      setError(insertError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Start visual progress
-    setLoading(false);
-    setIsProcessing(true);
+    // Call edge function
+    setJobStatus("starting");
     setProgress(0);
+    setStepLabel("Iniciando conversão...");
 
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setTimeout(() => navigate(`/processing/${data.id}`), 800);
-          return 100;
-        }
-        return p + 1.5;
-      });
-    }, 120);
+    const { data, error } = await supabase.functions.invoke("convert-app", {
+      body: { url: appUrl },
+    });
+
+    setLoading(false);
+
+    if (error || !data?.job_id) {
+      setJobStatus("error");
+      setErrorMsg(data?.error || "Erro ao iniciar conversão. Tente novamente.");
+      return;
+    }
+
+    setJobId(data.job_id);
+    setJobStatus("processing");
+  };
+
+  const resetForm = () => {
+    setJobStatus("idle");
+    setAppUrl("");
+    setProgress(0);
+    setStepLabel("");
+    setDownloadUrl(null);
+    setErrorMsg("");
+    setJobId(null);
   };
 
   return (
@@ -116,21 +130,57 @@ const ConvertToAAB = () => {
 
       <div className="max-w-lg mx-auto px-4 py-10 space-y-6">
         <AnimatePresence mode="wait">
-          {isProcessing ? (
+          {/* DONE STATE */}
+          {jobStatus === "done" && (
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="card-aurora p-8 space-y-6 text-center"
+            >
+              <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                Seu app Android está pronto 🚀
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Arquivo AAB gerado com sucesso e pronto para envio na Play Store
+              </p>
+              <div className="space-y-3">
+                {downloadUrl && (
+                  <a
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-5 h-5" /> Baixar AAB
+                  </a>
+                )}
+                <button
+                  onClick={resetForm}
+                  className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" /> Converter outro app
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* PROCESSING STATE */}
+          {(jobStatus === "processing" || jobStatus === "starting") && (
             <motion.div
               key="processing"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
               className="card-aurora p-8 space-y-6 text-center"
             >
               <Loader2 className="w-14 h-14 text-primary mx-auto animate-spin" />
               <h2 className="font-display text-xl font-bold text-foreground">
-                {getStepLabel(progress)}
+                {stepLabel || "Processando..."}
               </h2>
               <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full"
+                  className="h-full rounded-full transition-all duration-500"
                   style={{
                     background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)))",
                     width: `${Math.min(progress, 100)}%`,
@@ -141,16 +191,43 @@ const ConvertToAAB = () => {
                 <span>{Math.round(Math.min(progress, 100))}%</span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  ~{Math.max(1, Math.round((100 - progress) * 0.12 / 10))} min restante
+                  ~{Math.max(1, Math.round((100 - progress) * 0.2 / 10))} min restante
                 </span>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Não feche esta página. Você será notificado quando o app estiver pronto.
+              </p>
             </motion.div>
-          ) : (
+          )}
+
+          {/* ERROR STATE */}
+          {jobStatus === "error" && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="card-aurora p-8 space-y-6 text-center"
+            >
+              <AlertTriangle className="w-14 h-14 text-destructive mx-auto" />
+              <h2 className="font-display text-xl font-bold text-foreground">
+                Erro na conversão
+              </h2>
+              <p className="text-sm text-muted-foreground">{errorMsg}</p>
+              <button
+                onClick={resetForm}
+                className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" /> Tentar novamente
+              </button>
+            </motion.div>
+          )}
+
+          {/* FORM STATE */}
+          {jobStatus === "idle" && (
             <motion.form
               key="form"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
               onSubmit={handleConvert}
               className="card-aurora space-y-6"
             >
@@ -166,7 +243,6 @@ const ConvertToAAB = () => {
                 </p>
               </div>
 
-              {/* URL Input */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-muted-foreground mb-2">
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
@@ -178,7 +254,7 @@ const ConvertToAAB = () => {
                     type="url"
                     placeholder="https://meuapp.com"
                     value={appUrl}
-                    onChange={(e) => { setAppUrl(e.target.value); setError(""); }}
+                    onChange={(e) => { setAppUrl(e.target.value); setErrorMsg(""); }}
                     required
                     pattern="https://.*"
                     className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
@@ -196,7 +272,6 @@ const ConvertToAAB = () => {
                 )}
               </div>
 
-              {/* What will happen */}
               <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-2">
                 <p className="text-xs font-semibold text-foreground">O que o sistema fará:</p>
                 {[
@@ -213,25 +288,21 @@ const ConvertToAAB = () => {
                 ))}
               </div>
 
-              {/* Compatibility info */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <Shield className="w-5 h-5 text-primary shrink-0" />
                 <div>
                   <p className="text-xs font-semibold text-foreground">Android 8+ compatível</p>
-                  <p className="text-xs text-muted-foreground">
-                    Scroll fluido, back button funcional, retry automático
-                  </p>
+                  <p className="text-xs text-muted-foreground">Scroll fluido, back button funcional, retry automático</p>
                 </div>
               </div>
 
-              {error && (
+              {errorMsg && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                   <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                  <p className="text-destructive text-sm">{error}</p>
+                  <p className="text-destructive text-sm">{errorMsg}</p>
                 </div>
               )}
 
-              {/* Credits info */}
               <div className="p-3 rounded-lg bg-muted/50 border border-border text-center">
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3 text-primary" />
@@ -253,8 +324,8 @@ const ConvertToAAB = () => {
           )}
         </AnimatePresence>
 
-        {/* Error handling info */}
-        {!isProcessing && (
+        {/* Info sections - only on idle */}
+        {jobStatus === "idle" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

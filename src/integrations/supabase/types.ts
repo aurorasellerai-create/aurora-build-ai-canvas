@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversion_jobs: {
+        Row: {
+          created_at: string
+          download_url: string | null
+          error_message: string | null
+          id: string
+          processing_time_ms: number | null
+          progress: number
+          source_url: string
+          status: string
+          step_label: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          download_url?: string | null
+          error_message?: string | null
+          id?: string
+          processing_time_ms?: number | null
+          progress?: number
+          source_url: string
+          status?: string
+          step_label?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          download_url?: string | null
+          error_message?: string | null
+          id?: string
+          processing_time_ms?: number | null
+          progress?: number
+          source_url?: string
+          status?: string
+          step_label?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       credit_purchases: {
         Row: {
           amount: number
