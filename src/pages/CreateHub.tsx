@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Globe, Smartphone, RefreshCw, Sparkles, ArrowRight, Zap, AlertTriangle, Info, HelpCircle, Lightbulb, Store, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, Globe, Smartphone, RefreshCw, Sparkles, ArrowRight, Zap, AlertTriangle, Info, HelpCircle, Lightbulb, Store, CheckCircle2, X, Download } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 
 const FLOWS = [
@@ -28,6 +28,14 @@ const FLOWS = [
     desc: "Converta entre formatos APK, AAB e PWA",
     color: "text-accent-foreground",
     link: "/generator/convert",
+  },
+  {
+    id: "convert-aab" as const,
+    icon: Download,
+    title: "Converter App para Android (AAB)",
+    desc: "Cole o link do app e gere um AAB pronto para a Play Store",
+    color: "text-primary",
+    link: "/generator/convert-aab",
   },
 ];
 
