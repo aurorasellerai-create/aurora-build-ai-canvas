@@ -15,66 +15,37 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Check DB connectivity
     let dbStatus = "disconnected";
     let queueStats = { waiting: 0, active: 0, completed: 0, failed: 0 };
 
     try {
-      const { count: waiting } = await supabase
-        .from("conversion_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
-
-      const { count: active } = await supabase
-        .from("conversion_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "processing");
-
-      const { count: completed } = await supabase
-        .from("conversion_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "done");
-
-      const { count: failed } = await supabase
-        .from("conversion_jobs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "error");
+      const [waiting, active, completed, failed] = await Promise.all([
+        supabase.from("conversion_jobs").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("conversion_jobs").select("*", { count: "exact", head: true }).eq("status", "processing"),
+        supabase.from("conversion_jobs").select("*", { count: "exact", head: true }).eq("status", "done"),
+        supabase.from("conversion_jobs").select("*", { count: "exact", head: true }).eq("status", "error"),
+      ]);
 
       dbStatus = "connected";
       queueStats = {
-        waiting: waiting ?? 0,
-        active: active ?? 0,
-        completed: completed ?? 0,
-        failed: failed ?? 0,
+        waiting: waiting.count ?? 0,
+        active: active.count ?? 0,
+        completed: completed.count ?? 0,
+        failed: failed.count ?? 0,
       };
     } catch {
       dbStatus = "error";
     }
 
-    const workerUrl = Deno.env.get("WORKER_URL")?.trim();
-    let externalWorker = "not_configured";
-
-    if (workerUrl) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const resp = await fetch(`${workerUrl}/health`, { signal: controller.signal });
-        clearTimeout(timeout);
-        externalWorker = resp.ok ? "online" : "offline";
-      } catch {
-        externalWorker = "offline";
-      }
-    }
-
     const health = {
       status: "ok",
-      mode: externalWorker === "online" ? "worker" : "serverless_simulated",
+      mode: "serverless",
       database: dbStatus,
-      external_worker: externalWorker,
+      worker: "internal",
       queue: queueStats,
       timestamp: new Date().toISOString(),
-      version: "2.0.0",
-      runtime: "supabase-edge-functions",
+      version: "3.0.0",
+      runtime: "edge",
     };
 
     return new Response(JSON.stringify(health, null, 2), {
