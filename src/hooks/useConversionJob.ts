@@ -69,9 +69,10 @@ export function useConversionJob() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeConnected = useRef(false);
   const mountedRef = useRef(true);
+  const resetFlagRef = useRef(false);
 
   const safeSet = useCallback((updater: Partial<JobState> | ((prev: JobState) => Partial<JobState>)) => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || resetFlagRef.current) return;
     setState((prev) => {
       const patch = typeof updater === "function" ? updater(prev) : updater;
       return { ...prev, ...patch };
