@@ -91,8 +91,17 @@ Deno.serve(async (req) => {
     }).then(async (response) => {
       const payload = await response.text();
       console.log("[CONVERT] process-app response:", payload);
-    }).catch((err) => {
+
+      if (!response.ok) {
+        console.error(`[CONVERT] process-app HTTP error for job ${job.id}:`, response.status);
+      }
+    }).catch(async (err) => {
       console.error("Failed to invoke process-app:", err.message);
+      await supabase.from("conversion_jobs").update({
+        status: "error",
+        step_label: "Erro na conversão",
+        error_message: "Falha ao iniciar o processamento interno.",
+      }).eq("id", job.id);
     });
 
     return respond({ success: true, job_id: job.id, message: "Processo iniciado" });
