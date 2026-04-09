@@ -3,12 +3,18 @@ import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const BodySchema = z.object({
-  job_id: z.string().uuid(),
-  url: z.string().url(),
+  job_id: z.string().uuid({ message: "job_id inválido" }),
+  url: z
+    .string()
+    .trim()
+    .url({ message: "URL inválida" })
+    .refine((value) => value.startsWith("https://"), {
+      message: "A URL deve usar HTTPS",
+    }),
 });
 
 const STEPS = [
@@ -19,88 +25,267 @@ const STEPS = [
   { progress: 70, label: "Compilando APK..." },
   { progress: 85, label: "Convertendo para AAB..." },
   { progress: 95, label: "Finalizando..." },
-  { progress: 100, label: "Concluído!" },
 ];
+
+const URL_VALIDATION_TIMEOUT_MS = 8000;
+
+const respond = (payload: Record<string, unknown>) =>
+  new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Erro desconhecido";
+};
+
+const markJobAsFailed = async (
+  supabase: ReturnType<typeof createClient>,
+  jobId: string,
+  message: string,
+  step: string,
+  startTime: number,
+) => {
+  try {
+    const { error } = await supabase
+      .from("conversion_jobs")
+      .update({
+        status: "error",
+        step_label: "Erro na conversão",
+        error_message: message,
+        processing_time_ms: Date.now() - startTime,
+      })
+      .eq("id", jobId);
+
+    if (error) {
+      console.error(`[PROCESS] Failed to mark job ${jobId} as error at ${step}:`, error.message);
+    }
+  } catch (updateError) {
+    console.error(`[PROCESS] Unexpected failure while marking job ${jobId} as error:`, updateError);
+  }
+};
+
+const validateUrlReachability = async (url: string) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), URL_VALIDATION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: controller.signal,
+    });
+
+    return response.ok;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const respond = (body: unknown, status = 200) =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  let currentStep = "startup";
+  let jobId: string | null = null;
+  const startTime = Date.now();
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    console.log("[PROCESS] Starting process-app execution");
+
+    currentStep = "client_setup";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !serviceKey) {
+      console.error("[PROCESS] Missing internal backend configuration");
+      return respond({
+        success: false,
+        error: "Configuração interna indisponível.",
+        step: currentStep,
+      });
+    }
+
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    currentStep = "input_parsing";
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
-      return respond({ error: "Body JSON inválido" }, 400);
+      console.log("[PROCESS] Input received:", JSON.stringify(body));
+    } catch (error) {
+      console.error("[PROCESS] Invalid JSON body:", error);
+      return respond({
+        success: false,
+        error: "Body JSON inválido.",
+        step: currentStep,
+      });
+    }
+
+    currentStep = "input_validation";
+    if (!body || typeof body !== "object") {
+      console.error("[PROCESS] Missing request body");
+      return respond({
+        success: false,
+        error: "Os dados da requisição são obrigatórios.",
+        step: currentStep,
+      });
     }
 
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
-      return respond({ error: parsed.error.flatten().fieldErrors }, 400);
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      const errorMessage = String(Object.values(fieldErrors).flat()[0] || "Dados inválidos.");
+
+      console.error("[PROCESS] Validation failed:", fieldErrors);
+      return respond({
+        success: false,
+        error: errorMessage,
+        step: currentStep,
+        details: fieldErrors,
+      });
     }
 
     const { job_id, url } = parsed.data;
-    const startTime = Date.now();
+    jobId = job_id;
+    console.log(`[PROCESS] Input validated for job ${jobId}`);
 
-    console.log(`[PROCESS] Starting job ${job_id} for ${url}`);
+    currentStep = "job_lookup";
+    console.log(`[PROCESS] Checking job ${jobId} in database`);
+    const { data: existingJob, error: lookupError } = await supabase
+      .from("conversion_jobs")
+      .select("id")
+      .eq("id", jobId)
+      .maybeSingle();
 
-    // Validate URL accessibility
+    if (lookupError || !existingJob) {
+      console.error(`[PROCESS] Failed to find job ${jobId}:`, lookupError?.message || "Job não encontrado");
+      return respond({
+        success: false,
+        error: "Não foi possível localizar o job da conversão.",
+        step: currentStep,
+        job_id: jobId,
+      });
+    }
+
+    currentStep = "job_update_start";
+    console.log(`[PROCESS] Marking job ${jobId} as processing`);
+    const { error: startUpdateError } = await supabase
+      .from("conversion_jobs")
+      .update({
+        status: "processing",
+        progress: 0,
+        step_label: "Iniciando conversão...",
+        error_message: null,
+        processing_time_ms: 0,
+      })
+      .eq("id", jobId);
+
+    if (startUpdateError) {
+      console.error(`[PROCESS] Failed to update job ${jobId} at start:`, startUpdateError.message);
+      return respond({
+        success: false,
+        error: "Não foi possível iniciar o processamento do job.",
+        step: currentStep,
+        job_id: jobId,
+      });
+    }
+
+    currentStep = "url_validation";
+    console.log(`[PROCESS] Validating URL reachability for job ${jobId}`);
     try {
-      const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
-      if (!resp.ok) {
-        await supabase.from("conversion_jobs").update({
-          status: "error",
-          error_message: "Não foi possível acessar o link. Verifique se a URL está correta.",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", job_id);
-        return respond({ status: "error", message: "URL inacessível" });
+      const reachable = await validateUrlReachability(url);
+
+      if (!reachable) {
+        const message = "Não foi possível acessar o link. Verifique se a URL está correta.";
+        console.error(`[PROCESS] URL validation failed for job ${jobId}: unreachable URL`);
+        await markJobAsFailed(supabase, jobId, message, currentStep, startTime);
+        return respond({
+          success: false,
+          error: message,
+          step: currentStep,
+          job_id: jobId,
+        });
       }
-    } catch {
-      await supabase.from("conversion_jobs").update({
-        status: "error",
-        error_message: "Erro ao acessar o link. Verifique a URL e tente novamente.",
-        processing_time_ms: Date.now() - startTime,
-      }).eq("id", job_id);
-      return respond({ status: "error", message: "URL inacessível" });
+    } catch (error) {
+      const message = error instanceof DOMException && error.name === "AbortError"
+        ? "A validação da URL demorou demais. Tente novamente."
+        : "Erro ao acessar o link. Verifique a URL e tente novamente.";
+
+      console.error(`[PROCESS] URL validation threw for job ${jobId}:`, error);
+      await markJobAsFailed(supabase, jobId, message, currentStep, startTime);
+      return respond({
+        success: false,
+        error: message,
+        step: currentStep,
+        job_id: jobId,
+      });
     }
 
-    // Process steps sequentially
+    currentStep = "processing";
     for (const step of STEPS) {
-      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+      console.log(`[PROCESS] Job ${jobId} progressing to ${step.progress}% - ${step.label}`);
+      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
 
-      await supabase.from("conversion_jobs").update({
-        progress: step.progress,
-        step_label: step.label,
-        status: step.progress >= 100 ? "done" : "processing",
-        processing_time_ms: Date.now() - startTime,
-      }).eq("id", job_id);
+      const { error: progressError } = await supabase
+        .from("conversion_jobs")
+        .update({
+          progress: step.progress,
+          step_label: step.label,
+          status: "processing",
+          processing_time_ms: Date.now() - startTime,
+        })
+        .eq("id", jobId);
+
+      if (progressError) {
+        throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
+      }
     }
 
-    // Final update with download URL
-    await supabase.from("conversion_jobs").update({
-      status: "done",
-      progress: 100,
-      step_label: "Concluído!",
-      download_url: `https://storage.aurora-build.ai/aab/${job_id}/app-release.aab`,
-      processing_time_ms: Date.now() - startTime,
-    }).eq("id", job_id);
+    currentStep = "finalization";
+    console.log(`[PROCESS] Finalizing job ${jobId}`);
+    const { error: finalUpdateError } = await supabase
+      .from("conversion_jobs")
+      .update({
+        status: "done",
+        progress: 100,
+        step_label: "Concluído!",
+        download_url: `https://storage.aurora-build.ai/aab/${jobId}/app-release.aab`,
+        processing_time_ms: Date.now() - startTime,
+      })
+      .eq("id", jobId);
 
-    console.log(`[PROCESS] Job ${job_id} completed in ${Date.now() - startTime}ms`);
+    if (finalUpdateError) {
+      throw new Error(`Falha ao finalizar job: ${finalUpdateError.message}`);
+    }
 
-    return respond({ status: "done", job_id, processing_time_ms: Date.now() - startTime });
-  } catch (err) {
-    console.error("[PROCESS] Fatal error:", err.message);
-    return respond({ error: "Erro interno" }, 500);
+    console.log(`[PROCESS] Job ${jobId} completed in ${Date.now() - startTime}ms`);
+    return respond({
+      success: true,
+      job_id: jobId,
+      message: "Processamento concluído com sucesso.",
+    });
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    console.error(`[PROCESS] Unexpected error at step ${currentStep}:`, error);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (jobId && supabaseUrl && serviceKey) {
+      const supabase = createClient(supabaseUrl, serviceKey);
+      await markJobAsFailed(supabase, jobId, errorMessage, currentStep, startTime);
+    }
+
+    return respond({
+      success: false,
+      error: "Falha interna durante o processamento.",
+      step: currentStep,
+      job_id: jobId,
+      details: errorMessage,
+    });
   }
 });
