@@ -22,8 +22,15 @@ Deno.serve(async (req) => {
     });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    console.log("[CONVERT] Starting convert-app execution");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !serviceKey) {
+      console.error("[CONVERT] Missing internal backend configuration");
+      return respond({ success: false, error: "Configuração interna indisponível", step: "client_setup" });
+    }
+
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Auth
@@ -38,6 +45,7 @@ Deno.serve(async (req) => {
     let body: unknown;
     try {
       body = await req.json();
+      console.log("[CONVERT] Input received:", JSON.stringify(body));
     } catch {
       return respond({ success: false, error: "Body JSON inválido", step: "input_parsing" });
     }
@@ -48,6 +56,7 @@ Deno.serve(async (req) => {
     }
 
     const { url } = parsed.data;
+    console.log(`[CONVERT] Creating job for ${url}`);
 
     // Create job record
     const { data: job, error: insertErr } = await supabase
@@ -62,10 +71,16 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (insertErr) return respond({ success: false, error: "Falha ao criar job", step: "job_creation", details: insertErr.message });
+    if (insertErr) {
+      console.error("[CONVERT] Failed to create job:", insertErr.message);
+      return respond({ success: false, error: "Falha ao criar job", step: "job_creation", details: insertErr.message });
+    }
+
+    console.log(`[CONVERT] Job created: ${job.id}`);
 
     // Invoke process-app as a SEPARATE function (won't be killed when this function returns)
     const processUrl = `${supabaseUrl}/functions/v1/process-app`;
+    console.log(`[CONVERT] Triggering process-app for job ${job.id}`);
     fetch(processUrl, {
       method: "POST",
       headers: {
