@@ -48,6 +48,12 @@ function extractDomain(url: string) {
   }
 }
 
+function isValidDownloadUrl(url: string | null): boolean {
+  if (!url) return false;
+  // Only trust real Supabase storage URLs
+  return url.includes("supabase.co/storage/") || url.includes("supabase.co/storage/v1/");
+}
+
 const ConversionHistory = () => {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<ConversionJob[]>([]);
