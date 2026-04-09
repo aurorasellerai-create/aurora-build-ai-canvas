@@ -16,6 +16,7 @@ import { useState } from "react";
 const ConvertToAAB = () => {
   const { user } = useAuth();
   const [appUrl, setAppUrl] = useState("");
+  const [formKey, setFormKey] = useState(0);
   const { checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
   const job = useConversionJob();
@@ -33,10 +34,11 @@ const ConvertToAAB = () => {
     await job.submit(appUrl);
   }, [user, isValidUrl, appUrl, checkAccess, consumeCredits, job]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     job.reset();
     setAppUrl("");
-  };
+    setFormKey((k) => k + 1);
+  }, [job]);
 
   const showForm = job.status === "idle";
   const showProcessing = job.status === "processing" || job.status === "submitting" || job.status === "reconnecting";
@@ -121,7 +123,7 @@ const ConvertToAAB = () => {
           )}
 
           {showForm && (
-            <motion.form key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleConvert} className="card-aurora space-y-6">
+            <motion.form key={`form-${formKey}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleConvert} className="card-aurora space-y-6">
               <div className="text-center">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <Smartphone className="w-7 h-7 text-primary" />
