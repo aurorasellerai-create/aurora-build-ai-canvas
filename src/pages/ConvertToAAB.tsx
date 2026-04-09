@@ -66,6 +66,11 @@ const ConvertToAAB = () => {
               <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
               <h2 className="font-display text-2xl font-bold text-foreground">Seu app Android está pronto! 🚀</h2>
               <p className="text-sm text-muted-foreground">Arquivo AAB gerado com sucesso.</p>
+              {job.downloadUrl && (
+                <a href={job.downloadUrl} download className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2">
+                  <ArrowLeft className="w-5 h-5 rotate-[270deg]" /> Baixar arquivo AAB
+                </a>
+              )}
               <button onClick={handleReset} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4" /> Converter outro app
               </button>
