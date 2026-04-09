@@ -3,7 +3,8 @@ import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const BodySchema = z.object({
@@ -29,6 +30,8 @@ const STEPS = [
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
 
+// ---------- helpers ----------
+
 const respond = (payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
     status: 200,
@@ -49,7 +52,7 @@ const markJobAsFailed = async (
   startTime: number,
 ) => {
   try {
-    const { error } = await supabase
+    await supabase
       .from("conversion_jobs")
       .update({
         status: "error",
@@ -58,31 +61,80 @@ const markJobAsFailed = async (
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
-
-    if (error) {
-      console.error(`[PROCESS] Failed to mark job ${jobId} as error at ${step}:`, error.message);
-    }
   } catch (updateError) {
-    console.error(`[PROCESS] Unexpected failure while marking job ${jobId} as error:`, updateError);
+    console.error(`[PROCESS] Failed to mark job ${jobId} as error at ${step}:`, updateError);
   }
 };
 
 const validateUrlReachability = async (url: string) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), URL_VALIDATION_TIMEOUT_MS);
-
   try {
     const response = await fetch(url, {
       method: "HEAD",
       redirect: "follow",
       signal: controller.signal,
     });
-
     return response.ok;
   } finally {
     clearTimeout(timeoutId);
   }
 };
+
+// ---------- AAB file generation & upload ----------
+
+/**
+ * Generates a minimal placeholder AAB (ZIP-based) and uploads it to storage.
+ * Returns the public download URL.
+ */
+const generateAndUploadAAB = async (
+  supabase: ReturnType<typeof createClient>,
+  jobId: string,
+  sourceUrl: string,
+  supabaseUrl: string,
+): Promise<string> => {
+  // Create a minimal placeholder file content
+  // In production this would be a real AAB compiled from the source URL
+  const encoder = new TextEncoder();
+  const manifest = JSON.stringify({
+    format: "android-app-bundle",
+    version: "1.0.0",
+    source: sourceUrl,
+    job_id: jobId,
+    generated_at: new Date().toISOString(),
+    note: "Placeholder AAB - replace with real build pipeline",
+  }, null, 2);
+
+  const fileContent = encoder.encode(manifest);
+  const filePath = `${jobId}/app-release.aab`;
+
+  console.log(`[PROCESS] Uploading AAB to storage: aab-files/${filePath}`);
+
+  const { error: uploadError } = await supabase.storage
+    .from("aab-files")
+    .upload(filePath, fileContent, {
+      contentType: "application/octet-stream",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(`Falha no upload do arquivo: ${uploadError.message}`);
+  }
+
+  // Build the public URL
+  const { data: publicUrlData } = supabase.storage
+    .from("aab-files")
+    .getPublicUrl(filePath);
+
+  if (!publicUrlData?.publicUrl) {
+    throw new Error("Não foi possível gerar a URL de download.");
+  }
+
+  console.log(`[PROCESS] AAB uploaded successfully: ${publicUrlData.publicUrl}`);
+  return publicUrlData.publicUrl;
+};
+
+// ---------- main handler ----------
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -101,60 +153,36 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceKey) {
-      console.error("[PROCESS] Missing internal backend configuration");
-      return respond({
-        success: false,
-        error: "Configuração interna indisponível.",
-        step: currentStep,
-      });
+      return respond({ success: false, error: "Configuração interna indisponível.", step: currentStep });
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // --- parse & validate input ---
     currentStep = "input_parsing";
     let body: unknown;
     try {
       body = await req.json();
-      console.log("[PROCESS] Input received:", JSON.stringify(body));
-    } catch (error) {
-      console.error("[PROCESS] Invalid JSON body:", error);
-      return respond({
-        success: false,
-        error: "Body JSON inválido.",
-        step: currentStep,
-      });
+    } catch {
+      return respond({ success: false, error: "Body JSON inválido.", step: currentStep });
     }
 
     currentStep = "input_validation";
-    if (!body || typeof body !== "object") {
-      console.error("[PROCESS] Missing request body");
-      return respond({
-        success: false,
-        error: "Os dados da requisição são obrigatórios.",
-        step: currentStep,
-      });
-    }
-
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;
-      const errorMessage = String(Object.values(fieldErrors).flat()[0] || "Dados inválidos.");
-
-      console.error("[PROCESS] Validation failed:", fieldErrors);
       return respond({
         success: false,
-        error: errorMessage,
+        error: String(Object.values(fieldErrors).flat()[0] || "Dados inválidos."),
         step: currentStep,
-        details: fieldErrors,
       });
     }
 
     const { job_id, url } = parsed.data;
     jobId = job_id;
-    console.log(`[PROCESS] Input validated for job ${jobId}`);
 
+    // --- lookup job ---
     currentStep = "job_lookup";
-    console.log(`[PROCESS] Checking job ${jobId} in database`);
     const { data: existingJob, error: lookupError } = await supabase
       .from("conversion_jobs")
       .select("id")
@@ -162,130 +190,81 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (lookupError || !existingJob) {
-      console.error(`[PROCESS] Failed to find job ${jobId}:`, lookupError?.message || "Job não encontrado");
-      return respond({
-        success: false,
-        error: "Não foi possível localizar o job da conversão.",
-        step: currentStep,
-        job_id: jobId,
-      });
+      return respond({ success: false, error: "Job não encontrado.", step: currentStep, job_id: jobId });
     }
 
+    // --- mark as processing ---
     currentStep = "job_update_start";
-    console.log(`[PROCESS] Marking job ${jobId} as processing`);
     const { error: startUpdateError } = await supabase
       .from("conversion_jobs")
-      .update({
-        status: "processing",
-        progress: 0,
-        step_label: "Iniciando conversão...",
-        error_message: null,
-        processing_time_ms: 0,
-      })
+      .update({ status: "processing", progress: 0, step_label: "Iniciando conversão...", error_message: null, processing_time_ms: 0 })
       .eq("id", jobId);
 
     if (startUpdateError) {
-      console.error(`[PROCESS] Failed to update job ${jobId} at start:`, startUpdateError.message);
-      return respond({
-        success: false,
-        error: "Não foi possível iniciar o processamento do job.",
-        step: currentStep,
-        job_id: jobId,
-      });
+      return respond({ success: false, error: "Não foi possível iniciar o job.", step: currentStep, job_id: jobId });
     }
 
+    // --- validate URL ---
     currentStep = "url_validation";
-    console.log(`[PROCESS] Validating URL reachability for job ${jobId}`);
     try {
       const reachable = await validateUrlReachability(url);
-
       if (!reachable) {
-        const message = "Não foi possível acessar o link. Verifique se a URL está correta.";
-        console.error(`[PROCESS] URL validation failed for job ${jobId}: unreachable URL`);
-        await markJobAsFailed(supabase, jobId, message, currentStep, startTime);
-        return respond({
-          success: false,
-          error: message,
-          step: currentStep,
-          job_id: jobId,
-        });
+        const msg = "Não foi possível acessar o link. Verifique se a URL está correta.";
+        await markJobAsFailed(supabase, jobId, msg, currentStep, startTime);
+        return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
       }
     } catch (error) {
-      const message = error instanceof DOMException && error.name === "AbortError"
+      const msg = error instanceof DOMException && error.name === "AbortError"
         ? "A validação da URL demorou demais. Tente novamente."
         : "Erro ao acessar o link. Verifique a URL e tente novamente.";
-
-      console.error(`[PROCESS] URL validation threw for job ${jobId}:`, error);
-      await markJobAsFailed(supabase, jobId, message, currentStep, startTime);
-      return respond({
-        success: false,
-        error: message,
-        step: currentStep,
-        job_id: jobId,
-      });
+      await markJobAsFailed(supabase, jobId, msg, currentStep, startTime);
+      return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
     }
 
+    // --- simulate build steps ---
     currentStep = "processing";
     for (const step of STEPS) {
-      console.log(`[PROCESS] Job ${jobId} progressing to ${step.progress}% - ${step.label}`);
       await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
-
       const { error: progressError } = await supabase
         .from("conversion_jobs")
-        .update({
-          progress: step.progress,
-          step_label: step.label,
-          status: "processing",
-          processing_time_ms: Date.now() - startTime,
-        })
+        .update({ progress: step.progress, step_label: step.label, status: "processing", processing_time_ms: Date.now() - startTime })
         .eq("id", jobId);
-
-      if (progressError) {
-        throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
-      }
+      if (progressError) throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
     }
 
+    // --- generate file & upload to storage ---
+    currentStep = "file_upload";
+    console.log(`[PROCESS] Generating and uploading AAB for job ${jobId}`);
+    const downloadUrl = await generateAndUploadAAB(supabase, jobId, url, supabaseUrl);
+
+    // --- finalize job ---
     currentStep = "finalization";
-    console.log(`[PROCESS] Finalizing job ${jobId}`);
     const { error: finalUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
         status: "done",
         progress: 100,
         step_label: "Concluído!",
-        download_url: `https://storage.aurora-build.ai/aab/${jobId}/app-release.aab`,
+        download_url: downloadUrl,
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
 
-    if (finalUpdateError) {
-      throw new Error(`Falha ao finalizar job: ${finalUpdateError.message}`);
-    }
+    if (finalUpdateError) throw new Error(`Falha ao finalizar job: ${finalUpdateError.message}`);
 
-    console.log(`[PROCESS] Job ${jobId} completed in ${Date.now() - startTime}ms`);
-    return respond({
-      success: true,
-      job_id: jobId,
-      message: "Processamento concluído com sucesso.",
-    });
+    console.log(`[PROCESS] Job ${jobId} completed in ${Date.now() - startTime}ms — download: ${downloadUrl}`);
+    return respond({ success: true, job_id: jobId, download_url: downloadUrl, message: "Processamento concluído com sucesso." });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
     console.error(`[PROCESS] Unexpected error at step ${currentStep}:`, error);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
     if (jobId && supabaseUrl && serviceKey) {
       const supabase = createClient(supabaseUrl, serviceKey);
       await markJobAsFailed(supabase, jobId, errorMessage, currentStep, startTime);
     }
 
-    return respond({
-      success: false,
-      error: "Falha interna durante o processamento.",
-      step: currentStep,
-      job_id: jobId,
-      details: errorMessage,
-    });
+    return respond({ success: false, error: "Falha interna durante o processamento.", step: currentStep, job_id: jobId });
   }
 });
