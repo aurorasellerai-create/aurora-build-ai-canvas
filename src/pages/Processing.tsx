@@ -33,24 +33,9 @@ const Processing = () => {
         const next = Math.min(p + increment, 100);
           if (next >= 100) {
             clearInterval(intervalRef.current);
-            // Update project in DB — fetch actual format first
-            supabase
-              .from("projects")
-              .select("format")
-              .eq("id", id!)
-              .single()
-              .then(({ data: proj }) => {
-                const ext = proj?.format === "pwa" ? "zip" : (proj?.format || "apk");
-                return supabase
-                  .from("projects")
-                  .update({
-                    status: "completed" as const,
-                    progress: 100,
-                    download_url: `https://aurora-build-ai.app/downloads/${id}.${ext}`,
-                  })
-                  .eq("id", id!);
-              })
-              .then(() => setDone(true));
+            // Project completion is handled server-side.
+            // Just mark UI as done and redirect.
+            setDone(true);
         }
         return next;
       });
