@@ -77,6 +77,7 @@ const App = () => (
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+              <Route path="/historico" element={<ProtectedRoute><ConversionHistory /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
