@@ -123,7 +123,7 @@ const ConvertToAAB = () => {
           )}
 
           {showForm && (
-            <motion.form key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleConvert} className="card-aurora space-y-6">
+            <motion.form key={`form-${formKey}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleConvert} className="card-aurora space-y-6">
               <div className="text-center">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
                   <Smartphone className="w-7 h-7 text-primary" />
