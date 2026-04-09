@@ -4,6 +4,7 @@ import WhatYouCreateSection from "@/components/WhatYouCreateSection";
 import WhyItWorksSection from "@/components/WhyItWorksSection";
 import DifferentialSection from "@/components/DifferentialSection";
 import ProductFeaturesSection from "@/components/ProductFeaturesSection";
+import PremiumActionsSection from "@/components/PremiumActionsSection";
 import FormatGuideSection from "@/components/FormatGuideSection";
 import PublishGuideSection from "@/components/PublishGuideSection";
 import ViralSection from "@/components/ViralSection";
@@ -20,6 +21,7 @@ const Index = () => (
     <HeroSection />
     <WhatYouCreateSection />
     <ProductFeaturesSection />
+    <PremiumActionsSection />
     <WhyItWorksSection />
     <DifferentialSection />
     <AIToolsSection />
