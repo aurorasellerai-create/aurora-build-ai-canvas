@@ -1,85 +1,125 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, ArrowLeft, Globe, AlertTriangle, Zap, Shield,
-  CheckCircle2, Smartphone, Clock, Download, RefreshCw
+  CheckCircle2, Smartphone, Clock, RefreshCw, XCircle
 } from "lucide-react";
 import ConvertInfoBlocks from "@/components/ConvertInfoBlocks";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-type JobStatus = "idle" | "processing" | "done";
+type JobStatus = "idle" | "processing" | "done" | "error";
 
-const STEPS = [
-  { progress: 10, label: "Recebendo link..." },
-  { progress: 25, label: "Validando URL..." },
-  { progress: 40, label: "Analisando compatibilidade mobile..." },
-  { progress: 55, label: "Preparando versão Android..." },
-  { progress: 70, label: "Gerando projeto Android..." },
-  { progress: 85, label: "Compilando e convertendo para AAB..." },
-  { progress: 95, label: "Finalizando..." },
-  { progress: 100, label: "Concluído!" },
-];
+interface JobData {
+  id: string;
+  status: string;
+  progress: number;
+  step_label: string | null;
+  error_message: string | null;
+  download_url: string | null;
+}
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
   const [appUrl, setAppUrl] = useState("");
   const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
-  const [progress, setProgress] = useState(0);
-  const [stepLabel, setStepLabel] = useState("");
+  const [jobData, setJobData] = useState<JobData | null>(null);
   const [loading, setLoading] = useState(false);
-  const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
+  const { checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isValidUrl = appUrl.startsWith("https://") && appUrl.length > 12;
 
-  const simulateProcessing = () => {
-    let stepIndex = 0;
-    setJobStatus("processing");
-    setProgress(STEPS[0].progress);
-    setStepLabel(STEPS[0].label);
+  const progress = jobData?.progress ?? 0;
+  const stepLabel = jobData?.step_label ?? "Processando...";
 
-    timerRef.current = setInterval(() => {
-      stepIndex++;
-      if (stepIndex >= STEPS.length) {
-        clearInterval(timerRef.current!);
-        setJobStatus("done");
-        setProgress(100);
-        setStepLabel("Concluído!");
-        toast({ title: "App Android em processamento! 🚀", description: "Você receberá o download em breve." });
-        return;
-      }
-      setProgress(STEPS[stepIndex].progress);
-      setStepLabel(STEPS[stepIndex].label);
-    }, 2000 + Math.random() * 1000);
-  };
+  // Subscribe to realtime updates for the active job
+  useEffect(() => {
+    if (!jobData?.id) return;
 
-  const handleConvert = async (e: React.FormEvent) => {
+    const channel = supabase
+      .channel(`job-${jobData.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversion_jobs",
+          filter: `id=eq.${jobData.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as JobData;
+          setJobData(updated);
+
+          if (updated.status === "done") {
+            setJobStatus("done");
+            toast({ title: "App Android gerado! 🚀", description: "Seu arquivo AAB está pronto." });
+          } else if (updated.status === "error") {
+            setJobStatus("error");
+            toast({ title: "Erro na conversão", description: updated.error_message || "Tente novamente.", variant: "destructive" });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [jobData?.id]);
+
+  const handleConvert = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !isValidUrl) return;
+    if (!user || !isValidUrl || loading) return;
 
     if (!checkAccess("second_app")) return;
 
     setLoading(true);
     const credited = await consumeCredits("convert_aab");
-    if (!credited) { setLoading(false); return; }
-    setLoading(false);
+    if (!credited) {
+      setLoading(false);
+      return;
+    }
 
-    console.log("Processamento iniciado para:", appUrl);
-    simulateProcessing();
-  };
+    try {
+      const { data, error } = await supabase.functions.invoke("convert-app", {
+        body: { url: appUrl },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast({ title: "Erro", description: data.error, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      // Set initial job data and start listening
+      setJobData({
+        id: data.job_id,
+        status: "processing",
+        progress: 0,
+        step_label: "Iniciando processamento...",
+        error_message: null,
+        download_url: null,
+      });
+      setJobStatus("processing");
+    } catch (err: any) {
+      console.error("Convert error:", err);
+      toast({ title: "Erro ao iniciar conversão", description: err.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, isValidUrl, loading, appUrl, checkAccess, consumeCredits]);
 
   const resetForm = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
     setJobStatus("idle");
+    setJobData(null);
     setAppUrl("");
-    setProgress(0);
-    setStepLabel("");
   };
 
   return (
@@ -103,12 +143,12 @@ const ConvertToAAB = () => {
           {jobStatus === "done" && (
             <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
               <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-              <h2 className="font-display text-2xl font-bold text-foreground">Seu app está em processamento 🚀</h2>
-              <p className="text-sm text-muted-foreground">Estamos gerando seu arquivo AAB. Você receberá o download em breve por e-mail ou na sua área de projetos.</p>
+              <h2 className="font-display text-2xl font-bold text-foreground">Seu app Android está pronto! 🚀</h2>
+              <p className="text-sm text-muted-foreground">Arquivo AAB gerado com sucesso. Disponível para download na sua área de projetos.</p>
               <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
                   <Clock className="w-4 h-4 text-primary" />
-                  Tempo estimado: até 24 horas úteis
+                  Processado em {jobData?.id ? "tempo real" : "—"}
                 </p>
               </div>
               <button onClick={resetForm} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
@@ -117,18 +157,34 @@ const ConvertToAAB = () => {
             </motion.div>
           )}
 
+          {jobStatus === "error" && (
+            <motion.div key="error" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
+              <XCircle className="w-16 h-16 text-destructive mx-auto" />
+              <h2 className="font-display text-xl font-bold text-foreground">Erro na conversão</h2>
+              <p className="text-sm text-muted-foreground">{jobData?.error_message || "Ocorreu um erro inesperado. Tente novamente."}</p>
+              <button onClick={resetForm} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Tentar novamente
+              </button>
+            </motion.div>
+          )}
+
           {jobStatus === "processing" && (
             <motion.div key="processing" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
               <Loader2 className="w-14 h-14 text-primary mx-auto animate-spin" />
-              <h2 className="font-display text-xl font-bold text-foreground">{stepLabel || "Processando..."}</h2>
+              <h2 className="font-display text-xl font-bold text-foreground">{stepLabel}</h2>
               <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                <motion.div className="h-full rounded-full transition-all duration-500" style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)))", width: `${Math.min(progress, 100)}%` }} />
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)))" }}
+                  animate={{ width: `${Math.min(progress, 100)}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{Math.round(Math.min(progress, 100))}%</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~{Math.max(1, Math.round((100 - progress) * 0.2 / 10))} min restante</span>
               </div>
-              <p className="text-xs text-muted-foreground">Não feche esta página. Estamos processando seu app.</p>
+              <p className="text-xs text-muted-foreground">Processamento em tempo real. Não feche esta página.</p>
             </motion.div>
           )}
 
