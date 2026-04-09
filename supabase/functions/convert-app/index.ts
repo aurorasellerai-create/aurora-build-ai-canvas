@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  url: z.string().url().startsWith("https://", { message: "URL deve usar HTTPS" }),
+  url: z.string().trim().url({ message: "URL inválida" }).startsWith("https://", { message: "URL deve usar HTTPS" }),
 });
 
 Deno.serve(async (req) => {
@@ -39,7 +39,10 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return respond({ success: false, error: "Token inválido", step: "auth" });
+    if (authError || !user) {
+      console.error("[CONVERT] Invalid auth token", authError);
+      return respond({ success: false, error: "Token inválido", step: "auth" });
+    }
 
     // Validate body
     let body: unknown;
