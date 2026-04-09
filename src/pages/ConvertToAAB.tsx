@@ -64,15 +64,40 @@ const ConvertToAAB = () => {
       <div className="max-w-lg mx-auto px-4 py-10 space-y-6">
         <AnimatePresence mode="wait">
           {showSuccess && (
-            <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
-              <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-              <h2 className="font-display text-2xl font-bold text-foreground">Seu app Android está pronto! 🚀</h2>
-              <p className="text-sm text-muted-foreground">Arquivo AAB gerado com sucesso.</p>
-              {job.downloadUrl && (
-                <a href={job.downloadUrl} download className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2">
-                  <ArrowLeft className="w-5 h-5 rotate-[270deg]" /> Baixar arquivo AAB
-                </a>
+            <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-8 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+              >
+                <CheckCircle2 className="w-20 h-20 text-primary mx-auto drop-shadow-[0_0_24px_hsl(var(--primary)/0.5)]" />
+              </motion.div>
+
+              <div className="space-y-2">
+                <h2 className="font-display text-2xl font-bold text-foreground">🚀 Seu App está pronto!</h2>
+                <p className="text-sm text-muted-foreground">Agora é só baixar e publicar.</p>
+              </div>
+
+              {job.downloadUrl ? (
+                <motion.a
+                  href={job.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-download-3d w-full flex items-center justify-center gap-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <span className="text-xl">📲</span>
+                  <span>Baixar App</span>
+                </motion.a>
+              ) : (
+                <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm">⏳ Preparando seu download...</span>
+                </div>
               )}
+
               <button onClick={handleReset} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
                 <RefreshCw className="w-4 h-4" /> Converter outro app
               </button>
