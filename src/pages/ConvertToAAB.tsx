@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,12 +11,13 @@ import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { useConversionJob } from "@/hooks/useConversionJob";
-import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
   const [appUrl, setAppUrl] = useState("");
   const [formKey, setFormKey] = useState(0);
+  const [isConverting, setIsConverting] = useState(false);
   const { checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
   const job = useConversionJob();
@@ -25,25 +26,67 @@ const ConvertToAAB = () => {
 
   const handleConvert = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !isValidUrl || job.isSubmitting || job.isProcessing) return;
+    console.log("[ConvertToAAB] handleConvert triggered", { user: !!user, isValidUrl, isConverting });
+
+    if (!user) {
+      toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+      return;
+    }
+    if (!isValidUrl) {
+      toast({ title: "URL inválida", description: "Use uma URL válida com HTTPS.", variant: "destructive" });
+      return;
+    }
+    if (isConverting || job.isSubmitting || job.isProcessing) {
+      console.warn("[ConvertToAAB] Already converting, ignoring click");
+      return;
+    }
     if (!checkAccess("second_app")) return;
 
-    const credited = await consumeCredits("convert_aab");
-    if (!credited) return;
+    setIsConverting(true);
+    try {
+      const credited = await consumeCredits("convert_aab");
+      if (!credited) {
+        console.warn("[ConvertToAAB] Credits not consumed");
+        return;
+      }
 
-    await job.submit(appUrl);
-  }, [user, isValidUrl, appUrl, checkAccess, consumeCredits, job]);
+      console.log("[ConvertToAAB] Submitting job for:", appUrl);
+      await job.submit(appUrl);
+    } catch (err) {
+      console.error("[ConvertToAAB] Conversion error:", err);
+      toast({ title: "Erro na conversão", description: "Ocorreu um erro inesperado. Tente novamente.", variant: "destructive" });
+    } finally {
+      setIsConverting(false);
+    }
+  }, [user, isValidUrl, appUrl, isConverting, checkAccess, consumeCredits, job]);
 
   const handleReset = useCallback(() => {
-    job.reset();
-    setAppUrl("");
-    setFormKey((k) => k + 1);
+    console.log("[ConvertToAAB] handleReset triggered");
+    try {
+      job.reset();
+      setAppUrl("");
+      setFormKey((k) => k + 1);
+      setIsConverting(false);
+      console.log("[ConvertToAAB] Reset complete");
+    } catch (err) {
+      console.error("[ConvertToAAB] Reset error:", err);
+    }
   }, [job]);
+
+  const handleDownload = useCallback(() => {
+    console.log("[ConvertToAAB] handleDownload triggered", { downloadUrl: job.downloadUrl });
+    if (!job.downloadUrl) {
+      toast({ title: "Download indisponível", description: "O arquivo ainda não está pronto.", variant: "destructive" });
+      return;
+    }
+    window.open(job.downloadUrl, "_blank", "noopener,noreferrer");
+  }, [job.downloadUrl]);
 
   const showForm = job.status === "idle";
   const showProcessing = job.status === "processing" || job.status === "submitting" || job.status === "reconnecting";
   const showSuccess = job.status === "success";
   const showError = job.status === "error" || job.status === "timeout";
+  const submitDisabled = isConverting || job.isSubmitting || !isValidUrl;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,10 +122,9 @@ const ConvertToAAB = () => {
               </div>
 
               {job.downloadUrl ? (
-                <motion.a
-                  href={job.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <motion.button
+                  type="button"
+                  onClick={handleDownload}
                   className="btn-download-3d w-full flex items-center justify-center gap-3"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -90,7 +132,7 @@ const ConvertToAAB = () => {
                 >
                   <span className="text-xl">📲</span>
                   <span>Baixar App</span>
-                </motion.a>
+                </motion.button>
               ) : (
                 <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -111,7 +153,11 @@ const ConvertToAAB = () => {
                   <span className="text-lg">📤</span> Publicar na Play Store
                 </motion.a>
 
-                <button onClick={handleReset} className="w-full py-3 bg-muted/50 text-muted-foreground font-display font-semibold rounded-lg border border-border/50 hover:border-border hover:text-foreground transition-all flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="w-full py-3 bg-muted/50 text-muted-foreground font-display font-semibold rounded-lg border border-border/50 hover:border-border hover:text-foreground transition-all flex items-center justify-center gap-2"
+                >
                   <RefreshCw className="w-4 h-4" /> Converter outro app
                 </button>
 
@@ -129,7 +175,11 @@ const ConvertToAAB = () => {
                 {job.status === "timeout" ? "Tempo esgotado" : "Erro na conversão"}
               </h2>
               <p className="text-sm text-muted-foreground">{job.errorMessage || "Ocorreu um erro inesperado."}</p>
-              <button onClick={handleReset} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2"
+              >
                 <RefreshCw className="w-4 h-4" /> Tentar novamente
               </button>
             </motion.div>
@@ -219,9 +269,13 @@ const ConvertToAAB = () => {
                 </p>
               </div>
 
-              <button type="submit" disabled={job.isSubmitting || !isValidUrl} className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2">
-                {job.isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
-                Converter para Android (AAB)
+              <button
+                type="submit"
+                disabled={submitDisabled}
+                className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+              >
+                {(isConverting || job.isSubmitting) && <Loader2 className="w-5 h-5 animate-spin" />}
+                {isConverting || job.isSubmitting ? "Iniciando..." : "Converter para Android (AAB)"}
               </button>
             </motion.form>
           )}
