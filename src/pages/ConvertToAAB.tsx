@@ -16,6 +16,7 @@ import { useState } from "react";
 const ConvertToAAB = () => {
   const { user } = useAuth();
   const [appUrl, setAppUrl] = useState("");
+  const [formKey, setFormKey] = useState(0);
   const { checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
   const job = useConversionJob();
@@ -33,10 +34,11 @@ const ConvertToAAB = () => {
     await job.submit(appUrl);
   }, [user, isValidUrl, appUrl, checkAccess, consumeCredits, job]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     job.reset();
     setAppUrl("");
-  };
+    setFormKey((k) => k + 1);
+  }, [job]);
 
   const showForm = job.status === "idle";
   const showProcessing = job.status === "processing" || job.status === "submitting" || job.status === "reconnecting";
