@@ -16,10 +16,13 @@ export type Database = {
     Tables: {
       conversion_jobs: {
         Row: {
+          archived: boolean
           created_at: string
+          deletion_scheduled_at: string | null
           download_url: string | null
           error_message: string | null
           id: string
+          marked_for_deletion: boolean
           processing_time_ms: number | null
           progress: number
           source_url: string
@@ -29,10 +32,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived?: boolean
           created_at?: string
+          deletion_scheduled_at?: string | null
           download_url?: string | null
           error_message?: string | null
           id?: string
+          marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
           source_url: string
@@ -42,10 +48,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived?: boolean
           created_at?: string
+          deletion_scheduled_at?: string | null
           download_url?: string | null
           error_message?: string | null
           id?: string
+          marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
           source_url?: string
