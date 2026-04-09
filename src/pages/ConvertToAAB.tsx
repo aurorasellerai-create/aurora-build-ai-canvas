@@ -91,7 +91,7 @@ const ConvertToAAB = () => {
               <h2 className="font-display text-xl font-bold text-foreground">{job.stepLabel || "Processando..."}</h2>
 
               {job.status === "reconnecting" && (
-                <div className="flex items-center justify-center gap-2 text-xs text-amber-500">
+                <div className="flex items-center justify-center gap-2 text-xs text-destructive/80">
                   <WifiOff className="w-3.5 h-3.5" />
                   <span>Reconectando...</span>
                 </div>
