@@ -29,6 +29,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Credits = lazy(() => import("./pages/Credits"));
 const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
 const CarouselGenerator = lazy(() => import("./pages/CarouselGenerator"));
+const ConversionHistory = lazy(() => import("./pages/ConversionHistory"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
