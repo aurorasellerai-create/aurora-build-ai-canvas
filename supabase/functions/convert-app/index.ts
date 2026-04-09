@@ -3,7 +3,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const BodySchema = z.object({
@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const respond = (body: unknown, status = 200) =>
+  const respond = (body: unknown) =>
     new Response(JSON.stringify(body), {
-      status,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
@@ -28,23 +28,23 @@ Deno.serve(async (req) => {
 
     // Auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return respond({ error: "Não autorizado" }, 401);
+    if (!authHeader) return respond({ success: false, error: "Não autorizado", step: "auth" });
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return respond({ error: "Token inválido" }, 401);
+    if (authError || !user) return respond({ success: false, error: "Token inválido", step: "auth" });
 
     // Validate body
     let body: unknown;
     try {
       body = await req.json();
     } catch {
-      return respond({ error: "Body JSON inválido" }, 400);
+      return respond({ success: false, error: "Body JSON inválido", step: "input_parsing" });
     }
 
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
-      return respond({ error: parsed.error.flatten().fieldErrors }, 400);
+      return respond({ success: false, error: "Dados inválidos", step: "input_validation", details: parsed.error.flatten().fieldErrors });
     }
 
     const { url } = parsed.data;
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (insertErr) return respond({ error: insertErr.message }, 500);
+    if (insertErr) return respond({ success: false, error: "Falha ao criar job", step: "job_creation", details: insertErr.message });
 
     // Invoke process-app as a SEPARATE function (won't be killed when this function returns)
     const processUrl = `${supabaseUrl}/functions/v1/process-app`;
@@ -77,9 +77,9 @@ Deno.serve(async (req) => {
       console.error("Failed to invoke process-app:", err.message);
     });
 
-    return respond({ job_id: job.id });
+    return respond({ success: true, job_id: job.id, message: "Processo iniciado" });
   } catch (err) {
     console.error("[CONVERT] Fatal error:", err.message);
-    return respond({ error: "Erro interno do servidor" }, 500);
+    return respond({ success: false, error: "Erro interno do servidor", step: "global_catch" });
   }
 });
