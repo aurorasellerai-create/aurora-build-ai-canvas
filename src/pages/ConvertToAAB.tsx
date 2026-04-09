@@ -114,6 +114,10 @@ const ConvertToAAB = () => {
                 <button onClick={handleReset} className="w-full py-3 bg-muted/50 text-muted-foreground font-display font-semibold rounded-lg border border-border/50 hover:border-border hover:text-foreground transition-all flex items-center justify-center gap-2">
                   <RefreshCw className="w-4 h-4" /> Converter outro app
                 </button>
+
+                <Link to="/historico" className="w-full py-2.5 text-sm text-muted-foreground hover:text-primary font-display font-semibold transition-colors flex items-center justify-center gap-2">
+                  <Clock className="w-3.5 h-3.5" /> Ver histórico de conversões
+                </Link>
               </div>
             </motion.div>
           )}

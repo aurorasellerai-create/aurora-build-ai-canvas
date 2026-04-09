@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import {
   Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock,
   LogOut, Sparkles, Trash2, Crown, Zap, TrendingUp, ShieldCheck, RefreshCw,
+  History,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
@@ -272,6 +273,12 @@ const Dashboard = () => {
             className="px-6 py-3 border border-border text-foreground font-display font-bold rounded-lg hover:border-primary/50 transition-all hover:scale-105 flex items-center gap-2"
           >
             <Zap className="w-5 h-5" /> Comprar créditos
+          </Link>
+          <Link
+            to="/historico"
+            className="px-6 py-3 border border-border text-foreground font-display font-bold rounded-lg hover:border-primary/50 transition-all hover:scale-105 flex items-center gap-2"
+          >
+            <History className="w-5 h-5" /> Histórico
           </Link>
         </div>
 
