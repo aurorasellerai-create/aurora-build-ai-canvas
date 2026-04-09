@@ -26,6 +26,7 @@ const categoryIcon: Record<string, typeof Activity> = {
   performance: Activity,
   auth: Shield,
   navigation: Activity,
+  conversion: Smartphone,
 };
 
 const AdminSystemHealth = ({ enabled }: { enabled: boolean }) => {
