@@ -29,6 +29,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Credits = lazy(() => import("./pages/Credits"));
 const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
 const CarouselGenerator = lazy(() => import("./pages/CarouselGenerator"));
+const ConversionHistory = lazy(() => import("./pages/ConversionHistory"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+              <Route path="/historico" element={<ProtectedRoute><ConversionHistory /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
