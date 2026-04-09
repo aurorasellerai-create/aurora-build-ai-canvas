@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  url: z.string().url().startsWith("https://", { message: "URL deve usar HTTPS" }),
-  app_name: z.string().min(1).max(100).optional().default("MeuApp"),
+  job_id: z.string().uuid(),
+  url: z.string().url(),
 });
 
 const STEPS = [
@@ -38,15 +38,6 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Auth
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return respond({ error: "Não autorizado" }, 401);
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return respond({ error: "Token inválido" }, 401);
-
-    // Validate
     let body: unknown;
     try {
       body = await req.json();
@@ -59,94 +50,57 @@ Deno.serve(async (req) => {
       return respond({ error: parsed.error.flatten().fieldErrors }, 400);
     }
 
-    const { url, app_name } = parsed.data;
+    const { job_id, url } = parsed.data;
+    const startTime = Date.now();
 
-    // Create job
-    const { data: job, error: insertErr } = await supabase
-      .from("conversion_jobs")
-      .insert({
-        user_id: user.id,
-        source_url: url,
-        status: "processing",
-        progress: 0,
-        step_label: "Iniciando processamento...",
-      })
-      .select()
-      .single();
+    console.log(`[PROCESS] Starting job ${job_id} for ${url}`);
 
-    if (insertErr) return respond({ error: insertErr.message }, 500);
-
-    // Background processing (serverless internal worker)
-    (async () => {
-      const startTime = Date.now();
-      try {
-        // Validate URL accessibility
-        try {
-          const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
-          if (!resp.ok) {
-            await supabase.from("conversion_jobs").update({
-              status: "error",
-              error_message: "Não foi possível acessar o link.",
-              processing_time_ms: Date.now() - startTime,
-            }).eq("id", job.id);
-            return;
-          }
-        } catch {
-          await supabase.from("conversion_jobs").update({
-            status: "error",
-            error_message: "Erro ao acessar o link.",
-            processing_time_ms: Date.now() - startTime,
-          }).eq("id", job.id);
-          return;
-        }
-
-        // Process steps
-        for (const step of STEPS) {
-          await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
-          await supabase.from("conversion_jobs").update({
-            progress: step.progress,
-            step_label: step.label,
-            status: step.progress >= 100 ? "done" : "processing",
-            processing_time_ms: Date.now() - startTime,
-          }).eq("id", job.id);
-        }
-
-        // Final update with download URL
-        await supabase.from("conversion_jobs").update({
-          status: "done",
-          progress: 100,
-          step_label: "Concluído!",
-          download_url: `https://storage.aurora-build.ai/aab/${job.id}/app-release.aab`,
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", job.id);
-
-        // Log success
-        await supabase.from("system_logs").insert({
-          user_id: user.id,
-          severity: "info",
-          category: "build",
-          message: `Conversão AAB concluída para ${url}`,
-          details: { job_id: job.id, url, app_name, processing_time_ms: Date.now() - startTime },
-        });
-
-        console.log(`[PROCESS] Job ${job.id} completed in ${Date.now() - startTime}ms`);
-      } catch (err) {
-        console.error(`[PROCESS] Job ${job.id} failed:`, err.message);
+    // Validate URL accessibility
+    try {
+      const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
+      if (!resp.ok) {
         await supabase.from("conversion_jobs").update({
           status: "error",
-          error_message: "Erro interno ao processar.",
+          error_message: "Não foi possível acessar o link. Verifique se a URL está correta.",
           processing_time_ms: Date.now() - startTime,
-        }).eq("id", job.id);
+        }).eq("id", job_id);
+        return respond({ status: "error", message: "URL inacessível" });
       }
-    })();
+    } catch {
+      await supabase.from("conversion_jobs").update({
+        status: "error",
+        error_message: "Erro ao acessar o link. Verifique a URL e tente novamente.",
+        processing_time_ms: Date.now() - startTime,
+      }).eq("id", job_id);
+      return respond({ status: "error", message: "URL inacessível" });
+    }
 
-    return respond({
-      job_id: job.id,
-      status: "processing",
-      message: "Processamento iniciado com sucesso",
-    });
+    // Process steps sequentially
+    for (const step of STEPS) {
+      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+
+      await supabase.from("conversion_jobs").update({
+        progress: step.progress,
+        step_label: step.label,
+        status: step.progress >= 100 ? "done" : "processing",
+        processing_time_ms: Date.now() - startTime,
+      }).eq("id", job_id);
+    }
+
+    // Final update with download URL
+    await supabase.from("conversion_jobs").update({
+      status: "done",
+      progress: 100,
+      step_label: "Concluído!",
+      download_url: `https://storage.aurora-build.ai/aab/${job_id}/app-release.aab`,
+      processing_time_ms: Date.now() - startTime,
+    }).eq("id", job_id);
+
+    console.log(`[PROCESS] Job ${job_id} completed in ${Date.now() - startTime}ms`);
+
+    return respond({ status: "done", job_id, processing_time_ms: Date.now() - startTime });
   } catch (err) {
     console.error("[PROCESS] Fatal error:", err.message);
-    return respond({ error: "Erro interno do servidor" }, 500);
+    return respond({ error: "Erro interno" }, 500);
   }
 });

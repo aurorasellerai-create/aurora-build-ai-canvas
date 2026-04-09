@@ -15,6 +15,12 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const respond = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -22,27 +28,23 @@ Deno.serve(async (req) => {
 
     // Auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) return respond({ error: "Não autorizado" }, 401);
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Token inválido" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (authError || !user) return respond({ error: "Token inválido" }, 401);
 
     // Validate body
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return respond({ error: "Body JSON inválido" }, 400);
+    }
+
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return respond({ error: parsed.error.flatten().fieldErrors }, 400);
     }
 
     const { url } = parsed.data;
@@ -55,90 +57,29 @@ Deno.serve(async (req) => {
         source_url: url,
         status: "processing",
         progress: 0,
-        step_label: "Aguardando processamento...",
+        step_label: "Iniciando processamento...",
       })
       .select()
       .single();
 
-    if (insertErr) {
-      return new Response(JSON.stringify({ error: insertErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (insertErr) return respond({ error: insertErr.message }, 500);
 
-    // Internal serverless processing (no external worker needed)
-    console.log("Processing job internally:", job.id);
-    {
-      const STEPS = [
-        { progress: 10, label: "Analisando aplicativo..." },
-        { progress: 25, label: "Verificando compatibilidade mobile..." },
-        { progress: 40, label: "Preparando versão Android..." },
-        { progress: 55, label: "Gerando projeto Android..." },
-        { progress: 70, label: "Compilando APK..." },
-        { progress: 85, label: "Convertendo para AAB..." },
-        { progress: 95, label: "Finalizando..." },
-        { progress: 100, label: "Concluído!" },
-      ];
-
-      (async () => {
-        try {
-          const startTime = Date.now();
-          for (const step of STEPS) {
-            await new Promise((r) => setTimeout(r, 2000 + Math.random() * 1500));
-
-            if (step.progress === 10) {
-              try {
-                const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
-                if (!resp.ok) {
-                  await supabase.from("conversion_jobs").update({
-                    status: "error",
-                    error_message: "Não foi possível acessar o link.",
-                    processing_time_ms: Date.now() - startTime,
-                  }).eq("id", job.id);
-                  return;
-                }
-              } catch {
-                await supabase.from("conversion_jobs").update({
-                  status: "error",
-                  error_message: "Erro ao acessar o link.",
-                  processing_time_ms: Date.now() - startTime,
-                }).eq("id", job.id);
-                return;
-              }
-            }
-
-            await supabase.from("conversion_jobs").update({
-              progress: step.progress,
-              step_label: step.label,
-              status: step.progress >= 100 ? "done" : "processing",
-              processing_time_ms: Date.now() - startTime,
-            }).eq("id", job.id);
-          }
-
-          await supabase.from("conversion_jobs").update({
-            status: "done",
-            progress: 100,
-            step_label: "Concluído!",
-            download_url: `https://storage.aurora-build.ai/aab/${job.id}/app-release.aab`,
-            processing_time_ms: Date.now() - startTime,
-          }).eq("id", job.id);
-        } catch (err) {
-          await supabase.from("conversion_jobs").update({
-            status: "error",
-            error_message: "Erro interno.",
-          }).eq("id", job.id);
-        }
-      })();
-    }
-
-    return new Response(JSON.stringify({ job_id: job.id }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Invoke process-app as a SEPARATE function (won't be killed when this function returns)
+    const processUrl = `${supabaseUrl}/functions/v1/process-app`;
+    fetch(processUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ job_id: job.id, url }),
+    }).catch((err) => {
+      console.error("Failed to invoke process-app:", err.message);
     });
+
+    return respond({ job_id: job.id });
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("[CONVERT] Fatal error:", err.message);
+    return respond({ error: "Erro interno do servidor" }, 500);
   }
 });
