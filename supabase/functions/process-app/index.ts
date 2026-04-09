@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     const parsed = BodySchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = parsed.error.flatten().fieldErrors;
-      const errorMessage = Object.values(fieldErrors).flat()[0] || "Dados inválidos.";
+      const errorMessage = String(Object.values(fieldErrors).flat()[0] || "Dados inválidos.");
 
       console.error("[PROCESS] Validation failed:", fieldErrors);
       return respond({

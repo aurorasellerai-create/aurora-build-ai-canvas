@@ -97,7 +97,8 @@ Deno.serve(async (req) => {
 
     return respond({ success: true, job_id: job.id, message: "Processo iniciado" });
   } catch (err) {
-    console.error("[CONVERT] Fatal error:", err.message);
-    return respond({ success: false, error: "Erro interno do servidor", step: "global_catch" });
+    const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
+    console.error("[CONVERT] Fatal error:", err);
+    return respond({ success: false, error: "Erro interno do servidor", step: "global_catch", details: errorMessage });
   }
 });
