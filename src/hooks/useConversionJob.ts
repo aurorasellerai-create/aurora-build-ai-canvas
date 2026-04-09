@@ -254,6 +254,7 @@ export function useConversionJob() {
         return false;
       }
 
+      resetFlagRef.current = false;
       safeSet({ status: "submitting", errorMessage: null, progress: 0, stepLabel: "Iniciando conversão..." });
 
       try {
