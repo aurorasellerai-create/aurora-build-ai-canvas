@@ -172,9 +172,9 @@ const ConversionHistory = () => {
 
                   {/* Actions */}
                   <div className="shrink-0 flex items-center gap-2">
-                    {job.download_url && job.status === "done" && (
+                    {job.status === "done" && isValidDownloadUrl(job.download_url) ? (
                       <a
-                        href={job.download_url}
+                        href={job.download_url!}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn-download-3d !py-2.5 !px-4 !text-sm !rounded-lg flex items-center gap-2"
@@ -182,7 +182,9 @@ const ConversionHistory = () => {
                         <Download className="w-4 h-4" />
                         <span className="hidden sm:inline">Baixar</span>
                       </a>
-                    )}
+                    ) : job.status === "done" ? (
+                      <span className="text-xs text-muted-foreground italic px-2">Arquivo indisponível</span>
+                    ) : null}
                     <a
                       href={job.source_url}
                       target="_blank"
