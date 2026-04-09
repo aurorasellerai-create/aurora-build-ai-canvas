@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useMonitoring } from "@/hooks/useMonitoring";
+import { initAnalytics } from "@/lib/analytics";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -32,7 +33,19 @@ const CarouselGenerator = lazy(() => import("./pages/CarouselGenerator"));
 const ConversionHistory = lazy(() => import("./pages/ConversionHistory"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Initialize analytics (only activates if GA_MEASUREMENT_ID is set)
+initAnalytics();
 
 const Loading = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
