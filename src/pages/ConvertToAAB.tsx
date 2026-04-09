@@ -98,9 +98,23 @@ const ConvertToAAB = () => {
                 </div>
               )}
 
-              <button onClick={handleReset} className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2">
-                <RefreshCw className="w-4 h-4" /> Converter outro app
-              </button>
+              <div className="flex flex-col gap-3">
+                <motion.a
+                  href="https://support.google.com/googleplay/android-developer/answer/9859152"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2 hover:bg-muted/80"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <span className="text-lg">📤</span> Publicar na Play Store
+                </motion.a>
+
+                <button onClick={handleReset} className="w-full py-3 bg-muted/50 text-muted-foreground font-display font-semibold rounded-lg border border-border/50 hover:border-border hover:text-foreground transition-all flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4" /> Converter outro app
+                </button>
+              </div>
             </motion.div>
           )}
 
