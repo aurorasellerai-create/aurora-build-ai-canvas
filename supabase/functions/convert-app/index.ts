@@ -66,43 +66,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Try real worker, fallback to simulated if unavailable
-    const workerUrl = Deno.env.get("WORKER_URL")?.trim().replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
-    const workerSecret = Deno.env.get("WORKER_SECRET")?.trim();
-    let useSimulated = false;
-
-    if (workerUrl && workerSecret) {
-      try {
-        const cleanUrl = `${workerUrl}/webhook/convert`.replace(/([^:]\/)\/+/g, "$1");
-        console.log("Sending to worker:", cleanUrl);
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const workerResp = await fetch(cleanUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Worker-Secret": workerSecret,
-          },
-          body: JSON.stringify({ job_id: job.id, url, user_id: user.id }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-
-        if (!workerResp.ok) {
-          console.error("Worker error, falling back to simulated mode");
-          useSimulated = true;
-        }
-      } catch (err) {
-        console.error("Worker unreachable, falling back to simulated:", err.message);
-        useSimulated = true;
-      }
-    } else {
-      useSimulated = true;
-    }
-
-    // SIMULATED FALLBACK: runs when worker is down or not configured
-    if (useSimulated) {
-      console.log("Using SIMULATED mode for job:", job.id);
+    // Internal serverless processing (no external worker needed)
+    console.log("Processing job internally:", job.id);
+    {
       const STEPS = [
         { progress: 10, label: "Analisando aplicativo..." },
         { progress: 25, label: "Verificando compatibilidade mobile..." },
