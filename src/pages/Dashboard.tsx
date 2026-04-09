@@ -72,14 +72,11 @@ const Dashboard = () => {
   };
 
   const handleDownload = (project: Tables<"projects">) => {
-    const ext = project.format === "pwa" ? "zip" : project.format;
-    const blob = new Blob([`Aurora Build AI - ${project.app_name}\nURL: ${project.site_url}\nFormato: ${ext.toUpperCase()}`], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${project.app_name.replace(/\s+/g, "_")}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (project.download_url) {
+      window.open(project.download_url, "_blank", "noopener,noreferrer");
+    } else {
+      toast({ title: "Download indisponível", description: "O arquivo ainda não está pronto.", variant: "destructive" });
+    }
   };
 
   const plan = (profile?.plan || "free") as keyof typeof planLabels;
