@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
         "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({ job_id: job.id, url }),
+    }).then(async (response) => {
+      const payload = await response.text();
+      console.log("[CONVERT] process-app response:", payload);
     }).catch((err) => {
       console.error("Failed to invoke process-app:", err.message);
     });

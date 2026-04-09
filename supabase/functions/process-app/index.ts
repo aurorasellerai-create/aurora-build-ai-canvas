@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
     return respond({
       success: true,
       job_id: jobId,
-      message: "Processo iniciado",
+      message: "Processamento concluído com sucesso.",
     });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
