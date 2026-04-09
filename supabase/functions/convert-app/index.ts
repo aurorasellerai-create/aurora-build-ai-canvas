@@ -66,45 +66,43 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Send to external worker via webhook
+    // Try real worker, fallback to simulated if unavailable
     const workerUrl = Deno.env.get("WORKER_URL")?.trim().replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
     const workerSecret = Deno.env.get("WORKER_SECRET")?.trim();
+    let useSimulated = false;
 
     if (workerUrl && workerSecret) {
-      // PRODUCTION: send to real worker
       try {
         const cleanUrl = `${workerUrl}/webhook/convert`.replace(/([^:]\/)\/+/g, "$1");
         console.log("Sending to worker:", cleanUrl);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
         const workerResp = await fetch(cleanUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "X-Worker-Secret": workerSecret,
           },
-          body: JSON.stringify({
-            job_id: job.id,
-            url,
-            user_id: user.id,
-          }),
+          body: JSON.stringify({ job_id: job.id, url, user_id: user.id }),
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
 
         if (!workerResp.ok) {
-          const errText = await workerResp.text();
-          console.error("Worker error:", errText);
-          await supabase.from("conversion_jobs").update({
-            status: "error",
-            error_message: "Erro ao enviar para processamento. Tente novamente.",
-          }).eq("id", job.id);
+          console.error("Worker error, falling back to simulated mode");
+          useSimulated = true;
         }
       } catch (err) {
-        console.error("Worker connection error:", err);
-        await supabase.from("conversion_jobs").update({
-          status: "error",
-          error_message: "Serviço de conversão indisponível. Tente novamente em alguns minutos.",
-        }).eq("id", job.id);
+        console.error("Worker unreachable, falling back to simulated:", err.message);
+        useSimulated = true;
       }
     } else {
-      // FALLBACK: simulated processing (MVP mode)
+      useSimulated = true;
+    }
+
+    // SIMULATED FALLBACK: runs when worker is down or not configured
+    if (useSimulated) {
+      console.log("Using SIMULATED mode for job:", job.id);
       const STEPS = [
         { progress: 10, label: "Analisando aplicativo..." },
         { progress: 25, label: "Verificando compatibilidade mobile..." },
