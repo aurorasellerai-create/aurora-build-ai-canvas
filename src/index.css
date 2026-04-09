@@ -139,3 +139,76 @@
   }
 }
 
+/* Premium 3D button */
+.btn-3d {
+  box-shadow:
+    0 4px 0 0 rgba(0, 0, 0, 0.25),
+    0 6px 12px -2px rgba(0, 0, 0, 0.3);
+  transform: translateY(0);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-3d:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 0 0 rgba(0, 0, 0, 0.25),
+    0 10px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
+.btn-3d:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Light sweep effect */
+@keyframes light-sweep {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+.light-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(51 100% 50% / 0.08),
+    transparent
+  );
+  animation: light-sweep 2s ease-in-out infinite;
+}
+
+/* Premium card glow on hover */
+.premium-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    hsl(51 100% 50% / 0.15) 50%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.premium-card:hover::before {
+  opacity: 1;
+}
