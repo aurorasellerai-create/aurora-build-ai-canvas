@@ -127,3 +127,57 @@ export function useToggleAdmin() {
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });
 }
+
+export function useUpdateTipo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ user_id, tipo_usuario }: { user_id: string; tipo_usuario: string }) =>
+      fetchAdmin("update_tipo", "POST", { user_id, tipo_usuario }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-metrics"] });
+      toast({ title: "Tipo atualizado!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}
+
+export function useUpdateStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ user_id, status }: { user_id: string; status: string }) =>
+      fetchAdmin("update_status", "POST", { user_id, status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ title: "Status atualizado!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}
+
+export function useExtendTrial() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ user_id, days }: { user_id: string; days: number }) =>
+      fetchAdmin("extend_trial", "POST", { user_id, days }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast({ title: "Teste estendido!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ user_id }: { user_id: string }) =>
+      fetchAdmin("delete_user", "POST", { user_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-metrics"] });
+      toast({ title: "Usuário excluído!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}

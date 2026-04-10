@@ -234,6 +234,8 @@ Deno.serve(async (req) => {
           subscription_status: "active",
           payment_date: new Date().toISOString(),
           credits_balance: (profile?.credits_balance || 0) + planCredits,
+          tipo_usuario: "cliente",
+          status: "ativo",
         }).eq("user_id", user.id);
 
         console.log(`✅ User ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
