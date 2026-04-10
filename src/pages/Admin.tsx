@@ -77,9 +77,11 @@ const Admin = () => {
   };
 
   return (
-    <AdminLayout section={section} onSectionChange={setSection}>
-      {renderSection()}
-    </AdminLayout>
+    <AdminPinGate>
+      <AdminLayout section={section} onSectionChange={setSection}>
+        {renderSection()}
+      </AdminLayout>
+    </AdminPinGate>
   );
 };
 
