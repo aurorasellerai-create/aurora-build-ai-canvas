@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Search, Loader2, Crown, User, ShieldCheck, ShieldOff, Eye, X, Send, Lock, Unlock, Trash2, Clock, ChevronDown } from "lucide-react";
+import { Search, Loader2, Crown, User, ShieldCheck, ShieldOff, Eye, X, Send, Lock, Unlock, Trash2, Clock, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useAdminUsers, useUpdatePlan, useUpdateCredits, useToggleAdmin, useUpdateTipo, useUpdateStatus, useExtendTrial, useDeleteUser } from "./useAdminData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,7 +27,7 @@ interface UserDetail {
   access_role: string;
 }
 
-type FilterType = "all" | "vip" | "cliente";
+type FilterType = "all" | "vip" | "cliente" | "premium";
 
 const getRoleBadge = (role: string) => {
   if (role === "founder") return <Badge className="bg-purple-600 text-white border-purple-500 text-[10px]">👑 Founder</Badge>;
@@ -69,6 +70,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
     .filter((u: any) => {
       if (filter === "vip") return u.tipo_usuario === "vip";
       if (filter === "cliente") return u.tipo_usuario === "cliente";
+      if (filter === "premium") return u.plan === "premium";
       return true;
     })
     .filter(
@@ -76,10 +78,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
         u.email?.toLowerCase().includes(search.toLowerCase()) ||
         u.display_name?.toLowerCase().includes(search.toLowerCase())
     );
-
-  const handleCredits = (userId: string, amount: number) => {
-    updateCredits.mutate({ user_id: userId, amount });
-  };
 
   const handleCustomCredits = (userId: string) => {
     const amount = parseInt(customCredits);
@@ -102,6 +100,13 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
     const days = getTrialDaysLeft(u.teste_expira_em);
     return days !== null && days > 0 && days <= 3;
   });
+
+  const statsCards = [
+    { label: "Total", value: users.length, icon: "📊", filterKey: "all" as FilterType },
+    { label: "VIP", value: vipCount, icon: "👑", filterKey: "vip" as FilterType },
+    { label: "Clientes", value: clienteCount, icon: "👤", filterKey: "cliente" as FilterType },
+    { label: "Premium", value: premiumCount, icon: "⭐", filterKey: "premium" as FilterType },
+  ];
 
   return (
     <div className="space-y-4">
@@ -130,12 +135,27 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
         </div>
       )}
 
+      {/* Stats cards - clickable */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {statsCards.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => setFilter(s.filterKey)}
+            className={`card-aurora p-3 text-center transition-all cursor-pointer ${filter === s.filterKey ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
+          >
+            <p className="text-lg font-display font-bold text-foreground">{s.icon} {s.value}</p>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+          </button>
+        ))}
+      </div>
+
       {/* Filter buttons */}
       <div className="flex gap-2">
         {[
           { key: "all" as FilterType, label: "Todos", count: users.length },
           { key: "vip" as FilterType, label: "👑 VIP", count: vipCount },
           { key: "cliente" as FilterType, label: "👤 Clientes", count: clienteCount },
+          { key: "premium" as FilterType, label: "⭐ Premium", count: premiumCount },
         ].map((f) => (
           <button
             key={f.key}
@@ -151,21 +171,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
         ))}
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {[
-          { label: "Total", value: users.length, icon: "📊" },
-          { label: "VIP", value: vipCount, icon: "👑" },
-          { label: "Clientes", value: clienteCount, icon: "👤" },
-          { label: "Premium", value: premiumCount, icon: "⭐" },
-        ].map((s) => (
-          <div key={s.label} className="card-aurora p-3 text-center">
-            <p className="text-lg font-display font-bold text-foreground">{s.icon} {s.value}</p>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Users table */}
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
@@ -177,22 +182,27 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
               <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Acesso</th>
               <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Plano</th>
               <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Créditos</th>
-              <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Apps</th>
-              <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Cadastro</th>
+              <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Status</th>
               <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Ações</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((u: any) => {
               const daysLeft = getTrialDaysLeft(u.teste_expira_em);
+              const founder = isFounder(u);
               return (
-                <tr key={u.user_id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${u.status === "bloqueado" ? "opacity-50" : ""}`}>
+                <tr key={u.user_id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${u.status === "bloqueado" ? "opacity-60" : ""} ${founder ? "bg-purple-500/5" : ""}`}>
                   <td className="px-3 py-3 text-foreground font-medium">
                     <div className="flex flex-col">
-                      <span>{u.display_name || "—"}</span>
-                      {u.status === "bloqueado" && <span className="text-[10px] text-destructive">Bloqueado</span>}
+                      <span className="flex items-center gap-1">
+                        {founder && <span className="text-purple-400">👑</span>}
+                        {u.display_name || "—"}
+                      </span>
                       {daysLeft !== null && daysLeft > 0 && daysLeft <= 7 && (
                         <span className="text-[10px] text-amber-400">⏳ {daysLeft}d restante(s)</span>
+                      )}
+                      {daysLeft !== null && daysLeft <= 0 && (
+                        <span className="text-[10px] text-destructive">⚠️ Teste expirado</span>
                       )}
                     </div>
                   </td>
@@ -203,7 +213,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                     <Select
                       value={u.plan}
                       onValueChange={(val) => updatePlan.mutate({ user_id: u.user_id, plan: val })}
-                      disabled={isFounder(u)}
+                      disabled={founder}
                     >
                       <SelectTrigger className="w-24 mx-auto h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -216,27 +226,76 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                   <td className="px-3 py-3 text-center">
                     <span className="text-foreground font-bold">{u.credits_balance}</span>
                   </td>
+                  <td className="px-3 py-3 text-center">{getStatusBadge(u.status)}</td>
                   <td className="px-3 py-3 text-center">
-                    <span className="text-secondary font-medium">{u.completed_projects}</span>
-                    <span className="text-muted-foreground">/{u.total_projects}</span>
-                  </td>
-                  <td className="px-3 py-3 text-center text-muted-foreground text-xs">
-                    {new Date(u.created_at).toLocaleDateString("pt-BR")}
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <button
-                      onClick={() => setSelectedUser(u)}
-                      className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors"
-                      title="Ver detalhes / Ações"
-                    >
-                      <Eye className="w-4 h-4 text-primary" />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => setSelectedUser(u)}
+                        className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors"
+                        title="Detalhes"
+                      >
+                        <Eye className="w-4 h-4 text-primary" />
+                      </button>
+                      {!founder && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                            <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {u.tipo_usuario !== "vip" && (
+                              <DropdownMenuItem onClick={() => updateTipo.mutate({ user_id: u.user_id, tipo_usuario: "vip" })}>
+                                <Crown className="w-3 h-3 mr-2 text-amber-400" /> Tornar VIP
+                              </DropdownMenuItem>
+                            )}
+                            {u.tipo_usuario !== "cliente" && (
+                              <DropdownMenuItem onClick={() => updateTipo.mutate({ user_id: u.user_id, tipo_usuario: "cliente" })}>
+                                <User className="w-3 h-3 mr-2" /> Tornar Cliente
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {u.access_role !== "admin" && u.access_role !== "founder" && (
+                              <DropdownMenuItem onClick={() => toggleAdmin.mutate({ user_id: u.user_id, makeAdmin: true })}>
+                                <ShieldCheck className="w-3 h-3 mr-2 text-blue-400" /> Tornar Admin
+                              </DropdownMenuItem>
+                            )}
+                            {u.access_role === "admin" && (
+                              <DropdownMenuItem onClick={() => toggleAdmin.mutate({ user_id: u.user_id, makeAdmin: false })}>
+                                <ShieldOff className="w-3 h-3 mr-2" /> Remover Admin
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => updatePlan.mutate({ user_id: u.user_id, plan: "free" })}>
+                              <ChevronDown className="w-3 h-3 mr-2" /> Rebaixar → Free
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {u.status === "ativo" ? (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ user_id: u.user_id, status: "bloqueado" })} className="text-destructive">
+                                <Lock className="w-3 h-3 mr-2" /> Bloquear
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => updateStatus.mutate({ user_id: u.user_id, status: "ativo" })}>
+                                <Unlock className="w-3 h-3 mr-2 text-emerald-400" /> Desbloquear
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (confirm("Tem certeza que deseja excluir este usuário?")) {
+                                  deleteUser.mutate({ user_id: u.user_id });
+                                }
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="w-3 h-3 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado</td></tr>
             )}
           </tbody>
         </table>
@@ -270,7 +329,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
               </div>
 
               <div className="space-y-4">
-                {/* Info Grid */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: "Nome", value: selectedUser.display_name || "—" },
@@ -343,13 +401,9 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase font-semibold">Ações Rápidas</p>
                   <div className="flex flex-wrap gap-2">
-                    {/* Tipo */}
                     {selectedUser.tipo_usuario !== "vip" && (
                       <button
-                        onClick={() => {
-                          updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "vip" });
-                          setSelectedUser({ ...selectedUser, tipo_usuario: "vip" });
-                        }}
+                        onClick={() => { updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "vip" }); setSelectedUser({ ...selectedUser, tipo_usuario: "vip" }); }}
                         disabled={isFounder(selectedUser)}
                         className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
                       >
@@ -358,56 +412,16 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                     )}
                     {selectedUser.tipo_usuario !== "cliente" && (
                       <button
-                        onClick={() => {
-                          updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "cliente" });
-                          setSelectedUser({ ...selectedUser, tipo_usuario: "cliente" });
-                        }}
+                        onClick={() => { updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "cliente" }); setSelectedUser({ ...selectedUser, tipo_usuario: "cliente" }); }}
                         disabled={isFounder(selectedUser)}
                         className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80 transition-colors flex items-center gap-1 disabled:opacity-50"
                       >
                         <User className="w-3 h-3" /> Tornar Cliente
                       </button>
                     )}
-
-                    {/* Plano */}
-                    <button
-                      onClick={() => {
-                        updatePlan.mutate({ user_id: selectedUser.user_id, plan: "pro" });
-                        setSelectedUser({ ...selectedUser, plan: "pro" });
-                      }}
-                      disabled={isFounder(selectedUser)}
-                      className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
-                    >
-                      Upgrade → Pro
-                    </button>
-                    <button
-                      onClick={() => {
-                        updatePlan.mutate({ user_id: selectedUser.user_id, plan: "premium" });
-                        setSelectedUser({ ...selectedUser, plan: "premium" });
-                      }}
-                      disabled={isFounder(selectedUser)}
-                      className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50"
-                    >
-                      Upgrade → Premium
-                    </button>
-                    <button
-                      onClick={() => {
-                        updatePlan.mutate({ user_id: selectedUser.user_id, plan: "free" });
-                        setSelectedUser({ ...selectedUser, plan: "free" });
-                      }}
-                      disabled={isFounder(selectedUser)}
-                      className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80 transition-colors flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <ChevronDown className="w-3 h-3" /> Rebaixar → Free
-                    </button>
-
-                    {/* Admin */}
                     {selectedUser.access_role !== "admin" && selectedUser.access_role !== "founder" && (
                       <button
-                        onClick={() => {
-                          toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: true });
-                          setSelectedUser({ ...selectedUser, access_role: "admin" });
-                        }}
+                        onClick={() => { toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: true }); setSelectedUser({ ...selectedUser, access_role: "admin" }); }}
                         className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors flex items-center gap-1"
                       >
                         <ShieldCheck className="w-3 h-3" /> Tornar Admin
@@ -415,23 +429,15 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                     )}
                     {selectedUser.access_role === "admin" && (
                       <button
-                        onClick={() => {
-                          toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: false });
-                          setSelectedUser({ ...selectedUser, access_role: "user" });
-                        }}
+                        onClick={() => { toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: false }); setSelectedUser({ ...selectedUser, access_role: "user" }); }}
                         className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
                       >
                         <ShieldOff className="w-3 h-3" /> Remover Admin
                       </button>
                     )}
-
-                    {/* Block/Unblock */}
                     {selectedUser.status === "ativo" ? (
                       <button
-                        onClick={() => {
-                          updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" });
-                          setSelectedUser({ ...selectedUser, status: "bloqueado" });
-                        }}
+                        onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" }); setSelectedUser({ ...selectedUser, status: "bloqueado" }); }}
                         disabled={isFounder(selectedUser)}
                         className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1 disabled:opacity-50"
                       >
@@ -439,18 +445,13 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       </button>
                     ) : (
                       <button
-                        onClick={() => {
-                          updateStatus.mutate({ user_id: selectedUser.user_id, status: "ativo" });
-                          setSelectedUser({ ...selectedUser, status: "ativo" });
-                        }}
+                        onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "ativo" }); setSelectedUser({ ...selectedUser, status: "ativo" }); }}
                         disabled={isFounder(selectedUser)}
                         className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
                       >
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
                     )}
-
-                    {/* Delete */}
                     {!isFounder(selectedUser) && (
                       <button
                         onClick={() => {
@@ -467,7 +468,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                   </div>
                 </div>
 
-                {/* Founder Protection Notice */}
                 {isFounder(selectedUser) && (
                   <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 text-center">
                     <p className="text-xs text-purple-300 font-semibold">👑 Conta Founder — protegida contra alterações</p>
