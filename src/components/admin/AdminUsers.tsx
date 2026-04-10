@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Loader2, Crown, User, ShieldCheck, ShieldOff, Eye, X, Send, Lock, Unlock, Trash2, Clock, ChevronDown, MoreHorizontal } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, Loader2, Crown, User, ShieldCheck, ShieldOff, Eye, X, Send, Lock, Unlock, Trash2, Clock, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useAdminUsers, useUpdatePlan, useUpdateCredits, useToggleAdmin, useUpdateTipo, useUpdateStatus, useExtendTrial, useDeleteUser } from "./useAdminData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
