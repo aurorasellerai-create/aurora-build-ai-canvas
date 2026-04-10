@@ -35,19 +35,22 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await adminClient
+    
+    // Check admin OR founder
+    const { data: roles } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .in("role", ["admin", "founder"]);
 
-    if (!roleData) {
+    if (!roles || roles.length === 0) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const callerIsFounder = roles.some((r: any) => r.role === "founder");
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "list";
@@ -58,6 +61,21 @@ Deno.serve(async (req) => {
       status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
+    // Helper: check if target user is founder
+    const isTargetFounder = async (userId: string) => {
+      const { data } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "founder")
+        .maybeSingle();
+      return !!data;
+    };
+
+    // ── EXPIRE TRIALS ──
+    // Run trial expiration on every admin request
+    await adminClient.rpc("expire_trials").catch(() => {});
 
     // ── LIST USERS ──
     if (action === "list") {
@@ -75,13 +93,27 @@ Deno.serve(async (req) => {
       const emailMap: Record<string, string> = {};
       authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
 
+      // Get all roles
+      const { data: allRoles } = await adminClient.from("user_roles").select("user_id, role");
+      const roleMap: Record<string, string[]> = {};
+      (allRoles || []).forEach((r: any) => {
+        if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
+        roleMap[r.user_id].push(r.role);
+      });
+
       const enriched = (profiles || []).map((p) => {
         const userProjects = (projects || []).filter((pr) => pr.user_id === p.user_id);
+        const userRoles = roleMap[p.user_id] || [];
+        let accessRole = "user";
+        if (userRoles.includes("founder")) accessRole = "founder";
+        else if (userRoles.includes("admin")) accessRole = "admin";
+
         return {
           ...p,
           email: emailMap[p.user_id] || "—",
           total_projects: userProjects.length,
           completed_projects: userProjects.filter((pr) => pr.status === "completed").length,
+          access_role: accessRole,
         };
       });
 
@@ -96,12 +128,14 @@ Deno.serve(async (req) => {
         { count: premiumUsers },
         { count: totalProjects },
         { count: completedProjects },
+        { count: vipUsers },
       ] = await Promise.all([
         adminClient.from("profiles").select("*", { count: "exact", head: true }),
         adminClient.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
         adminClient.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "premium"),
         adminClient.from("projects").select("*", { count: "exact", head: true }),
         adminClient.from("projects").select("*", { count: "exact", head: true }).eq("status", "completed"),
+        adminClient.from("profiles").select("*", { count: "exact", head: true }).eq("tipo_usuario", "vip"),
       ]);
 
       const today = new Date().toISOString().split("T")[0];
@@ -120,7 +154,6 @@ Deno.serve(async (req) => {
         .filter((p) => p.paid_at && p.paid_at.startsWith(today))
         .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-      // Credit stats
       const { data: creditUsage } = await adminClient
         .from("credit_usage")
         .select("credits_used");
@@ -132,6 +165,8 @@ Deno.serve(async (req) => {
           proUsers: proUsers || 0,
           premiumUsers: premiumUsers || 0,
           freeUsers: (totalUsers || 0) - (proUsers || 0) - (premiumUsers || 0),
+          vipUsers: vipUsers || 0,
+          clienteUsers: (totalUsers || 0) - (vipUsers || 0),
           totalProjects: totalProjects || 0,
           completedProjects: completedProjects || 0,
           todaySignups: todaySignups || 0,
@@ -193,13 +228,11 @@ Deno.serve(async (req) => {
       const emailMap: Record<string, string> = {};
       authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
 
-      // Aggregate by action
       const actionTotals: Record<string, number> = {};
       (usage || []).forEach((u) => {
         actionTotals[u.action] = (actionTotals[u.action] || 0) + u.credits_used;
       });
 
-      // Top consumers
       const userTotals: Record<string, number> = {};
       (usage || []).forEach((u) => {
         userTotals[u.user_id] = (userTotals[u.user_id] || 0) + u.credits_used;
@@ -275,7 +308,6 @@ Deno.serve(async (req) => {
       const approved = (payments || []).filter((p) => p.status === "approved");
       const totalRevenue = approved.reduce((sum, p) => sum + (p.amount || 0), 0);
       
-      // Monthly revenue
       const now = new Date();
       const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthlyRevenue = approved
@@ -298,6 +330,7 @@ Deno.serve(async (req) => {
     if (action === "update_plan" && req.method === "POST") {
       const { user_id, plan } = await req.json();
       if (!user_id || !plan) return jsonErr("Missing user_id or plan");
+      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
 
       const { error } = await adminClient
         .from("profiles")
@@ -335,12 +368,81 @@ Deno.serve(async (req) => {
     if (action === "toggle_admin" && req.method === "POST") {
       const { user_id, makeAdmin } = await req.json();
       if (!user_id) return jsonErr("Missing user_id");
+      if (await isTargetFounder(user_id)) return jsonErr("Cannot modify founder roles");
 
       if (makeAdmin) {
         await adminClient.from("user_roles").upsert({ user_id, role: "admin" }, { onConflict: "user_id,role" });
       } else {
         await adminClient.from("user_roles").delete().eq("user_id", user_id).eq("role", "admin");
       }
+      return json({ success: true });
+    }
+
+    // ── UPDATE TIPO USUARIO ──
+    if (action === "update_tipo" && req.method === "POST") {
+      const { user_id, tipo_usuario } = await req.json();
+      if (!user_id || !tipo_usuario) return jsonErr("Missing user_id or tipo_usuario");
+      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
+
+      const { error } = await adminClient
+        .from("profiles")
+        .update({ tipo_usuario })
+        .eq("user_id", user_id);
+
+      if (error) return jsonErr(error.message, 500);
+      return json({ success: true });
+    }
+
+    // ── UPDATE STATUS ──
+    if (action === "update_status" && req.method === "POST") {
+      const { user_id, status } = await req.json();
+      if (!user_id || !status) return jsonErr("Missing user_id or status");
+      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
+
+      const { error } = await adminClient
+        .from("profiles")
+        .update({ status })
+        .eq("user_id", user_id);
+
+      if (error) return jsonErr(error.message, 500);
+      return json({ success: true });
+    }
+
+    // ── EXTEND TRIAL ──
+    if (action === "extend_trial" && req.method === "POST") {
+      const { user_id, days } = await req.json();
+      if (!user_id || !days) return jsonErr("Missing user_id or days");
+
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("teste_expira_em")
+        .eq("user_id", user_id)
+        .single();
+
+      const baseDate = profile?.teste_expira_em ? new Date(profile.teste_expira_em) : new Date();
+      if (baseDate < new Date()) baseDate.setTime(Date.now());
+      baseDate.setDate(baseDate.getDate() + days);
+
+      const { error } = await adminClient
+        .from("profiles")
+        .update({ teste_expira_em: baseDate.toISOString() })
+        .eq("user_id", user_id);
+
+      if (error) return jsonErr(error.message, 500);
+      return json({ success: true });
+    }
+
+    // ── DELETE USER ──
+    if (action === "delete_user" && req.method === "POST") {
+      const { user_id } = await req.json();
+      if (!user_id) return jsonErr("Missing user_id");
+      if (await isTargetFounder(user_id)) return jsonErr("Cannot delete founder");
+
+      // Delete profile, then auth user
+      await adminClient.from("profiles").delete().eq("user_id", user_id);
+      await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      const { error } = await adminClient.auth.admin.deleteUser(user_id);
+      if (error) return jsonErr(error.message, 500);
       return json({ success: true });
     }
 
@@ -391,7 +493,6 @@ Deno.serve(async (req) => {
       if ((unresolvedCritical || 0) > 0) health = "critical";
       else if ((errorsLast24h || 0) > 5 || (warningsLast24h || 0) > 20) health = "unstable";
 
-      // Static system checks
       const checks = [
         { label: "Rotas configuradas", ok: true, detail: "Todas as rotas mapeadas em App.tsx" },
         { label: "RLS ativo", ok: true, detail: "profiles, projects, payments, credit_usage, credit_purchases, referrals, user_roles, system_logs" },
