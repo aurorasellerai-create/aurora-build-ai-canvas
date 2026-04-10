@@ -374,7 +374,7 @@ export type Database = {
     }
     Enums: {
       app_format: "apk" | "aab" | "pwa"
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "founder"
       payment_status: "pending" | "approved" | "refunded" | "cancelled"
       project_status: "pending" | "processing" | "completed" | "error"
       user_plan: "free" | "pro" | "premium"
@@ -506,7 +506,7 @@ export const Constants = {
   public: {
     Enums: {
       app_format: ["apk", "aab", "pwa"],
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "founder"],
       payment_status: ["pending", "approved", "refunded", "cancelled"],
       project_status: ["pending", "processing", "completed", "error"],
       user_plan: ["free", "pro", "premium"],
