@@ -322,9 +322,18 @@ Deno.serve(async (req) => {
     await adminClient.from("system_logs").insert({
       user_id: user.id,
       severity: "info",
-      category: "payment",
+      category: "webhook",
       message: `Webhook: ${orderStatus} for ${productName || "plan"} (${customerEmail})`,
-      details: { transactionId, orderStatus, productName, amount, paymentStatus: status.paymentStatus },
+      details: {
+        transactionId, orderStatus, productName, amount,
+        paymentStatus: status.paymentStatus,
+        order_id: transactionId,
+        plan: isCreditProduct(productName) ? undefined : detectPlan(productName),
+        email: customerEmail,
+        product: productName,
+        status: status.paymentStatus,
+        credits_added: isCreditProduct(productName) ? detectCreditPackage(productName).creditsAmount : (PLAN_CREDITS[detectPlan(productName)] || 0),
+      },
     }).catch(() => {});
 
     return new Response(JSON.stringify({ success: true, status: status.paymentStatus }), {
