@@ -322,7 +322,7 @@ Deno.serve(async (req) => {
     await adminClient.from("system_logs").insert({
       user_id: user.id,
       severity: "info",
-      category: "payment",
+      category: "webhook",
       message: `Webhook: ${orderStatus} for ${productName || "plan"} (${customerEmail})`,
       details: { transactionId, orderStatus, productName, amount, paymentStatus: status.paymentStatus },
     }).catch(() => {});
