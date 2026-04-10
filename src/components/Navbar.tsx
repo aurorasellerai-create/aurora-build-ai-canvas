@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import auroraSymbol from "@/assets/aurora-symbol.png";
 
 const navLinks = [
