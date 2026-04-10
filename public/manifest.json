@@ -1,6 +1,9 @@
 {
   "name": "Aurora Build AI",
   "short_name": "Aurora",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -11,9 +14,14 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "theme_color": "#0B0F1A",
-  "background_color": "#0B0F1A",
-  "display": "standalone"
+  "background_color": "#0B0F1A"
 }
