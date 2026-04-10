@@ -65,8 +65,10 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
   const [customCredits, setCustomCredits] = useState("");
   const [trialDays, setTrialDays] = useState("7");
+  const [page, setPage] = useState(1);
+  const perPage = 10;
 
-  const filtered = users
+  const filtered = useMemo(() => users
     .filter((u: any) => {
       if (filter === "vip") return u.tipo_usuario === "vip";
       if (filter === "cliente") return u.tipo_usuario === "cliente";
@@ -77,7 +79,14 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
       (u: any) =>
         u.email?.toLowerCase().includes(search.toLowerCase()) ||
         u.display_name?.toLowerCase().includes(search.toLowerCase())
-    );
+    ), [users, filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+  const handleFilterChange = (f: FilterType) => { setFilter(f); setPage(1); };
+  const handleSearchChange = (v: string) => { setSearch(v); setPage(1); };
 
   const handleCustomCredits = (userId: string) => {
     const amount = parseInt(customCredits);
