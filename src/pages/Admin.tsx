@@ -24,11 +24,15 @@ const Admin = () => {
   const { data: isAdmin, isLoading: checkingRole } = useQuery({
     queryKey: ["admin-role", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.rpc("has_role", {
+      const { data: isAdminRole } = await supabase.rpc("has_role", {
         _user_id: user!.id,
         _role: "admin" as any,
       });
-      return !!data;
+      const { data: isFounderRole } = await supabase.rpc("has_role", {
+        _user_id: user!.id,
+        _role: "founder" as any,
+      });
+      return !!isAdminRole || !!isFounderRole;
     },
     enabled: !!user,
   });
