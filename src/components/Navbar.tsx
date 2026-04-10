@@ -15,6 +15,7 @@ const navLinks = [
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { canInstall, install } = useInstallPrompt();
 
   const scrollTo = (hash: string) => {
     setOpen(false);
