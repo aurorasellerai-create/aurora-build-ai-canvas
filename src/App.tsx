@@ -97,6 +97,7 @@ const App = () => (
             </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
+        <InstallBanner />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
