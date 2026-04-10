@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Loader2, Shield } from "lucide-react";
+import AdminPinGate from "@/components/admin/AdminPinGate";
 import AdminLayout, { type AdminSection } from "@/components/admin/AdminLayout";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminUsers from "@/components/admin/AdminUsers";
