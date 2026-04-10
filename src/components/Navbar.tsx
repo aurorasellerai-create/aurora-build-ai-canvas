@@ -103,6 +103,15 @@ const Navbar = () => {
               {l.label}
             </button>
           ))}
+          {canInstall && (
+            <button
+              onClick={() => { setOpen(false); install(); }}
+              className="flex items-center justify-center gap-1.5 w-full px-5 py-2.5 text-sm font-display font-semibold rounded-lg border border-secondary/50 text-secondary hover:bg-secondary/10 transition-all"
+            >
+              <Download size={15} />
+              Instalar App
+            </button>
+          )}
           <Link
             to={user ? "/dashboard" : "/auth"}
             onClick={() => setOpen(false)}
