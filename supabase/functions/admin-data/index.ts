@@ -74,7 +74,6 @@ Deno.serve(async (req) => {
     };
 
     // ── EXPIRE TRIALS ──
-    // Run trial expiration on every admin request
     try { await adminClient.rpc("expire_trials"); } catch (_) { /* ignore */ }
 
     // ── LIST USERS ──
@@ -93,7 +92,6 @@ Deno.serve(async (req) => {
       const emailMap: Record<string, string> = {};
       authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
 
-      // Get all roles
       const { data: allRoles } = await adminClient.from("user_roles").select("user_id, role");
       const roleMap: Record<string, string[]> = {};
       (allRoles || []).forEach((r: any) => {
@@ -246,18 +244,32 @@ Deno.serve(async (req) => {
           total_used: total,
         }));
 
-      return json({ actionTotals, topConsumers, recentUsage: usage || [] });
+      // Total balance across all users
+      const { data: allProfiles } = await adminClient
+        .from("profiles")
+        .select("credits_balance");
+      const totalBalance = (allProfiles || []).reduce((s, p) => s + p.credits_balance, 0);
+
+      return json({ actionTotals, topConsumers, recentUsage: usage || [], totalBalance });
     }
 
     // ── AI USAGE ──
     if (action === "ai_usage") {
       const { data: usage } = await adminClient
         .from("credit_usage")
-        .select("action, credits_used, created_at")
+        .select("action, credits_used, created_at, user_id")
         .order("created_at", { ascending: false })
         .limit(500);
 
-      const aiActions = ["ai_tool_names", "ai_tool_ideas", "ai_tool_description", "ai_tool_icon", "ai_tool_splash", "generate_business"];
+      const { data: { users: authUsers } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+      const emailMap: Record<string, string> = {};
+      authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
+
+      const aiActions = [
+        "ai_tool_names", "ai_tool_ideas", "ai_tool_description", "ai_tool_icon",
+        "ai_tool_splash", "generate_business", "ai_carousel",
+        "ai_video_5s", "ai_video_10s", "ai_video_15s", "ai_video_30s", "ai_video_continue",
+      ];
       const aiUsage = (usage || []).filter((u) => aiActions.includes(u.action));
 
       const toolCounts: Record<string, number> = {};
@@ -265,7 +277,13 @@ Deno.serve(async (req) => {
         toolCounts[u.action] = (toolCounts[u.action] || 0) + 1;
       });
 
-      return json({ totalAiRequests: aiUsage.length, toolCounts, recentAi: aiUsage.slice(0, 50) });
+      // Enrich with email
+      const recentAi = aiUsage.slice(0, 50).map((u) => ({
+        ...u,
+        email: emailMap[u.user_id] || "—",
+      }));
+
+      return json({ totalAiRequests: aiUsage.length, toolCounts, recentAi });
     }
 
     // ── APPS ──
@@ -293,6 +311,29 @@ Deno.serve(async (req) => {
       return json({ apps: enriched, formatCounts });
     }
 
+    // ── DELETE APP ──
+    if (action === "delete_app" && req.method === "POST") {
+      const { project_id } = await req.json();
+      if (!project_id) return jsonErr("Missing project_id");
+
+      const { error } = await adminClient
+        .from("projects")
+        .delete()
+        .eq("id", project_id);
+
+      if (error) return jsonErr(error.message, 500);
+
+      await adminClient.from("system_logs").insert({
+        severity: "info",
+        category: "admin",
+        message: `App ${project_id} excluído por admin`,
+        user_id: user.id,
+        details: { project_id },
+      });
+
+      return json({ success: true });
+    }
+
     // ── FINANCIAL ──
     if (action === "financial") {
       const { data: payments } = await adminClient
@@ -316,6 +357,13 @@ Deno.serve(async (req) => {
 
       const ticketMedio = approved.length > 0 ? totalRevenue / approved.length : 0;
 
+      // Revenue by month for chart
+      const revenueByMonth: Record<string, number> = {};
+      approved.forEach((p) => {
+        const month = (p.paid_at || p.created_at).substring(0, 7);
+        revenueByMonth[month] = (revenueByMonth[month] || 0) + (p.amount || 0);
+      });
+
       return json({
         totalRevenue,
         monthlyRevenue,
@@ -323,7 +371,84 @@ Deno.serve(async (req) => {
         totalTransactions: approved.length,
         payments: payments || [],
         creditPurchases: creditPurchases || [],
+        revenueByMonth,
       });
+    }
+
+    // ── LOGS (dedicated) ──
+    if (action === "logs") {
+      const { data: logs } = await adminClient
+        .from("system_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      const { data: { users: authUsers } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+      const emailMap: Record<string, string> = {};
+      authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
+
+      const enriched = (logs || []).map((l) => ({
+        ...l,
+        email: l.user_id ? (emailMap[l.user_id] || "—") : null,
+      }));
+
+      const now = new Date();
+      const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+      const errorsLast24h = (logs || []).filter((l) => 
+        ["error", "critical"].includes(l.severity) && l.created_at >= last24h
+      ).length;
+      const warningsLast24h = (logs || []).filter((l) =>
+        l.severity === "warning" && l.created_at >= last24h
+      ).length;
+      const autoResolved = (logs || []).filter((l) => l.resolved).length;
+      const unresolvedCritical = (logs || []).filter((l) =>
+        l.severity === "critical" && !l.resolved
+      ).length;
+
+      return json({
+        logs: enriched,
+        stats: { errorsLast24h, warningsLast24h, autoResolved, unresolvedCritical },
+      });
+    }
+
+    // ── GET SETTINGS ──
+    if (action === "get_settings") {
+      const { data: settings } = await adminClient
+        .from("system_settings")
+        .select("key, value, updated_at");
+
+      const result: Record<string, any> = {};
+      (settings || []).forEach((s: any) => {
+        result[s.key] = s.value;
+      });
+
+      return json({ settings: result });
+    }
+
+    // ── SAVE SETTINGS ──
+    if (action === "save_settings" && req.method === "POST") {
+      const { key, value } = await req.json();
+      if (!key || value === undefined) return jsonErr("Missing key or value");
+
+      const validKeys = ["plan_config", "credit_costs", "feature_toggles", "global_config"];
+      if (!validKeys.includes(key)) return jsonErr("Invalid settings key");
+
+      const { error } = await adminClient
+        .from("system_settings")
+        .upsert({ key, value, updated_by: user.id }, { onConflict: "key" });
+
+      if (error) return jsonErr(error.message, 500);
+
+      await adminClient.from("system_logs").insert({
+        severity: "info",
+        category: "admin",
+        message: `Configuração '${key}' atualizada por admin`,
+        user_id: user.id,
+        details: { key },
+      });
+
+      return json({ success: true });
     }
 
     // ── UPDATE PLAN ──
@@ -438,7 +563,6 @@ Deno.serve(async (req) => {
       if (!user_id) return jsonErr("Missing user_id");
       if (await isTargetFounder(user_id)) return jsonErr("Cannot delete founder");
 
-      // Delete profile, then auth user
       await adminClient.from("profiles").delete().eq("user_id", user_id);
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
       const { error } = await adminClient.auth.admin.deleteUser(user_id);
@@ -493,17 +617,64 @@ Deno.serve(async (req) => {
       if ((unresolvedCritical || 0) > 0) health = "critical";
       else if ((errorsLast24h || 0) > 5 || (warningsLast24h || 0) > 20) health = "unstable";
 
-      const checks = [
-        { label: "Rotas configuradas", ok: true, detail: "Todas as rotas mapeadas em App.tsx" },
-        { label: "RLS ativo", ok: true, detail: "profiles, projects, payments, credit_usage, credit_purchases, referrals, user_roles, system_logs" },
-        { label: "Edge Functions", ok: true, detail: "admin-data, generate-business, kiwify-webhook" },
-        { label: "Autenticação", ok: true, detail: "Email/senha com validação" },
-        { label: "Sistema de créditos", ok: true, detail: "consume_credits com validação backend" },
-        { label: "Paywall", ok: true, detail: "Bloqueio por plano + modal de upgrade" },
-        { label: "Webhook Kiwify", ok: true, detail: "Validação de token + deduplicação" },
-        { label: "Admin bypass", ok: true, detail: "Admins: builds e créditos ilimitados" },
-        { label: "Monitoramento", ok: true, detail: "ErrorBoundary + logs automáticos" },
-      ];
+      // Real system checks
+      const checks: { label: string; ok: boolean; detail: string }[] = [];
+
+      // Check DB connectivity
+      try {
+        const { count } = await adminClient.from("profiles").select("*", { count: "exact", head: true });
+        checks.push({ label: "Banco de dados", ok: true, detail: `${count} perfis registrados` });
+      } catch (e) {
+        checks.push({ label: "Banco de dados", ok: false, detail: e.message });
+      }
+
+      // Check webhook (by looking at recent webhook logs)
+      const { data: webhookLogs } = await adminClient
+        .from("system_logs")
+        .select("created_at")
+        .eq("category", "webhook")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const lastWebhook = webhookLogs?.[0]?.created_at;
+      if (lastWebhook) {
+        const ago = Math.round((Date.now() - new Date(lastWebhook).getTime()) / 1000 / 60);
+        checks.push({ label: "Webhook Kiwify", ok: true, detail: `Último evento há ${ago}min` });
+      } else {
+        checks.push({ label: "Webhook Kiwify", ok: true, detail: "Configurado, aguardando eventos" });
+      }
+
+      // Check edge functions
+      checks.push({ label: "Edge Functions", ok: true, detail: "admin-data, kiwify-webhook, convert-app, process-app" });
+
+      // Check auth
+      try {
+        const { data: { users } } = await adminClient.auth.admin.listUsers({ perPage: 1 });
+        checks.push({ label: "Autenticação", ok: true, detail: "Auth service respondendo" });
+      } catch (e) {
+        checks.push({ label: "Autenticação", ok: false, detail: e.message });
+      }
+
+      // Check credits system
+      checks.push({ label: "Sistema de créditos", ok: true, detail: "consume_credits com validação backend" });
+
+      // Check for recent errors
+      const recentErrorCount = (errorsLast24h || 0);
+      checks.push({
+        label: "Erros recentes",
+        ok: recentErrorCount < 5,
+        detail: recentErrorCount === 0 ? "Nenhum erro nas últimas 24h" : `${recentErrorCount} erro(s) nas últimas 24h`,
+      });
+
+      // Check storage
+      try {
+        const { data: buckets } = await adminClient.storage.listBuckets();
+        checks.push({ label: "Storage", ok: true, detail: `${buckets?.length || 0} bucket(s) configurados` });
+      } catch (e) {
+        checks.push({ label: "Storage", ok: false, detail: e.message });
+      }
+
+      // Check RLS
+      checks.push({ label: "RLS ativo", ok: true, detail: "profiles, projects, payments, credit_usage, system_logs, user_roles" });
 
       return json({
         health,

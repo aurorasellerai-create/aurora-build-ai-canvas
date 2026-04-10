@@ -8,6 +8,12 @@ const TOOL_LABELS: Record<string, string> = {
   ai_tool_icon: "Gerador de Ícone",
   ai_tool_splash: "Gerador de Splash",
   generate_business: "Gerador de Negócio",
+  ai_carousel: "Gerador de Carrossel",
+  ai_video_5s: "Vídeo 5s",
+  ai_video_10s: "Vídeo 10s",
+  ai_video_15s: "Vídeo 15s",
+  ai_video_30s: "Vídeo 30s",
+  ai_video_continue: "Continuar Vídeo",
 };
 
 const AdminAiUsage = ({ enabled }: { enabled: boolean }) => {
@@ -17,6 +23,7 @@ const AdminAiUsage = ({ enabled }: { enabled: boolean }) => {
 
   const toolCounts = data?.toolCounts || {};
   const totalRequests = data?.totalAiRequests || 0;
+  const recentAi = data?.recentAi || [];
 
   return (
     <div className="space-y-6">
@@ -49,6 +56,35 @@ const AdminAiUsage = ({ enabled }: { enabled: boolean }) => {
                 </div>
               );
             })}
+        </div>
+      </div>
+
+      {/* Recent AI usage with user info */}
+      <div className="card-aurora p-5">
+        <h3 className="font-display font-bold text-foreground mb-3 text-sm">Histórico recente</h3>
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Ferramenta</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Usuário</th>
+                <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground">Créditos</th>
+                <th className="text-center px-3 py-2 text-xs font-semibold text-muted-foreground">Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentAi.map((u: any, i: number) => (
+                <tr key={`${u.user_id}-${i}`} className="border-b border-border/50 hover:bg-muted/20">
+                  <td className="px-3 py-2 text-foreground">{TOOL_LABELS[u.action] || u.action}</td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs">{u.email}</td>
+                  <td className="px-3 py-2 text-center text-primary font-bold">{u.credits_used}</td>
+                  <td className="px-3 py-2 text-center text-muted-foreground text-xs">
+                    {new Date(u.created_at).toLocaleString("pt-BR")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

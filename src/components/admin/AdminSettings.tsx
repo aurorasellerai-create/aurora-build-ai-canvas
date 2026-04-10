@@ -1,49 +1,46 @@
-import { useState } from "react";
-import { Settings, Save, Zap, Crown, Wrench, CheckCircle, XCircle } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-
-const PLAN_CONFIG = [
-  { plan: "Free", price: "Grátis", credits: 5, builds: 1, formats: ["APK"] },
-  { plan: "Pro", price: "R$ 39/mês", credits: 50, builds: 5, formats: ["APK"] },
-  { plan: "Premium", price: "R$ 59/mês", credits: 500, builds: 999999, formats: ["APK", "AAB", "PWA"] },
-];
-
-const FEATURES = [
-  { id: "generate_app", label: "Geração de App", description: "Converter site/arquivo em APK/AAB", enabled: true },
-  { id: "ai_tools", label: "Ferramentas IA", description: "Nomes, ideias, descrição, ícone, splash", enabled: true },
-  { id: "video_gen", label: "Gerador de Vídeos", description: "Vídeos promocionais com IA", enabled: true },
-  { id: "carousel_gen", label: "Gerador de Carrossel", description: "Carrosséis para redes sociais", enabled: true },
-  { id: "business_gen", label: "Gerador de Negócio", description: "Plano de negócio completo com IA", enabled: true },
-  { id: "convert_aab", label: "Conversão AAB", description: "Converter APK para AAB", enabled: true },
-  { id: "translation", label: "Tradução", description: "Traduzir textos do app", enabled: true },
-  { id: "remove_bg", label: "Remover Fundo", description: "Remover fundo de imagens", enabled: true },
-];
-
-const CREDIT_COSTS = [
-  { action: "generate_app", label: "Gerar App", cost: 3 },
-  { action: "generate_business", label: "Gerar Negócio", cost: 2 },
-  { action: "ai_tool_names", label: "Nomes IA", cost: 1 },
-  { action: "ai_tool_ideas", label: "Ideias IA", cost: 1 },
-  { action: "ai_tool_description", label: "Descrição IA", cost: 1 },
-  { action: "ai_tool_icon", label: "Ícone IA", cost: 1 },
-  { action: "ai_tool_splash", label: "Splash IA", cost: 1 },
-  { action: "ai_carousel", label: "Carrossel IA", cost: 5 },
-  { action: "ai_video_5s", label: "Vídeo 5s", cost: 10 },
-  { action: "ai_video_10s", label: "Vídeo 10s", cost: 20 },
-  { action: "ai_video_15s", label: "Vídeo 15s", cost: 30 },
-  { action: "ai_video_30s", label: "Vídeo 30s", cost: 60 },
-  { action: "convert_aab", label: "Conversão AAB", cost: 100 },
-];
+import { useState, useEffect } from "react";
+import { Settings, Save, Zap, Crown, Wrench } from "lucide-react";
+import { useAdminSettings, useSaveSettings } from "./useAdminData";
+import { Loader2 } from "lucide-react";
 
 const AdminSettings = () => {
-  const [features, setFeatures] = useState(FEATURES);
+  const { data: settings, isLoading } = useAdminSettings(true);
+  const saveSettings = useSaveSettings();
 
-  const toggleFeature = (id: string) => {
-    setFeatures((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, enabled: !f.enabled } : f))
-    );
-    toast({ title: "Configuração atualizada", description: "As alterações são locais e temporárias." });
+  const [globalConfig, setGlobalConfig] = useState({ system_name: "Aurora Build", maintenance_mode: false });
+  const [creditCosts, setCreditCosts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (settings?.global_config) setGlobalConfig(settings.global_config);
+    if (settings?.credit_costs) setCreditCosts(settings.credit_costs);
+  }, [settings]);
+
+  const saveGlobal = () => {
+    saveSettings.mutate({ key: "global_config", value: globalConfig });
   };
+
+  const saveCosts = () => {
+    saveSettings.mutate({ key: "credit_costs", value: creditCosts });
+  };
+
+  const COST_LABELS: Record<string, string> = {
+    generate_app: "Gerar App",
+    generate_business: "Gerar Negócio",
+    ai_tool_names: "Nomes IA",
+    ai_tool_ideas: "Ideias IA",
+    ai_tool_description: "Descrição IA",
+    ai_tool_icon: "Ícone IA",
+    ai_tool_splash: "Splash IA",
+    ai_carousel: "Carrossel IA",
+    ai_video_5s: "Vídeo 5s",
+    ai_video_10s: "Vídeo 10s",
+    ai_video_15s: "Vídeo 15s",
+    ai_video_30s: "Vídeo 30s",
+    ai_video_continue: "Continuar Vídeo",
+    convert_aab: "Conversão AAB",
+  };
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-8">
@@ -51,34 +48,43 @@ const AdminSettings = () => {
         <Settings className="w-5 h-5 text-primary" /> Configurações
       </h2>
 
-      {/* Plan Config */}
+      {/* Global Config */}
       <section>
         <h3 className="font-display font-semibold text-foreground text-sm mb-3 flex items-center gap-2">
-          <Crown className="w-4 h-4 text-primary" /> Configuração dos Planos
+          <Wrench className="w-4 h-4 text-primary" /> Configurações Globais
         </h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          {PLAN_CONFIG.map((plan) => (
-            <div key={plan.plan} className="card-aurora p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-display font-bold text-foreground">{plan.plan}</h4>
-                <span className="text-primary font-bold text-sm">{plan.price}</span>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Créditos iniciais</span>
-                  <span className="font-bold text-foreground">{plan.credits}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Builds/dia</span>
-                  <span className="font-bold text-foreground">{plan.builds >= 999 ? "∞" : plan.builds}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Formatos</span>
-                  <span className="font-bold text-foreground">{plan.formats.join(", ")}</span>
-                </div>
-              </div>
+        <div className="card-aurora p-5 space-y-4">
+          <div>
+            <label className="text-xs text-muted-foreground font-semibold">Nome do Sistema</label>
+            <input
+              value={globalConfig.system_name}
+              onChange={(e) => setGlobalConfig({ ...globalConfig, system_name: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm mt-1"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Modo Manutenção</p>
+              <p className="text-xs text-muted-foreground">Desativa o acesso público ao sistema</p>
             </div>
-          ))}
+            <button
+              onClick={() => setGlobalConfig({ ...globalConfig, maintenance_mode: !globalConfig.maintenance_mode })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                globalConfig.maintenance_mode
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-secondary/10 text-secondary"
+              }`}
+            >
+              {globalConfig.maintenance_mode ? "Ativado" : "Desativado"}
+            </button>
+          </div>
+          <button
+            onClick={saveGlobal}
+            disabled={saveSettings.isPending}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" /> Salvar Globais
+          </button>
         </div>
       </section>
 
@@ -88,42 +94,40 @@ const AdminSettings = () => {
           <Zap className="w-4 h-4 text-primary" /> Custo por Ação (Créditos)
         </h3>
         <div className="card-aurora p-5">
-          <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
-            {CREDIT_COSTS.map((item) => (
-              <div key={item.action} className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
-                <span className="text-sm text-muted-foreground">{item.label}</span>
-                <span className="text-sm font-bold text-primary">{item.cost} créditos</span>
+          <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
+            {Object.entries(COST_LABELS).map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={creditCosts[key] ?? 0}
+                  onChange={(e) => setCreditCosts({ ...creditCosts, [key]: Number(e.target.value) })}
+                  className="w-20 px-2 py-1 rounded-lg bg-muted border border-border text-foreground text-sm text-center"
+                />
               </div>
             ))}
           </div>
+          <button
+            onClick={saveCosts}
+            disabled={saveSettings.isPending}
+            className="flex items-center gap-2 px-4 py-2 mt-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" /> Salvar Custos
+          </button>
         </div>
       </section>
 
-      {/* Feature Toggles */}
+      {/* Plan config note */}
       <section>
         <h3 className="font-display font-semibold text-foreground text-sm mb-3 flex items-center gap-2">
-          <Wrench className="w-4 h-4 text-primary" /> Funcionalidades
+          <Crown className="w-4 h-4 text-primary" /> Planos
         </h3>
-        <div className="grid md:grid-cols-2 gap-3">
-          {features.map((feature) => (
-            <div key={feature.id} className="card-aurora p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{feature.label}</p>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
-              </div>
-              <button
-                onClick={() => toggleFeature(feature.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  feature.enabled
-                    ? "bg-secondary/10 text-secondary hover:bg-secondary/20"
-                    : "bg-destructive/10 text-destructive hover:bg-destructive/20"
-                }`}
-              >
-                {feature.enabled ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                {feature.enabled ? "Ativo" : "Desativado"}
-              </button>
-            </div>
-          ))}
+        <div className="card-aurora p-5">
+          <p className="text-sm text-muted-foreground">
+            Os planos podem ser editados diretamente na aba <strong>Planos</strong> do menu lateral.
+            As alterações são salvas automaticamente no banco de dados.
+          </p>
         </div>
       </section>
     </div>

@@ -87,6 +87,36 @@ export function useAdminSystemHealth(enabled: boolean) {
   });
 }
 
+export function useAdminLogs(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin-logs"],
+    queryFn: () => fetchAdmin("logs"),
+    enabled,
+    refetchInterval: 30000,
+  });
+}
+
+export function useAdminSettings(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin-settings"],
+    queryFn: () => fetchAdmin("get_settings").then((r) => r.settings),
+    enabled,
+  });
+}
+
+export function useSaveSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: any }) =>
+      fetchAdmin("save_settings", "POST", { key, value }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-settings"] });
+      toast({ title: "Configuração salva!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}
+
 export function useUpdatePlan() {
   const qc = useQueryClient();
   return useMutation({
@@ -177,6 +207,20 @@ export function useDeleteUser() {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["admin-metrics"] });
       toast({ title: "Usuário excluído!" });
+    },
+    onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
+  });
+}
+
+export function useDeleteApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ project_id }: { project_id: string }) =>
+      fetchAdmin("delete_app", "POST", { project_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-apps"] });
+      qc.invalidateQueries({ queryKey: ["admin-metrics"] });
+      toast({ title: "App excluído!" });
     },
     onError: (err: Error) => toast({ title: "Erro", description: err.message, variant: "destructive" }),
   });

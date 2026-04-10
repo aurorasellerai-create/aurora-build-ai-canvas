@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchAdmin } from "./useAdminData";
+import { useAdminLogs } from "./useAdminData";
 import { FileText, Loader2, Search, AlertTriangle, CheckCircle, XCircle, Activity, Filter } from "lucide-react";
 
 const severityConfig: Record<string, { color: string; icon: typeof CheckCircle; bg: string }> = {
@@ -15,12 +14,7 @@ const AdminLogs = ({ enabled }: { enabled: boolean }) => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-logs"],
-    queryFn: () => fetchAdmin("system_health"),
-    enabled,
-    refetchInterval: 30000,
-  });
+  const { data, isLoading } = useAdminLogs(enabled);
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
@@ -84,7 +78,7 @@ const AdminLogs = ({ enabled }: { enabled: boolean }) => {
           ))}
         </div>
         {categories.length > 1 && (
-          <div className="flex gap-1 items-center">
+          <div className="flex gap-1 items-center flex-wrap">
             {["all", ...categories].map((c: string) => (
               <button
                 key={c}
@@ -122,6 +116,11 @@ const AdminLogs = ({ enabled }: { enabled: boolean }) => {
                     <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${config.color} ${config.bg}`}>
                       {log.severity}
                     </span>
+                    {log.email && (
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {log.email}
+                      </span>
+                    )}
                     {log.resolved && (
                       <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">
                         ✓ {log.resolution_method || "Corrigido"}

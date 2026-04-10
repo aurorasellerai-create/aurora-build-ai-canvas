@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useAdminApps } from "./useAdminData";
-import { Smartphone, Loader2, Copy, ExternalLink, Search, Download } from "lucide-react";
+import { useAdminApps, useDeleteApp } from "./useAdminData";
+import { Smartphone, Loader2, Copy, ExternalLink, Search, Download, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const AdminApps = ({ enabled }: { enabled: boolean }) => {
   const { data, isLoading } = useAdminApps(enabled);
+  const deleteApp = useDeleteApp();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -25,6 +26,11 @@ const AdminApps = ({ enabled }: { enabled: boolean }) => {
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast({ title: "URL copiada!" });
+  };
+
+  const handleDelete = (projectId: string, appName: string) => {
+    if (!confirm(`Excluir o app "${appName}"? Esta ação não pode ser desfeita.`)) return;
+    deleteApp.mutate({ project_id: projectId });
   };
 
   return (
@@ -121,6 +127,14 @@ const AdminApps = ({ enabled }: { enabled: boolean }) => {
                         </button>
                       </>
                     )}
+                    <button
+                      onClick={() => handleDelete(app.id, app.app_name)}
+                      className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                      title="Excluir app"
+                      disabled={deleteApp.isPending}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
                   </div>
                 </td>
               </tr>
