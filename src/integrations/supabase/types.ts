@@ -187,7 +187,10 @@ export type Database = {
           payment_date: string | null
           plan: Database["public"]["Enums"]["user_plan"]
           referral_code: string | null
+          status: string
           subscription_status: string | null
+          teste_expira_em: string | null
+          tipo_usuario: string
           updated_at: string
           user_id: string
         }
@@ -204,7 +207,10 @@ export type Database = {
           payment_date?: string | null
           plan?: Database["public"]["Enums"]["user_plan"]
           referral_code?: string | null
+          status?: string
           subscription_status?: string | null
+          teste_expira_em?: string | null
+          tipo_usuario?: string
           updated_at?: string
           user_id: string
         }
@@ -221,7 +227,10 @@ export type Database = {
           payment_date?: string | null
           plan?: Database["public"]["Enums"]["user_plan"]
           referral_code?: string | null
+          status?: string
           subscription_status?: string | null
+          teste_expira_em?: string | null
+          tipo_usuario?: string
           updated_at?: string
           user_id?: string
         }
@@ -360,6 +369,7 @@ export type Database = {
         Args: { p_action: string; p_amount?: number; p_user_id: string }
         Returns: boolean
       }
+      expire_trials: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
