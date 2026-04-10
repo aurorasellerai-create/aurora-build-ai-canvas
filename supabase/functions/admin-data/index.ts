@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
     // ── EXPIRE TRIALS ──
     // Run trial expiration on every admin request
-    await adminClient.rpc("expire_trials").catch(() => {});
+    try { await adminClient.rpc("expire_trials"); } catch (_) { /* ignore */ }
 
     // ── LIST USERS ──
     if (action === "list") {
