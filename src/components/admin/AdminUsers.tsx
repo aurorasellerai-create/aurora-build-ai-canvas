@@ -128,7 +128,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
             type="text"
             placeholder="Buscar nome ou email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 pr-4 py-2 rounded-lg bg-muted border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-72"
           />
         </div>
@@ -149,7 +149,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
         {statsCards.map((s) => (
           <button
             key={s.label}
-            onClick={() => setFilter(s.filterKey)}
+            onClick={() => handleFilterChange(s.filterKey)}
             className={`card-aurora p-3 text-center transition-all cursor-pointer ${filter === s.filterKey ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"}`}
           >
             <p className="text-lg font-display font-bold text-foreground">{s.icon} {s.value}</p>
@@ -168,7 +168,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
         ].map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => handleFilterChange(f.key)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               filter === f.key
                 ? "bg-primary text-primary-foreground"
@@ -196,7 +196,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((u: any) => {
+            {paginated.map((u: any) => {
               const daysLeft = getTrialDaysLeft(u.teste_expira_em);
               const founder = isFounder(u);
               return (
@@ -303,12 +303,52 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {paginated.length === 0 && (
               <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Mostrando {(currentPage - 1) * perPage + 1}–{Math.min(currentPage * perPage, filtered.length)} de {filtered.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage <= 1}
+              className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .map((p, idx, arr) => (
+                <span key={p}>
+                  {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-muted-foreground px-1">…</span>}
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+                      p === currentPage ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              ))}
+            <button
+              onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-30"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* User Detail Modal */}
       <AnimatePresence>
