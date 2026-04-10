@@ -22,6 +22,228 @@ const PLAN_CREDITS: Record<string, number> = {
 const recentRequests = new Map<string, number>();
 const RATE_LIMIT_MS = 5000;
 
+function getAdminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
+function parseWebhookBody(body: any) {
+  const orderStatus = body?.order_status || body?.subscription_status || body?.status;
+  const customerEmail = body?.Customer?.email || body?.customer?.email || body?.email;
+  const customerName = body?.Customer?.full_name || body?.customer?.name || body?.name || "";
+  const transactionId = body?.order_id || body?.transaction_id || body?.id;
+  const amountRaw = body?.Commissions?.charge_amount || body?.commissions?.charge_amount ||
+    body?.product?.price || body?.amount || "0";
+  const amount = Math.round(parseFloat(String(amountRaw).replace(",", ".")) * 100);
+  const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
+
+  return { orderStatus, customerEmail, customerName, transactionId, amount, productName };
+}
+
+function classifyStatus(orderStatus: string) {
+  const isApproved = ["paid", "approved", "completed", "active"].includes(orderStatus);
+  const isRefunded = ["refunded", "chargedback", "chargeback"].includes(orderStatus);
+  const isCancelled = ["cancelled", "canceled", "expired", "inactive", "overdue"].includes(orderStatus);
+  const isRenewal = ["renewed", "subscription_renewed"].includes(orderStatus);
+  const isFailed = ["failed", "refused", "declined", "payment_failed"].includes(orderStatus);
+
+  let paymentStatus: "approved" | "refunded" | "cancelled" | "pending" = "pending";
+  if (isApproved || isRenewal) paymentStatus = "approved";
+  else if (isRefunded) paymentStatus = "refunded";
+  else if (isCancelled || isFailed) paymentStatus = "cancelled";
+
+  return { isApproved, isRefunded, isCancelled, isRenewal, isFailed, paymentStatus };
+}
+
+function isCreditProduct(productName: string) {
+  return productName.includes("crédito") || productName.includes("credito") ||
+    productName.includes("credit") || productName.includes("starter") ||
+    productName.includes("scale");
+}
+
+function detectPlan(productName: string): "pro" | "premium" {
+  if (productName.includes("premium") || productName.includes("elite")) return "premium";
+  return "pro";
+}
+
+function detectCreditPackage(productName: string): { packageName: string; creditsAmount: number } {
+  if (productName.includes("scale") || productName.includes("2000")) return { packageName: "scale", creditsAmount: 2000 };
+  if (productName.includes("pro") || productName.includes("500")) return { packageName: "pro", creditsAmount: 500 };
+  return { packageName: "starter", creditsAmount: 100 };
+}
+
+async function findOrCreateUser(adminClient: any, email: string, name: string) {
+  // Try to find existing user
+  const { data: { users } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+  let user = users?.find((u: any) => u.email === email);
+
+  if (!user) {
+    // Auto-create user with a random password (they can reset later)
+    const tempPassword = crypto.randomUUID() + "Aa1!";
+    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { display_name: name || email.split("@")[0] },
+    });
+
+    if (createError) {
+      throw new Error(`Failed to create user for ${email}: ${createError.message}`);
+    }
+    user = newUser.user;
+    console.log(`✅ Auto-created user for ${email}`);
+  }
+
+  return user;
+}
+
+async function handleCreditPurchase(
+  adminClient: any, user: any, transactionId: string,
+  productName: string, amount: number,
+  status: ReturnType<typeof classifyStatus>,
+  customerEmail: string
+) {
+  // Deduplication
+  const { data: existing } = await adminClient
+    .from("credit_purchases")
+    .select("id")
+    .eq("provider_transaction_id", transactionId)
+    .maybeSingle();
+
+  if (existing) {
+    console.warn(`⚠️ Duplicate credit purchase: ${transactionId}`);
+    return { duplicate: true };
+  }
+
+  const { packageName, creditsAmount } = detectCreditPackage(productName);
+
+  await adminClient.from("credit_purchases").insert({
+    user_id: user.id,
+    package_name: packageName,
+    credits_amount: creditsAmount,
+    amount,
+    provider: "kiwify",
+    provider_transaction_id: transactionId,
+    status: status.paymentStatus,
+  });
+
+  if (status.isApproved) {
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("credits_balance")
+      .eq("user_id", user.id)
+      .single();
+
+    await adminClient.from("profiles").update({
+      credits_balance: (profile?.credits_balance || 0) + creditsAmount,
+    }).eq("user_id", user.id);
+
+    console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
+  } else if (status.isRefunded) {
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("credits_balance")
+      .eq("user_id", user.id)
+      .single();
+
+    await adminClient.from("profiles").update({
+      credits_balance: Math.max(0, (profile?.credits_balance || 0) - creditsAmount),
+    }).eq("user_id", user.id);
+
+    console.log(`⚠️ Removed ${creditsAmount} credits from ${customerEmail} (refund)`);
+  }
+
+  return { duplicate: false };
+}
+
+async function handlePlanChange(
+  adminClient: any, user: any, transactionId: string,
+  productName: string, amount: number,
+  status: ReturnType<typeof classifyStatus>,
+  customerEmail: string
+) {
+  // Deduplication
+  const { data: existing } = await adminClient
+    .from("payments")
+    .select("id")
+    .eq("provider_transaction_id", transactionId)
+    .maybeSingle();
+
+  if (existing) {
+    // For renewals, update the existing payment record
+    if (status.isRenewal) {
+      await adminClient.from("payments").update({
+        status: "approved",
+        paid_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("provider_transaction_id", transactionId);
+
+      // Keep plan active
+      await adminClient.from("profiles").update({
+        subscription_status: "active",
+        payment_date: new Date().toISOString(),
+        status: "ativo",
+      }).eq("user_id", user.id);
+
+      console.log(`🔄 Renewal processed for ${customerEmail}`);
+      return { duplicate: false };
+    }
+
+    console.warn(`⚠️ Duplicate plan payment: ${transactionId}`);
+    return { duplicate: true };
+  }
+
+  const plan = detectPlan(productName);
+
+  await adminClient.from("payments").insert({
+    user_id: user.id,
+    plan,
+    amount,
+    provider: "kiwify",
+    provider_transaction_id: transactionId,
+    status: status.paymentStatus,
+    paid_at: status.isApproved || status.isRenewal ? new Date().toISOString() : null,
+  });
+
+  if (status.isApproved || status.isRenewal) {
+    const planCredits = PLAN_CREDITS[plan] || 0;
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("credits_balance")
+      .eq("user_id", user.id)
+      .single();
+
+    await adminClient.from("profiles").update({
+      plan,
+      subscription_status: "active",
+      payment_date: new Date().toISOString(),
+      credits_balance: (profile?.credits_balance || 0) + planCredits,
+      tipo_usuario: "cliente",
+      status: "ativo",
+    }).eq("user_id", user.id);
+
+    console.log(`✅ ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
+  } else if (status.isRefunded) {
+    await adminClient.from("profiles").update({
+      plan: "free",
+      subscription_status: "cancelled",
+      status: "ativo",
+    }).eq("user_id", user.id);
+    console.log(`⚠️ ${customerEmail} downgraded to free (refund)`);
+  } else if (status.isCancelled || status.isFailed) {
+    await adminClient.from("profiles").update({
+      plan: "free",
+      subscription_status: "cancelled",
+      status: "ativo",
+    }).eq("user_id", user.id);
+    console.log(`🚫 ${customerEmail} downgraded to free (cancelled/failed)`);
+  }
+
+  return { duplicate: false };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,11 +263,11 @@ Deno.serve(async (req) => {
     // Validate webhook token
     const webhookToken = Deno.env.get("KIWIFY_WEBHOOK_TOKEN");
     if (webhookToken) {
-      const signature = req.headers.get("x-kiwify-signature") || 
-                        req.headers.get("signature") ||
-                        body?.signature;
+      const signature = req.headers.get("x-kiwify-signature") ||
+        req.headers.get("signature") ||
+        body?.signature;
       if (signature !== webhookToken) {
-        console.error("❌ Invalid webhook signature — possible unauthorized attempt");
+        console.error("❌ Invalid webhook signature");
         return new Response(JSON.stringify({ error: "Invalid signature" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -53,17 +275,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const orderStatus = body?.order_status || body?.subscription_status || body?.status;
-    const customerEmail = body?.Customer?.email || body?.customer?.email || body?.email;
-    const transactionId = body?.order_id || body?.transaction_id || body?.id;
-    const amountRaw = body?.Commissions?.charge_amount || body?.commissions?.charge_amount || 
-                      body?.product?.price || body?.amount || "0";
-    const amount = Math.round(parseFloat(String(amountRaw).replace(",", ".")) * 100);
-
-    const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
+    const { orderStatus, customerEmail, customerName, transactionId, amount, productName } = parseWebhookBody(body);
 
     if (!customerEmail) {
-      console.error("❌ Missing customer email in webhook payload");
       return new Response(JSON.stringify({ error: "Customer email not found" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -71,184 +285,49 @@ Deno.serve(async (req) => {
     }
 
     if (!transactionId) {
-      console.error("❌ Missing transaction ID in webhook payload");
       return new Response(JSON.stringify({ error: "Transaction ID not found" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Rate limit: reject rapid duplicate calls with same transactionId
+    // Rate limit
     const now = Date.now();
     const lastSeen = recentRequests.get(transactionId);
     if (lastSeen && now - lastSeen < RATE_LIMIT_MS) {
-      console.warn(`⚠️ Rate limited: duplicate request for ${transactionId} within ${RATE_LIMIT_MS}ms`);
       return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     recentRequests.set(transactionId, now);
-    // Cleanup old entries
     for (const [key, ts] of recentRequests) {
       if (now - ts > 60000) recentRequests.delete(key);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const adminClient = getAdminClient();
+    const status = classifyStatus(orderStatus);
 
-    // Find user by email
-    const { data: { users } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-    const user = users?.find((u) => u.email === customerEmail);
+    // Find or auto-create user
+    const user = await findOrCreateUser(adminClient, customerEmail, customerName);
 
-    if (!user) {
-      console.error(`❌ User not found for email: ${customerEmail}`);
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const isApproved = orderStatus === "paid" || orderStatus === "approved" || 
-                       orderStatus === "completed" || orderStatus === "active";
-    const isRefunded = orderStatus === "refunded" || orderStatus === "chargedback" || 
-                       orderStatus === "chargeback";
-
-    let paymentStatus: "approved" | "refunded" | "cancelled" | "pending" = "pending";
-    if (isApproved) paymentStatus = "approved";
-    else if (isRefunded) paymentStatus = "refunded";
-
-    // Detect if this is a credit package purchase or a plan upgrade
-    const isCreditPurchase = productName.includes("crédito") || productName.includes("credito") || 
-                             productName.includes("credit") || productName.includes("starter") || 
-                             productName.includes("scale");
-    
-    if (isCreditPurchase) {
-      // --- CREDIT PACKAGE PURCHASE ---
-      // Deduplication: check if this transaction already exists
-      const { data: existingPurchase } = await adminClient
-        .from("credit_purchases")
-        .select("id")
-        .eq("provider_transaction_id", transactionId)
-        .maybeSingle();
-
-      if (existingPurchase) {
-        console.warn(`⚠️ Duplicate credit purchase detected: ${transactionId} — skipping`);
-        return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      let packageName = "starter";
-      let creditsAmount = 100;
-      
-      if (productName.includes("scale") || productName.includes("2000")) {
-        packageName = "scale";
-        creditsAmount = 2000;
-      } else if (productName.includes("pro") || productName.includes("500")) {
-        packageName = "pro";
-        creditsAmount = 500;
-      }
-
-      // Record credit purchase
-      await adminClient.from("credit_purchases").insert({
-        user_id: user.id,
-        package_name: packageName,
-        credits_amount: creditsAmount,
-        amount,
-        provider: "kiwify",
-        provider_transaction_id: transactionId,
-        status: paymentStatus,
-      });
-
-      if (isApproved) {
-        const { data: profile } = await adminClient
-          .from("profiles")
-          .select("credits_balance")
-          .eq("user_id", user.id)
-          .single();
-
-        await adminClient.from("profiles").update({
-          credits_balance: (profile?.credits_balance || 0) + creditsAmount,
-        }).eq("user_id", user.id);
-
-        console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
-      } else if (isRefunded) {
-        const { data: profile } = await adminClient
-          .from("profiles")
-          .select("credits_balance")
-          .eq("user_id", user.id)
-          .single();
-
-        await adminClient.from("profiles").update({
-          credits_balance: Math.max(0, (profile?.credits_balance || 0) - creditsAmount),
-        }).eq("user_id", user.id);
-
-        console.log(`⚠️ Removed ${creditsAmount} credits from ${customerEmail} (refund)`);
-      }
+    let result;
+    if (isCreditProduct(productName)) {
+      result = await handleCreditPurchase(adminClient, user, transactionId, productName, amount, status, customerEmail);
     } else {
-      // --- PLAN UPGRADE ---
-      // Deduplication: check if this transaction already exists
-      const { data: existingPayment } = await adminClient
-        .from("payments")
-        .select("id")
-        .eq("provider_transaction_id", transactionId)
-        .maybeSingle();
-
-      if (existingPayment) {
-        console.warn(`⚠️ Duplicate plan payment detected: ${transactionId} — skipping`);
-        return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      let plan: "pro" | "premium" = "pro";
-      if (productName.includes("premium") || productName.includes("elite")) {
-        plan = "premium";
-      }
-
-      // Record payment
-      await adminClient.from("payments").insert({
-        user_id: user.id,
-        plan,
-        amount,
-        provider: "kiwify",
-        provider_transaction_id: transactionId,
-        status: paymentStatus,
-        paid_at: isApproved ? new Date().toISOString() : null,
-      });
-
-      if (isApproved) {
-        const planCredits = PLAN_CREDITS[plan] || 0;
-        const { data: profile } = await adminClient
-          .from("profiles")
-          .select("credits_balance")
-          .eq("user_id", user.id)
-          .single();
-
-        await adminClient.from("profiles").update({
-          plan,
-          subscription_status: "active",
-          payment_date: new Date().toISOString(),
-          credits_balance: (profile?.credits_balance || 0) + planCredits,
-          tipo_usuario: "cliente",
-          status: "ativo",
-        }).eq("user_id", user.id);
-
-        console.log(`✅ User ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
-      } else if (isRefunded) {
-        await adminClient.from("profiles").update({
-          plan: "free",
-          subscription_status: "cancelled",
-        }).eq("user_id", user.id);
-        console.log(`⚠️ User ${customerEmail} downgraded to free (refund)`);
-      }
+      result = await handlePlanChange(adminClient, user, transactionId, productName, amount, status, customerEmail);
     }
 
-    return new Response(JSON.stringify({ success: true, status: paymentStatus }), {
+    // Log event
+    await adminClient.from("system_logs").insert({
+      user_id: user.id,
+      severity: "info",
+      category: "payment",
+      message: `Webhook: ${orderStatus} for ${productName || "plan"} (${customerEmail})`,
+      details: { transactionId, orderStatus, productName, amount, paymentStatus: status.paymentStatus },
+    }).catch(() => {});
+
+    return new Response(JSON.stringify({ success: true, status: status.paymentStatus }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
