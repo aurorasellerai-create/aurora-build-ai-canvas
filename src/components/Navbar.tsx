@@ -55,6 +55,15 @@ const Navbar = () => {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
+          {canInstall && (
+            <button
+              onClick={install}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-display font-semibold rounded-lg border border-secondary/50 text-secondary hover:bg-secondary/10 transition-all"
+            >
+              <Download size={15} />
+              Instalar
+            </button>
+          )}
           {user ? (
             <Link
               to="/dashboard"
