@@ -364,6 +364,31 @@ Deno.serve(async (req) => {
         revenueByMonth[month] = (revenueByMonth[month] || 0) + (p.amount || 0);
       });
 
+      // Kiwify webhook events from system_logs
+      const { data: webhookLogs } = await adminClient
+        .from("system_logs")
+        .select("*")
+        .eq("category", "webhook")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      const { data: { users: authUsers } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+      const emailMap: Record<string, string> = {};
+      authUsers?.forEach((u) => { emailMap[u.id] = u.email || ""; });
+
+      const enrichedWebhookLogs = (webhookLogs || []).map((l) => ({
+        ...l,
+        email: l.user_id ? (emailMap[l.user_id] || "—") : null,
+      }));
+
+      // Kiwify stats
+      const kiwifyApproved = (webhookLogs || []).filter((l) =>
+        l.message?.includes("aprovad") || l.message?.includes("ativad") || l.message?.includes("renov")
+      ).length;
+      const kiwifyCancelled = (webhookLogs || []).filter((l) =>
+        l.message?.includes("cancelad") || l.message?.includes("rebaixad") || l.message?.includes("falha")
+      ).length;
+
       return json({
         totalRevenue,
         monthlyRevenue,
@@ -372,6 +397,12 @@ Deno.serve(async (req) => {
         payments: payments || [],
         creditPurchases: creditPurchases || [],
         revenueByMonth,
+        kiwifyLogs: enrichedWebhookLogs,
+        kiwifyStats: {
+          total: (webhookLogs || []).length,
+          approved: kiwifyApproved,
+          cancelled: kiwifyCancelled,
+        },
       });
     }
 

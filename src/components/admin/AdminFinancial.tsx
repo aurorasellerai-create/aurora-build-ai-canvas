@@ -1,14 +1,49 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminFinancial } from "./useAdminData";
-import { DollarSign, Loader2, Search } from "lucide-react";
+import { DollarSign, Loader2, Zap, RefreshCw, CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from "recharts";
 
+const EVENT_ICONS: Record<string, { icon: typeof CheckCircle; color: string }> = {
+  info: { icon: CheckCircle, color: "text-secondary" },
+  warning: { icon: AlertTriangle, color: "text-yellow-500" },
+  error: { icon: XCircle, color: "text-destructive" },
+  critical: { icon: XCircle, color: "text-destructive" },
+};
+
 const AdminFinancial = ({ enabled }: { enabled: boolean }) => {
   const { data, isLoading } = useAdminFinancial(enabled);
-  const [tab, setTab] = useState<"payments" | "credits">("payments");
+  const [tab, setTab] = useState<"payments" | "credits" | "kiwify">("payments");
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for webhook events
+  useEffect(() => {
+    if (!enabled) return;
+
+    const channel = supabase
+      .channel("admin-kiwify-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "system_logs",
+          filter: "category=eq.webhook",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["admin-financial"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, queryClient]);
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
@@ -22,6 +57,9 @@ const AdminFinancial = ({ enabled }: { enabled: boolean }) => {
       month: month.substring(5) + "/" + month.substring(2, 4),
       receita: (amount as number) / 100,
     }));
+
+  const kiwifyLogs = data?.kiwifyLogs || [];
+  const kiwifyStats = data?.kiwifyStats || { total: 0, approved: 0, cancelled: 0 };
 
   return (
     <div className="space-y-6">
@@ -71,22 +109,21 @@ const AdminFinancial = ({ enabled }: { enabled: boolean }) => {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        <button
-          onClick={() => setTab("payments")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            tab === "payments" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          Pagamentos ({(data?.payments || []).length})
-        </button>
-        <button
-          onClick={() => setTab("credits")}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            tab === "credits" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          Compras de créditos ({(data?.creditPurchases || []).length})
-        </button>
+        {([
+          { id: "payments" as const, label: "Pagamentos", count: (data?.payments || []).length },
+          { id: "credits" as const, label: "Compras de créditos", count: (data?.creditPurchases || []).length },
+          { id: "kiwify" as const, label: "🔴 Kiwify Live", count: kiwifyStats.total },
+        ]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              tab === t.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {t.label} ({t.count})
+          </button>
+        ))}
       </div>
 
       {/* Payments table */}
@@ -159,6 +196,152 @@ const AdminFinancial = ({ enabled }: { enabled: boolean }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Kiwify Live Panel */}
+      {tab === "kiwify" && (
+        <div className="space-y-4">
+          {/* Kiwify Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card-aurora p-4 text-center">
+              <p className="text-2xl font-display font-bold text-primary">{kiwifyStats.total}</p>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Eventos total</p>
+            </div>
+            <div className="card-aurora p-4 text-center">
+              <p className="text-2xl font-display font-bold text-secondary">{kiwifyStats.approved}</p>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Aprovados</p>
+            </div>
+            <div className="card-aurora p-4 text-center">
+              <p className="text-2xl font-display font-bold text-destructive">{kiwifyStats.cancelled}</p>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Cancelados</p>
+            </div>
+          </div>
+
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+            <span>Atualização em tempo real via Realtime</span>
+            <button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["admin-financial"] })}
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Atualizar
+            </button>
+          </div>
+
+          {/* Kiwify event timeline */}
+          <div className="card-aurora p-5">
+            <h3 className="font-display font-bold text-foreground mb-4 text-sm flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" /> Timeline de Eventos Kiwify
+            </h3>
+
+            {kiwifyLogs.length === 0 ? (
+              <div className="text-center py-8">
+                <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum evento de webhook registrado ainda</p>
+                <p className="text-xs text-muted-foreground mt-1">Os eventos aparecerão aqui em tempo real quando o webhook Kiwify receber dados</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {kiwifyLogs.map((log: any) => {
+                  const evtConfig = EVENT_ICONS[log.severity] || EVENT_ICONS.info;
+                  const Icon = evtConfig.icon;
+                  const details = log.details || {};
+
+                  return (
+                    <div key={log.id} className="relative pl-8 pb-3 border-l-2 border-border/50 last:border-0">
+                      {/* Timeline dot */}
+                      <div className={`absolute left-[-9px] top-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center ${
+                        log.severity === "error" || log.severity === "critical"
+                          ? "bg-destructive"
+                          : log.message?.includes("cancelad") || log.message?.includes("rebaixad")
+                          ? "bg-yellow-500"
+                          : "bg-secondary"
+                      }`}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                      </div>
+
+                      <div className="card-aurora p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <Icon className={`w-3.5 h-3.5 ${evtConfig.color} shrink-0`} />
+                              <span className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded ${
+                                log.severity === "error" ? "bg-destructive/10 text-destructive" :
+                                log.severity === "warning" ? "bg-yellow-500/10 text-yellow-500" :
+                                "bg-secondary/10 text-secondary"
+                              }`}>
+                                {log.severity}
+                              </span>
+                              {log.email && (
+                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                  {log.email}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-foreground font-medium">{log.message}</p>
+
+                            {/* Details */}
+                            {Object.keys(details).length > 0 && (
+                              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                                {details.order_id && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Pedido: </span>
+                                    <span className="text-foreground font-mono">{details.order_id}</span>
+                                  </div>
+                                )}
+                                {details.plan && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Plano: </span>
+                                    <span className="text-foreground capitalize font-semibold">{details.plan}</span>
+                                  </div>
+                                )}
+                                {details.email && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Email: </span>
+                                    <span className="text-foreground">{details.email}</span>
+                                  </div>
+                                )}
+                                {details.product && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Produto: </span>
+                                    <span className="text-foreground">{details.product}</span>
+                                  </div>
+                                )}
+                                {details.amount && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Valor: </span>
+                                    <span className="text-primary font-bold">R$ {(details.amount / 100).toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {details.credits_added != null && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Créditos: </span>
+                                    <span className="text-primary font-bold">+{details.credits_added}</span>
+                                  </div>
+                                )}
+                                {details.status && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Status: </span>
+                                    <span className="text-foreground">{details.status}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                            {new Date(log.created_at).toLocaleString("pt-BR")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
