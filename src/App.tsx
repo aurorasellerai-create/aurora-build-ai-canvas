@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useMonitoring } from "@/hooks/useMonitoring";
 import { initAnalytics } from "@/lib/analytics";
+import InstallBanner from "@/components/InstallBanner";
 
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -96,6 +97,7 @@ const App = () => (
             </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
+        <InstallBanner />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
