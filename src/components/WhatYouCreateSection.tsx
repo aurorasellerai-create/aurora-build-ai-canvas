@@ -105,7 +105,7 @@ const WhatYouCreateSection = () => {
 
   return (
     <>
-      <section className="py-20 px-4 bg-aurora-gradient">
+      <section id="beneficios" className="py-20 px-4 bg-aurora-gradient">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}

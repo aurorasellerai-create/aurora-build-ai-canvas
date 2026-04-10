@@ -20,7 +20,7 @@ const AIToolsSection = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="py-20 px-4" id="ferramentas">
+    <section className="py-20 px-4" id="ia">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0 }}
