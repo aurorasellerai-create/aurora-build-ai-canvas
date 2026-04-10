@@ -9,7 +9,7 @@ const items = [
 ];
 
 const WhyItWorksSection = () => (
-  <section className="py-20 px-4">
+  <section id="como-funciona" className="py-20 px-4">
     <div className="max-w-3xl mx-auto text-center">
       <motion.h2
         initial={{ opacity: 0 }}
