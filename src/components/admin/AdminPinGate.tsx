@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Shield, Lock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-const ADMIN_PIN = "123456";
+const ADMIN_PIN = "746454";
 const STORAGE_KEY = "admin_auth";
 const LOCKOUT_KEY = "admin_lockout";
 const ATTEMPTS_KEY = "admin_attempts";
