@@ -7,4 +7,4 @@ Disallow: /historico
 Disallow: /generator
 Disallow: /project
 
-Sitemap: https://aurora-build-ai-canvas.lovable.app/sitemap.xml
+Sitemap: https://aurorabuild.com.br/sitemap.xml

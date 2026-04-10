@@ -153,7 +153,7 @@ const CreateFromScratch = () => {
                   <Globe className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
                   <input
                     type="url"
-                    placeholder={origin === "lovable" ? "https://meuapp.lovable.app" : "https://meusite.com"}
+                    placeholder={origin === "lovable" ? "https://meuapp.lovable.app" : "https://meusite.com.br"}
                     value={siteUrl}
                     onChange={(e) => setSiteUrl(e.target.value)}
                     required
