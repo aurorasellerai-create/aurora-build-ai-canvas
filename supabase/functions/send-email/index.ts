@@ -603,7 +603,7 @@ async function logEmail(templateName: string, recipientEmail: string, status: st
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -614,7 +614,7 @@ Deno.serve(async (req) => {
     
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -633,7 +633,7 @@ Deno.serve(async (req) => {
       const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
       if (claimsError || !claimsData?.claims) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
     }
@@ -649,7 +649,7 @@ Deno.serve(async (req) => {
     if (!body.templateName || !body.recipientEmail) {
       return new Response(JSON.stringify({ error: "templateName and recipientEmail are required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -684,14 +684,14 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, id: result.id }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
     console.error("❌ Email error:", error);
     const msg = error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });
