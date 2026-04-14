@@ -87,7 +87,7 @@ const App = () => (
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
               <Route path="/business" element={<ProtectedRoute><BusinessGenerator /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />

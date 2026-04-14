@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Shield, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 interface AdminPinGateProps {
   children: ReactNode;
@@ -30,8 +30,19 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
     staleTime: 30_000,
   });
 
-  // Show loading while auth is resolving OR role check hasn't completed yet
-  if (authLoading || !user || checkingRole || !isFetched) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (checkingRole || !isFetched) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
