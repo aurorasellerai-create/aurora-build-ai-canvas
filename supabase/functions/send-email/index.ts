@@ -257,9 +257,78 @@ function passwordResetEmail(name: string, resetLink: string): { subject: string;
   };
 }
 
+function appReadyEmail(
+  name: string,
+  appName: string,
+  downloadUrl: string
+): { subject: string; html: string } {
+  return {
+    subject: `📱 Seu app "${appName}" está pronto! — Aurora Build`,
+    html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0F1A;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#131729;border-radius:16px;border:1px solid #1E2340;overflow:hidden;">
+  <tr><td style="background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);padding:32px;text-align:center;">
+    <h1 style="margin:0;font-size:28px;color:#0B0F1A;font-weight:800;">Aurora Build</h1>
+  </td></tr>
+  <tr><td style="padding:40px 32px;">
+    <h2 style="color:#4CAF50;font-size:22px;margin:0 0 16px;">Seu app está pronto! 📱🎉</h2>
+    <p style="color:#E0E0E0;font-size:15px;line-height:1.7;margin:0 0 24px;">
+      Olá, <strong style="color:#fff;">${name}</strong>! Ótima notícia:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;border-radius:12px;padding:24px;margin:0 0 24px;">
+    <tr><td>
+      <table width="100%" cellpadding="8" cellspacing="0">
+        <tr>
+          <td style="color:#999;font-size:13px;">App</td>
+          <td align="right" style="color:#FFD700;font-size:14px;font-weight:700;">${appName}</td>
+        </tr>
+        <tr>
+          <td style="color:#999;font-size:13px;">Status</td>
+          <td align="right" style="color:#4CAF50;font-size:14px;font-weight:700;">Concluído ✓</td>
+        </tr>
+      </table>
+    </td></tr>
+    </table>
+    <p style="color:#E0E0E0;font-size:14px;line-height:1.7;margin:0 0 32px;">
+      Seu aplicativo Android foi gerado com sucesso e está disponível para download. 
+      Clique no botão abaixo para baixar o arquivo:
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+    <tr><td style="background:linear-gradient(135deg,#4CAF50,#2E7D32);border-radius:8px;padding:14px 32px;">
+      <a href="${downloadUrl}" style="color:#fff;text-decoration:none;font-weight:700;font-size:15px;">
+        ⬇️ Baixar meu app
+      </a>
+    </td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <tr><td style="background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:8px;padding:14px 32px;">
+      <a href="https://aurorabuild.com.br/dashboard" style="color:#0B0F1A;text-decoration:none;font-weight:700;font-size:15px;">
+        Ver no painel →
+      </a>
+    </td></tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #1E2340;text-align:center;">
+    <p style="color:#666;font-size:12px;margin:0;">
+      Aurora Build — <a href="https://aurorabuild.com.br" style="color:#FFD700;text-decoration:none;">aurorabuild.com.br</a>
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  };
+}
+
 // ─── Templates Registry ───
 
-type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase" | "password-reset";
+type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase" | "password-reset" | "app-ready";
 
 interface EmailRequest {
   templateName: TemplateName;
@@ -279,6 +348,8 @@ function renderTemplate(req: EmailRequest): { subject: string; html: string } {
       return creditPurchaseEmail(name, req.data?.creditsAmount || 0, req.data?.packageName || "starter");
     case "password-reset":
       return passwordResetEmail(name, req.data?.resetLink || "");
+    case "app-ready":
+      return appReadyEmail(name, req.data?.appName || "Seu App", req.data?.downloadUrl || "");
     default:
       throw new Error(`Template não encontrado: ${req.templateName}`);
   }
