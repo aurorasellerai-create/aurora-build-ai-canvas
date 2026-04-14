@@ -169,6 +169,15 @@ async function handleCreditPurchase(
     }).eq("user_id", user.id);
 
     console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
+
+    // Send credit purchase confirmation email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "credit-purchase",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], creditsAmount, packageName }
+    );
   } else if (status.isRefunded) {
     const { data: profile } = await adminClient
       .from("profiles")
