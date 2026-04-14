@@ -1,5 +1,33 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Helper to send transactional emails via send-email edge function
+async function sendTransactionalEmail(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  templateName: string,
+  recipientEmail: string,
+  data?: Record<string, any>
+) {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ templateName, recipientEmail, data }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      console.error(`⚠️ Email "${templateName}" failed for ${recipientEmail}: ${err}`);
+    } else {
+      console.log(`📧 Email "${templateName}" queued for ${recipientEmail}`);
+    }
+  } catch (e) {
+    console.error(`⚠️ Email send error:`, e);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
