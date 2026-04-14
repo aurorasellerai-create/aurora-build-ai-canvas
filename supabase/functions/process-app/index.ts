@@ -252,6 +252,45 @@ Deno.serve(async (req) => {
 
     if (finalUpdateError) throw new Error(`Falha ao finalizar job: ${finalUpdateError.message}`);
 
+    // --- send app-ready email ---
+    try {
+      const { data: job } = await supabase
+        .from("conversion_jobs")
+        .select("user_id, source_url")
+        .eq("id", jobId)
+        .single();
+
+      if (job) {
+        const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        const user = users?.find((u: any) => u.id === job.user_id);
+        if (user?.email) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("user_id", job.user_id)
+            .maybeSingle();
+
+          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+            body: JSON.stringify({
+              templateName: "app-ready",
+              recipientEmail: user.email,
+              data: {
+                name: profile?.display_name || user.email.split("@")[0],
+                appName: new URL(job.source_url).hostname,
+                downloadUrl: downloadUrl,
+              },
+            }),
+          });
+          console.log(`📧 App-ready email sent to ${user.email}`);
+        }
+      }
+    } catch (emailErr) {
+      console.error("⚠️ Failed to send app-ready email:", emailErr);
+    }
+
     console.log(`[PROCESS] Job ${jobId} completed in ${Date.now() - startTime}ms — download: ${downloadUrl}`);
     return respond({ success: true, job_id: jobId, download_url: downloadUrl, message: "Processamento concluído com sucesso." });
   } catch (error) {
