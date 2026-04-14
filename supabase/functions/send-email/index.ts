@@ -7,10 +7,22 @@ function getAdminClient() {
   );
 }
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://aurorabuild.com.br",
+  "https://www.aurorabuild.com.br",
+  "https://aurora-build-ai-canvas.lovable.app",
+];
+
+function getCorsHeaders(req?: Request) {
+  const origin = req?.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
+
+const corsHeaders = getCorsHeaders();
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 const FROM_EMAIL = "Aurora Build <contato@aurorabuild.com.br>";
