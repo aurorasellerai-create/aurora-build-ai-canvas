@@ -153,7 +153,15 @@ const Auth = () => {
             />
           </div>
 
-          {error && <p className="text-destructive text-sm text-center">{error}</p>}
+          {isLocked && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+              <ShieldAlert className="w-5 h-5 text-destructive flex-shrink-0" />
+              <p className="text-destructive text-sm font-medium">
+                Bloqueado por segurança. Aguarde {Math.floor(lockCountdown / 60)}:{String(lockCountdown % 60).padStart(2, "0")}
+              </p>
+            </div>
+          )}
+          {error && !isLocked && <p className="text-destructive text-sm text-center">{error}</p>}
           {message && <p className="text-secondary text-sm text-center">{message}</p>}
 
           <button
