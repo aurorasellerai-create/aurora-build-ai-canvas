@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Mail, Lock, User, ShieldAlert } from "lucide-react";
 import AuthBackButton from "@/components/AuthBackButton";
+import { supabase } from "@/integrations/supabase/client";
+
+const MAX_CLIENT_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,6 +17,9 @@ const Auth = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [lockCountdown, setLockCountdown] = useState(0);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -22,25 +29,79 @@ const Auth = () => {
     if (referralCode) setIsLogin(false);
   }, [referralCode]);
 
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      setLockCountdown(remaining);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setFailedAttempts(0);
+        setError("");
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
+
+  const isLocked = lockedUntil !== null && Date.now() < lockedUntil;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
+
+    if (isLocked) {
+      setError(`Muitas tentativas. Aguarde ${lockCountdown}s.`);
+      return;
+    }
+
     setLoading(true);
 
-    if (isLogin) {
-      const { error } = await signIn(email, password);
-      if (error) setError(error.message);
-      else navigate("/dashboard");
-    } else {
-      const { error } = await signUp(email, password, displayName, referralCode || undefined);
-      if (error) setError(error.message);
-      else {
-        setMessage("Conta criada com sucesso! Redirecionando...");
-        setTimeout(() => navigate("/dashboard"), 1500);
+    try {
+      if (isLogin) {
+        // Check server-side rate limit first
+        const { data: allowed } = await supabase.rpc("check_login_rate_limit", { p_email: email });
+        if (allowed === false) {
+          setLockedUntil(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+          setError(`Conta temporariamente bloqueada. Tente novamente em ${LOCKOUT_MINUTES} minutos.`);
+          setLoading(false);
+          return;
+        }
+
+        const { error } = await signIn(email, password);
+        if (error) {
+          // Record failed attempt server-side
+          await supabase.rpc("record_login_attempt", { p_email: email, p_success: false });
+          const newAttempts = failedAttempts + 1;
+          setFailedAttempts(newAttempts);
+
+          if (newAttempts >= MAX_CLIENT_ATTEMPTS) {
+            setLockedUntil(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+            setError(`Muitas tentativas falhadas. Conta bloqueada por ${LOCKOUT_MINUTES} minutos.`);
+          } else {
+            const remaining = MAX_CLIENT_ATTEMPTS - newAttempts;
+            setError(`${error.message} (${remaining} tentativa${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""})`);
+          }
+        } else {
+          // Record successful attempt (clears failed attempts)
+          await supabase.rpc("record_login_attempt", { p_email: email, p_success: true });
+          setFailedAttempts(0);
+          navigate("/dashboard");
+        }
+      } else {
+        const { error } = await signUp(email, password, displayName, referralCode || undefined);
+        if (error) setError(error.message);
+        else {
+          setMessage("Conta criada com sucesso! Redirecionando...");
+          setTimeout(() => navigate("/dashboard"), 1500);
+        }
       }
+    } catch (err) {
+      setError("Erro inesperado. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
