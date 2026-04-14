@@ -61,6 +61,49 @@ const markJobAsFailed = async (
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
+
+    // Send failure notification email
+    try {
+      const { data: job } = await supabase
+        .from("conversion_jobs")
+        .select("user_id, source_url")
+        .eq("id", jobId)
+        .single();
+
+      if (job) {
+        const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        const user = users?.find((u: any) => u.id === job.user_id);
+        if (user?.email) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("user_id", job.user_id)
+            .maybeSingle();
+
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          let appName = "Seu App";
+          try { appName = new URL(job.source_url).hostname; } catch {}
+
+          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+            body: JSON.stringify({
+              templateName: "app-failed",
+              recipientEmail: user.email,
+              data: {
+                name: profile?.display_name || user.email.split("@")[0],
+                appName,
+                errorMessage: message,
+              },
+            }),
+          });
+          console.log(`📧 App-failed email sent to ${user.email}`);
+        }
+      }
+    } catch (emailErr) {
+      console.error("⚠️ Failed to send app-failed email:", emailErr);
+    }
   } catch (updateError) {
     console.error(`[PROCESS] Failed to mark job ${jobId} as error at ${step}:`, updateError);
   }
