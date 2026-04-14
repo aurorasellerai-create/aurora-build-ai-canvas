@@ -233,6 +233,15 @@ async function handlePlanChange(
         status: "ativo",
       }).eq("user_id", user.id);
 
+      // Send renewal email
+      await sendTransactionalEmail(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        "plan-renewal",
+        customerEmail,
+        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) }
+      );
+
       console.log(`🔄 Renewal processed for ${customerEmail}`);
       return { duplicate: false };
     }
@@ -286,6 +295,14 @@ async function handlePlanChange(
       subscription_status: "cancelled",
       status: "ativo",
     }).eq("user_id", user.id);
+
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "plan-cancelled",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan, reason: "refunded" }
+    );
     console.log(`⚠️ ${customerEmail} downgraded to free (refund)`);
   } else if (status.isCancelled || status.isFailed) {
     await adminClient.from("profiles").update({
@@ -293,6 +310,14 @@ async function handlePlanChange(
       subscription_status: "cancelled",
       status: "ativo",
     }).eq("user_id", user.id);
+
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "plan-cancelled",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan, reason: "cancelled" }
+    );
     console.log(`🚫 ${customerEmail} downgraded to free (cancelled/failed)`);
   }
 

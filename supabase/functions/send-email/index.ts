@@ -398,9 +398,139 @@ function appFailedEmail(
   };
 }
 
+function planRenewalEmail(name: string, plan: string): { subject: string; html: string } {
+  const planLabel = plan === "premium" ? "Premium" : "Pro";
+  return {
+    subject: `🔄 Plano ${planLabel} renovado — Aurora Build`,
+    html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0F1A;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#131729;border-radius:16px;border:1px solid #1E2340;overflow:hidden;">
+  <tr><td style="background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);padding:32px;text-align:center;">
+    <h1 style="margin:0;font-size:28px;color:#0B0F1A;font-weight:800;">Aurora Build</h1>
+  </td></tr>
+  <tr><td style="padding:40px 32px;">
+    <h2 style="color:#FFD700;font-size:22px;margin:0 0 16px;">Plano renovado com sucesso! 🔄</h2>
+    <p style="color:#E0E0E0;font-size:15px;line-height:1.7;margin:0 0 24px;">
+      Olá, <strong style="color:#fff;">${name}</strong>! Seu plano <strong style="color:#FFD700;">${planLabel}</strong> foi renovado automaticamente.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;border-radius:12px;padding:24px;margin:0 0 24px;">
+    <tr><td>
+      <table width="100%" cellpadding="8" cellspacing="0">
+        <tr>
+          <td style="color:#999;font-size:13px;">Plano</td>
+          <td align="right" style="color:#FFD700;font-size:14px;font-weight:700;">${planLabel}</td>
+        </tr>
+        <tr>
+          <td style="color:#999;font-size:13px;">Status</td>
+          <td align="right" style="color:#4CAF50;font-size:14px;font-weight:700;">Ativo ✓</td>
+        </tr>
+        <tr>
+          <td style="color:#999;font-size:13px;">Próxima renovação</td>
+          <td align="right" style="color:#00E5FF;font-size:14px;font-weight:700;">Automática</td>
+        </tr>
+      </table>
+    </td></tr>
+    </table>
+    <p style="color:#E0E0E0;font-size:14px;line-height:1.7;margin:0 0 32px;">
+      Continue criando apps incríveis com todos os recursos do plano ${planLabel}!
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <tr><td style="background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:8px;padding:14px 32px;">
+      <a href="https://aurorabuild.com.br/dashboard" style="color:#0B0F1A;text-decoration:none;font-weight:700;font-size:15px;">
+        Acessar meu painel →
+      </a>
+    </td></tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #1E2340;text-align:center;">
+    <p style="color:#666;font-size:12px;margin:0;">
+      Aurora Build — <a href="https://aurorabuild.com.br" style="color:#FFD700;text-decoration:none;">aurorabuild.com.br</a>
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  };
+}
+
+function planCancelledEmail(name: string, plan: string, reason: string): { subject: string; html: string } {
+  const planLabel = plan === "premium" ? "Premium" : "Pro";
+  const reasonText = reason === "refunded" ? "Reembolso processado" : reason === "expired" ? "Assinatura expirada" : "Cancelamento solicitado";
+  return {
+    subject: `😔 Plano ${planLabel} cancelado — Aurora Build`,
+    html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0F1A;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#131729;border-radius:16px;border:1px solid #1E2340;overflow:hidden;">
+  <tr><td style="background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);padding:32px;text-align:center;">
+    <h1 style="margin:0;font-size:28px;color:#0B0F1A;font-weight:800;">Aurora Build</h1>
+  </td></tr>
+  <tr><td style="padding:40px 32px;">
+    <h2 style="color:#FF9800;font-size:22px;margin:0 0 16px;">Plano cancelado 😔</h2>
+    <p style="color:#E0E0E0;font-size:15px;line-height:1.7;margin:0 0 24px;">
+      Olá, <strong style="color:#fff;">${name}</strong>! Seu plano <strong style="color:#FFD700;">${planLabel}</strong> foi desativado.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;border-radius:12px;padding:24px;margin:0 0 24px;">
+    <tr><td>
+      <table width="100%" cellpadding="8" cellspacing="0">
+        <tr>
+          <td style="color:#999;font-size:13px;">Plano anterior</td>
+          <td align="right" style="color:#FFD700;font-size:14px;font-weight:700;">${planLabel}</td>
+        </tr>
+        <tr>
+          <td style="color:#999;font-size:13px;">Plano atual</td>
+          <td align="right" style="color:#999;font-size:14px;font-weight:700;">Free</td>
+        </tr>
+        <tr>
+          <td style="color:#999;font-size:13px;">Motivo</td>
+          <td align="right" style="color:#FF9800;font-size:14px;font-weight:700;">${reasonText}</td>
+        </tr>
+      </table>
+    </td></tr>
+    </table>
+    <p style="color:#E0E0E0;font-size:14px;line-height:1.7;margin:0 0 12px;">
+      Sua conta continua ativa no plano <strong>Free</strong>. Você ainda pode:
+    </p>
+    <ul style="color:#E0E0E0;font-size:14px;line-height:2;padding-left:20px;margin:0 0 32px;">
+      <li>📱 Converter 1 app por dia</li>
+      <li>🤖 Usar ferramentas de IA com créditos</li>
+      <li>⬆️ Fazer upgrade a qualquer momento</li>
+    </ul>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
+    <tr><td style="background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:8px;padding:14px 32px;">
+      <a href="https://aurorabuild.com.br/pricing" style="color:#0B0F1A;text-decoration:none;font-weight:700;font-size:15px;">
+        Reativar meu plano →
+      </a>
+    </td></tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #1E2340;text-align:center;">
+    <p style="color:#666;font-size:12px;margin:0;">
+      Aurora Build — <a href="https://aurorabuild.com.br" style="color:#FFD700;text-decoration:none;">aurorabuild.com.br</a>
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  };
+}
+
 // ─── Templates Registry ───
 
-type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase" | "password-reset" | "app-ready" | "app-failed";
+type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase" | "password-reset" | "app-ready" | "app-failed" | "plan-renewal" | "plan-cancelled";
 
 interface EmailRequest {
   templateName: TemplateName;
@@ -424,6 +554,10 @@ function renderTemplate(req: EmailRequest): { subject: string; html: string } {
       return appReadyEmail(name, req.data?.appName || "Seu App", req.data?.downloadUrl || "");
     case "app-failed":
       return appFailedEmail(name, req.data?.appName || "Seu App", req.data?.errorMessage || "Erro desconhecido");
+    case "plan-renewal":
+      return planRenewalEmail(name, req.data?.plan || "pro");
+    case "plan-cancelled":
+      return planCancelledEmail(name, req.data?.plan || "pro", req.data?.reason || "cancelled");
     default:
       throw new Error(`Template não encontrado: ${req.templateName}`);
   }
