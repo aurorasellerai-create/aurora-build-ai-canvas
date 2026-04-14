@@ -15,7 +15,6 @@ function getCorsHeaders(req?: Request) {
   };
 }
 
-const corsHeaders = getCorsHeaders();
 
 interface CleanupLog {
   jobs_marked: number;

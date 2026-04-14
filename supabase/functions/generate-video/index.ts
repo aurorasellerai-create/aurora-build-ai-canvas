@@ -15,7 +15,6 @@ function getCorsHeaders(req?: Request) {
   };
 }
 
-const corsHeaders = getCorsHeaders();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

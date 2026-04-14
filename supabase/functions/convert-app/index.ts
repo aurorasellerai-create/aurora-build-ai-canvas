@@ -16,7 +16,6 @@ function getCorsHeaders(req?: Request) {
   };
 }
 
-const corsHeaders = getCorsHeaders();
 
 const BodySchema = z.object({
   url: z.string().trim().url({ message: "URL inválida" }).startsWith("https://", { message: "URL deve usar HTTPS" }),

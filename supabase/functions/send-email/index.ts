@@ -22,7 +22,6 @@ function getCorsHeaders(req?: Request) {
   };
 }
 
-const corsHeaders = getCorsHeaders();
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 const FROM_EMAIL = "Aurora Build <contato@aurorabuild.com.br>";
