@@ -75,7 +75,7 @@ const PricingSection = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
-    <section className="py-20 px-4" id="precos">
+    <section className="py-20 px-4" id="precos" aria-label="Planos e preços para criar app Android">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0 }}

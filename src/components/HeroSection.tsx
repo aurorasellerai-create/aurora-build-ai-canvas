@@ -36,7 +36,7 @@ const AnimatedCounter = () => {
   const { count, ref } = useCountUp(1247, 2200);
   return (
     <p ref={ref} className="text-sm text-muted-foreground">
-      🚀 Mais de <span className="text-foreground font-bold tabular-nums">{count.toLocaleString("pt-BR")}</span> pessoas começaram hoje com a Aurora
+      🚀 <span className="text-foreground font-bold tabular-nums">{count.toLocaleString("pt-BR")}+</span> empreendedores já criaram seus apps com a Aurora
     </p>
   );
 };
@@ -44,6 +44,7 @@ const AnimatedCounter = () => {
 const HeroSection = () => {
   return (
     <section
+      aria-label="Criar app Android com inteligência artificial"
       className="relative flex items-center justify-center overflow-hidden"
       style={{ paddingTop: 100, paddingBottom: 80 }}
     >
@@ -67,45 +68,49 @@ const HeroSection = () => {
         transition={{ duration: 0.6 }}
         className="relative z-10 max-w-[750px] mx-auto px-6 text-center space-y-5"
       >
+        {/* Keyword-rich H1 with emotional promise */}
         <h1 className="font-display font-bold leading-[1.12] text-[24px] sm:text-[32px] md:text-[40px] lg:text-[46px] text-foreground">
-          Crie apps, vídeos e conteúdos com IA
+          Crie seu app Android com IA
           <br />
-          <span className="text-gradient-gold">— tudo em um só lugar</span>
+          <span className="text-gradient-gold">— sem código, sem complicação</span>
         </h1>
 
         <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-          Crie seu app, vídeo ou carrossel com IA — sem código, sem experiência e sem complicação.
+          Transforme qualquer site em aplicativo <strong className="text-foreground">pronto para vender</strong> em minutos.
+          A IA faz tudo: app, vídeo, logo e conteúdo.
         </p>
 
+        {/* Single strong CTA + secondary */}
         <div className="flex flex-col sm:flex-row gap-3 pt-3 justify-center">
           <Link
             to="/auth"
+            aria-label="Criar meu app grátis agora"
             className="px-7 py-3.5 bg-primary text-primary-foreground font-display font-bold rounded-lg text-sm glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.03] text-center"
           >
-            Começar grátis
+            Criar meu app grátis →
           </Link>
-          <Link
-            to="/auth"
+          <a
+            href="#precos"
             className="px-7 py-3.5 border-2 border-secondary text-secondary font-display font-semibold rounded-lg text-sm hover:bg-secondary/10 transition-all duration-300 text-center"
           >
-            Testar grátis
-          </Link>
+            Ver planos
+          </a>
         </div>
 
-        {/* Redução de objeção */}
+        {/* Objection crushers */}
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem precisar aparecer</span>
-          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem estoque</span>
-          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem experiência</span>
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Sem precisar programar</span>
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Resultado em 5 minutos</span>
+          <span className="flex items-center gap-1.5"><span className="text-secondary">✔</span> Pronto para a Play Store</span>
         </div>
 
-        {/* Urgência + Prova social */}
+        {/* Urgency + Social proof */}
         <div className="flex flex-col items-center gap-1.5 pt-1">
-          <p className="text-xs font-semibold text-primary animate-pulse">⏳ Acesso gratuito liberado por tempo limitado</p>
+          <p className="text-xs font-semibold text-primary animate-pulse">⏳ Acesso gratuito por tempo limitado</p>
           <AnimatedCounter />
         </div>
 
-        {/* Aurora Symbol - menor, não compete */}
+        {/* Aurora Symbol */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -114,8 +119,11 @@ const HeroSection = () => {
         >
           <img
             src={auroraSymbol}
-            alt="Aurora Build AI"
+            alt="Aurora Build AI — plataforma para criar aplicativos Android com inteligência artificial"
+            width={280}
+            height={280}
             className="w-[180px] sm:w-[220px] md:w-[280px] h-auto object-contain"
+            loading="eager"
             style={{
               filter:
                 "drop-shadow(0 0 16px hsl(51 100% 50% / 0.3)) drop-shadow(0 0 30px hsl(190 100% 50% / 0.15))",
