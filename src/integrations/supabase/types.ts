@@ -161,6 +161,30 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          ip_hint: string | null
+          success: boolean
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          ip_hint?: string | null
+          success?: boolean
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          ip_hint?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -419,6 +443,8 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      check_login_rate_limit: { Args: { p_email: string }; Returns: boolean }
+      cleanup_old_login_attempts: { Args: never; Returns: undefined }
       consume_credits: {
         Args: { p_action: string; p_amount?: number; p_user_id: string }
         Returns: boolean
@@ -433,6 +459,10 @@ export type Database = {
       }
       process_referral_rewards: {
         Args: { p_referrer_id: string }
+        Returns: undefined
+      }
+      record_login_attempt: {
+        Args: { p_email: string; p_success: boolean }
         Returns: undefined
       }
     }
