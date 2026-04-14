@@ -233,6 +233,15 @@ async function handlePlanChange(
         status: "ativo",
       }).eq("user_id", user.id);
 
+      // Send renewal email
+      await sendTransactionalEmail(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        "plan-renewal",
+        customerEmail,
+        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) }
+      );
+
       console.log(`🔄 Renewal processed for ${customerEmail}`);
       return { duplicate: false };
     }
