@@ -60,32 +60,30 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        // Check server-side rate limit first
-        const { data: allowed } = await supabase.rpc("check_login_rate_limit", { p_email: email });
-        if (allowed === false) {
-          setLockedUntil(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
-          setError(`Conta temporariamente bloqueada. Tente novamente em ${LOCKOUT_MINUTES} minutos.`);
-          setLoading(false);
-          return;
-        }
+        // Use secure-login Edge Function (server-side rate limiting)
+        const { data, error: fnError } = await supabase.functions.invoke("secure-login", {
+          body: { email, password },
+        });
 
-        const { error } = await signIn(email, password);
-        if (error) {
-          // Record failed attempt server-side
-          await supabase.rpc("record_login_attempt", { p_email: email, p_success: false });
+        if (fnError || data?.error) {
+          const errMsg = data?.error || fnError?.message || "Erro ao fazer login";
           const newAttempts = failedAttempts + 1;
           setFailedAttempts(newAttempts);
 
-          if (newAttempts >= MAX_CLIENT_ATTEMPTS) {
-            setLockedUntil(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
-            setError(`Muitas tentativas falhadas. Conta bloqueada por ${LOCKOUT_MINUTES} minutos.`);
+          if (data?.locked || newAttempts >= MAX_CLIENT_ATTEMPTS) {
+            const mins = data?.lockout_minutes || LOCKOUT_MINUTES;
+            setLockedUntil(Date.now() + mins * 60 * 1000);
+            setError(`Conta bloqueada por segurança. Aguarde ${mins} minutos.`);
           } else {
-            const remaining = MAX_CLIENT_ATTEMPTS - newAttempts;
-            setError(`${error.message} (${remaining} tentativa${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""})`);
+            const remaining = data?.remaining_attempts ?? (MAX_CLIENT_ATTEMPTS - newAttempts);
+            setError(`${errMsg} (${remaining} tentativa${remaining !== 1 ? "s" : ""} restante${remaining !== 1 ? "s" : ""})`);
           }
-        } else {
-          // Record successful attempt (clears failed attempts)
-          await supabase.rpc("record_login_attempt", { p_email: email, p_success: true });
+        } else if (data?.session) {
+          // Set the session from the Edge Function response
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
           setFailedAttempts(0);
           navigate("/dashboard");
         }
