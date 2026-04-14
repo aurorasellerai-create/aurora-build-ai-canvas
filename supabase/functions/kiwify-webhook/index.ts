@@ -340,19 +340,26 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log("Kiwify webhook received:", JSON.stringify(body));
 
-    // Validate webhook token
+    // Validate webhook token (REQUIRED)
     const webhookToken = Deno.env.get("KIWIFY_WEBHOOK_TOKEN");
-    if (webhookToken) {
-      const signature = req.headers.get("x-kiwify-signature") ||
-        req.headers.get("signature") ||
-        body?.signature;
-      if (signature !== webhookToken) {
-        console.error("❌ Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    if (!webhookToken) {
+      console.error("❌ KIWIFY_WEBHOOK_TOKEN not configured — rejecting request");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const signature = req.headers.get("x-kiwify-signature") ||
+      req.headers.get("signature") ||
+      body?.signature;
+
+    if (!signature || signature !== webhookToken) {
+      console.error("❌ Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { orderStatus, customerEmail, customerName, transactionId, amount, productName } = parseWebhookBody(body);

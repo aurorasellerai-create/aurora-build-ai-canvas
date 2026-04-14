@@ -501,6 +501,7 @@ Deno.serve(async (req) => {
     if (action === "update_credits" && req.method === "POST") {
       const { user_id, amount } = await req.json();
       if (!user_id || amount == null) return jsonErr("Missing user_id or amount");
+      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
 
       const { data: profile } = await adminClient
         .from("profiles")
@@ -568,6 +569,7 @@ Deno.serve(async (req) => {
     if (action === "extend_trial" && req.method === "POST") {
       const { user_id, days } = await req.json();
       if (!user_id || !days) return jsonErr("Missing user_id or days");
+      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
 
       const { data: profile } = await adminClient
         .from("profiles")
