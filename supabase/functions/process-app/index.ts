@@ -44,7 +44,7 @@ const URL_VALIDATION_TIMEOUT_MS = 8000;
 const respond = (payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
     status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 
 const getErrorMessage = (error: unknown) => {
@@ -190,7 +190,7 @@ const generateAndUploadAAB = async (
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   let currentStep = "startup";
