@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string, referralCode?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -44,6 +44,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         data: { display_name: displayName, referral_code: referralCode },
       },
     });
+
+    // Send welcome email via Resend
+    if (!error && data.user) {
+      supabase.functions.invoke("send-email", {
+        body: {
+          templateName: "welcome",
+          recipientEmail: email,
+          data: { name: displayName || email.split("@")[0] },
+        },
+      }).catch(console.error);
+    }
+
     return { error: error as Error | null };
   };
 
@@ -57,10 +69,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error: error as Error | null };
+    try {
+      const { error } = await supabase.functions.invoke("auth-reset-password", {
+        body: { email },
+      });
+      if (error) throw error;
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
   return (

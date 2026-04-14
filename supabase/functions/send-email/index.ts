@@ -206,9 +206,60 @@ function creditPurchaseEmail(
   };
 }
 
+function passwordResetEmail(name: string, resetLink: string): { subject: string; html: string } {
+  return {
+    subject: "🔑 Redefinir sua senha — Aurora Build",
+    html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0B0F1A;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0B0F1A;padding:40px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#131729;border-radius:16px;border:1px solid #1E2340;overflow:hidden;">
+  <tr><td style="background:linear-gradient(135deg,#FFD700 0%,#FFA500 100%);padding:32px;text-align:center;">
+    <h1 style="margin:0;font-size:28px;color:#0B0F1A;font-weight:800;">Aurora Build</h1>
+  </td></tr>
+  <tr><td style="padding:40px 32px;">
+    <h2 style="color:#FFD700;font-size:22px;margin:0 0 16px;">Redefinir sua senha 🔑</h2>
+    <p style="color:#E0E0E0;font-size:15px;line-height:1.7;margin:0 0 20px;">
+      Olá, <strong style="color:#fff;">${name}</strong>!
+    </p>
+    <p style="color:#E0E0E0;font-size:15px;line-height:1.7;margin:0 0 24px;">
+      Recebemos uma solicitação para redefinir a senha da sua conta na Aurora Build. 
+      Clique no botão abaixo para criar uma nova senha:
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+    <tr><td style="background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:8px;padding:14px 32px;">
+      <a href="${resetLink}" style="color:#0B0F1A;text-decoration:none;font-weight:700;font-size:15px;">
+        Redefinir minha senha →
+      </a>
+    </td></tr>
+    </table>
+    <p style="color:#999;font-size:13px;line-height:1.6;margin:0 0 16px;">
+      Este link expira em 1 hora. Se você não solicitou a redefinição, ignore este email.
+    </p>
+    <p style="color:#666;font-size:12px;line-height:1.5;margin:0;">
+      Se o botão não funcionar, copie e cole este link no navegador:<br/>
+      <a href="${resetLink}" style="color:#00E5FF;text-decoration:none;word-break:break-all;font-size:11px;">${resetLink}</a>
+    </p>
+  </td></tr>
+  <tr><td style="padding:24px 32px;border-top:1px solid #1E2340;text-align:center;">
+    <p style="color:#666;font-size:12px;margin:0;">
+      Aurora Build — <a href="https://aurorabuild.com.br" style="color:#FFD700;text-decoration:none;">aurorabuild.com.br</a>
+    </p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`,
+  };
+}
+
 // ─── Templates Registry ───
 
-type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase";
+type TemplateName = "welcome" | "plan-confirmation" | "credit-purchase" | "password-reset";
 
 interface EmailRequest {
   templateName: TemplateName;
@@ -226,6 +277,8 @@ function renderTemplate(req: EmailRequest): { subject: string; html: string } {
       return planConfirmationEmail(name, req.data?.plan || "pro", req.data?.credits || 0);
     case "credit-purchase":
       return creditPurchaseEmail(name, req.data?.creditsAmount || 0, req.data?.packageName || "starter");
+    case "password-reset":
+      return passwordResetEmail(name, req.data?.resetLink || "");
     default:
       throw new Error(`Template não encontrado: ${req.templateName}`);
   }

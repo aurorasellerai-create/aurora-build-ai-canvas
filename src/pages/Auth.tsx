@@ -35,7 +35,10 @@ const Auth = () => {
     } else {
       const { error } = await signUp(email, password, displayName, referralCode || undefined);
       if (error) setError(error.message);
-      else setMessage("Cadastro realizado! Verifique seu email para confirmar.");
+      else {
+        setMessage("Conta criada com sucesso! Redirecionando...");
+        setTimeout(() => navigate("/dashboard"), 1500);
+      }
     }
     setLoading(false);
   };
