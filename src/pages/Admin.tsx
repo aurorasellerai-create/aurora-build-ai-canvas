@@ -17,6 +17,7 @@ import AdminTools from "@/components/admin/AdminTools";
 import AdminSystemHealth from "@/components/admin/AdminSystemHealth";
 import AdminLogs from "@/components/admin/AdminLogs";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminEmails from "@/components/admin/AdminEmails";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -69,6 +70,7 @@ const Admin = () => {
       case "apps": return <AdminApps enabled={true} />;
       case "financial": return <AdminFinancial enabled={true} />;
       case "logs": return <AdminLogs enabled={true} />;
+      case "emails": return <AdminEmails enabled={true} />;
       case "tools": return <AdminTools />;
       case "system": return <AdminSystemHealth enabled={true} />;
       case "settings": return <AdminSettings />;

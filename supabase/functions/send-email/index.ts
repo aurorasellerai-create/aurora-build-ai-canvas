@@ -570,6 +570,23 @@ function renderTemplate(req: EmailRequest): { subject: string; html: string } {
   }
 }
 
+// ─── Email Logger ───
+
+async function logEmail(templateName: string, recipientEmail: string, status: string, errorMessage?: string, metadata?: Record<string, any>) {
+  try {
+    const admin = getAdminClient();
+    await admin.from("email_logs").insert({
+      template_name: templateName,
+      recipient_email: recipientEmail,
+      status,
+      error_message: errorMessage || null,
+      metadata: metadata || {},
+    });
+  } catch (e) {
+    console.error("⚠️ Failed to log email:", e);
+  }
+}
+
 // ─── Main Handler ───
 
 Deno.serve(async (req) => {
@@ -614,8 +631,11 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       console.error("Resend API error:", JSON.stringify(result));
+      await logEmail(body.templateName, body.recipientEmail, "failed", `Resend API [${response.status}]: ${JSON.stringify(result)}`);
       throw new Error(`Resend API failed [${response.status}]: ${JSON.stringify(result)}`);
     }
+
+    await logEmail(body.templateName, body.recipientEmail, "sent", undefined, { resend_id: result.id, ...(body.data || {}) });
 
     console.log(`✅ Email "${body.templateName}" sent to ${body.recipientEmail}`);
 
