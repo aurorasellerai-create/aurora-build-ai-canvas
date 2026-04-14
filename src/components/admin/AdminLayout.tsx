@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, Crown, Zap, Bot, Smartphone,
   DollarSign, Wrench, Settings, ArrowLeft, Shield, Menu, X,
-  FileText, Activity, LogOut,
+  FileText, Activity, LogOut, Mail,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { adminLogout } from "./AdminPinGate";
@@ -19,6 +19,7 @@ export type AdminSection =
   | "financial"
   | "tools"
   | "logs"
+  | "emails"
   | "settings"
   | "system";
 
@@ -31,6 +32,7 @@ const NAV_ITEMS: { id: AdminSection; label: string; icon: any }[] = [
   { id: "apps", label: "Apps Gerados", icon: Smartphone },
   { id: "financial", label: "Financeiro", icon: DollarSign },
   { id: "logs", label: "Logs", icon: FileText },
+  { id: "emails", label: "E-mails", icon: Mail },
   { id: "tools", label: "Ferramentas", icon: Wrench },
   { id: "system", label: "Sistema", icon: Activity },
   { id: "settings", label: "Configurações", icon: Settings },
