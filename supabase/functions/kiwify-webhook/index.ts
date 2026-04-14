@@ -1,5 +1,33 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Helper to send transactional emails via send-email edge function
+async function sendTransactionalEmail(
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  templateName: string,
+  recipientEmail: string,
+  data?: Record<string, any>
+) {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ templateName, recipientEmail, data }),
+    });
+    if (!response.ok) {
+      const err = await response.text();
+      console.error(`⚠️ Email "${templateName}" failed for ${recipientEmail}: ${err}`);
+    } else {
+      console.log(`📧 Email "${templateName}" queued for ${recipientEmail}`);
+    }
+  } catch (e) {
+    console.error(`⚠️ Email send error:`, e);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -94,6 +122,15 @@ async function findOrCreateUser(adminClient: any, email: string, name: string) {
     }
     user = newUser.user;
     console.log(`✅ Auto-created user for ${email}`);
+
+    // Send welcome email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "welcome",
+      email,
+      { name: name || email.split("@")[0] }
+    );
   }
 
   return user;
@@ -141,6 +178,15 @@ async function handleCreditPurchase(
     }).eq("user_id", user.id);
 
     console.log(`✅ Added ${creditsAmount} credits to ${customerEmail}`);
+
+    // Send credit purchase confirmation email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "credit-purchase",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], creditsAmount, packageName }
+    );
   } else if (status.isRefunded) {
     const { data: profile } = await adminClient
       .from("profiles")
@@ -225,6 +271,15 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     console.log(`✅ ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
+
+    // Send plan confirmation email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "plan-confirmation",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan, credits: planCredits }
+    );
   } else if (status.isRefunded) {
     await adminClient.from("profiles").update({
       plan: "free",
