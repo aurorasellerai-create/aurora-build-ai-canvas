@@ -12,23 +12,26 @@ interface AdminPinGateProps {
 const AdminPinGate = ({ children }: AdminPinGateProps) => {
   const { user, loading: authLoading } = useAuth();
 
-  const { data: isAdmin, isLoading: checkingRole } = useQuery({
+  const {
+    data: isAdmin,
+    isLoading: checkingRole,
+    isFetched,
+  } = useQuery({
     queryKey: ["admin-role-gate", user?.id],
     queryFn: async () => {
-      const { data: isAdminRole } = await supabase.rpc("has_role", {
-        _user_id: user!.id,
-        _role: "admin" as any,
-      });
-      const { data: isFounderRole } = await supabase.rpc("has_role", {
-        _user_id: user!.id,
-        _role: "founder" as any,
-      });
+      const [{ data: isAdminRole }, { data: isFounderRole }] = await Promise.all([
+        supabase.rpc("has_role", { _user_id: user!.id, _role: "admin" as any }),
+        supabase.rpc("has_role", { _user_id: user!.id, _role: "founder" as any }),
+      ]);
       return !!isAdminRole || !!isFounderRole;
     },
-    enabled: !!user,
+    enabled: !!user && !authLoading,
+    retry: 2,
+    staleTime: 30_000,
   });
 
-  if (authLoading || checkingRole) {
+  // Show loading while auth is resolving OR role check hasn't completed yet
+  if (authLoading || !user || checkingRole || !isFetched) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -36,7 +39,7 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center card-aurora p-8 max-w-md">
