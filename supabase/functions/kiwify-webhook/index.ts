@@ -262,6 +262,15 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     console.log(`✅ ${customerEmail} upgraded to ${plan} (+${planCredits} credits)`);
+
+    // Send plan confirmation email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "plan-confirmation",
+      customerEmail,
+      { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan, credits: planCredits }
+    );
   } else if (status.isRefunded) {
     await adminClient.from("profiles").update({
       plan: "free",
