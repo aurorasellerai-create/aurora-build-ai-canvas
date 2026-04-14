@@ -122,6 +122,15 @@ async function findOrCreateUser(adminClient: any, email: string, name: string) {
     }
     user = newUser.user;
     console.log(`✅ Auto-created user for ${email}`);
+
+    // Send welcome email
+    await sendTransactionalEmail(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      "welcome",
+      email,
+      { name: name || email.split("@")[0] }
+    );
   }
 
   return user;
