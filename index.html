@@ -46,7 +46,16 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" /></noscript>
     <link rel="dns-prefetch" href="https://awzjahcnjxaehybilcmo.supabase.co" />
+
+    <!-- Critical CSS inline for instant first paint -->
+    <style>
+      body{margin:0;background:#0B0F1A;color:#e2e8f0}
+      #root{min-height:100vh}
+      .splash-critical{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 50% 45%,#0E1A2B 0%,#0B0F1A 70%,#050816 100%)}
+    </style>
 
     <script type="application/ld+json">
     {
