@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu, X, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
-import AuroraLogo from "@/components/AuroraLogo";
+import auroraSymbol from "@/assets/aurora-symbol.png";
 
 const navLinks = [
   { label: "Benefícios", href: "#beneficios" },
@@ -28,7 +28,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-5 h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 group transition-transform duration-300 hover:scale-105">
-          <AuroraLogo size={34} className="transition-all duration-300" />
+          <img src={auroraSymbol} alt="Aurora Build AI" width={34} height={34} className="w-[34px] h-[34px] object-contain transition-all duration-300" />
           <span className="font-display font-bold text-sm md:text-base tracking-wide hidden sm:inline">
             <span className="text-foreground">Aurora </span>
             <span className="bg-gradient-to-r from-secondary to-[hsl(210,100%,60%)] bg-clip-text text-transparent">Build AI</span>
