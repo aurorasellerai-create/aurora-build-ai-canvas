@@ -11,28 +11,28 @@ import { useMonitoring } from "@/hooks/useMonitoring";
 import { initAnalytics } from "@/lib/analytics";
 import InstallBanner from "@/components/InstallBanner";
 
-const Index = lazy(() => import("./pages/Index"));
-const Auth = lazy(() => import("./pages/Auth"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const CreateHub = lazy(() => import("./pages/CreateHub"));
-const CreateFromScratch = lazy(() => import("./pages/CreateFromScratch"));
-const ConvertSite = lazy(() => import("./pages/ConvertSite"));
-const ConvertFile = lazy(() => import("./pages/ConvertFile"));
-const ConvertToAAB = lazy(() => import("./pages/ConvertToAAB"));
-const Generator = lazy(() => import("./pages/Generator"));
-const Processing = lazy(() => import("./pages/Processing"));
-const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const Tools = lazy(() => import("./pages/Tools"));
-const BusinessGenerator = lazy(() => import("./pages/BusinessGenerator"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Credits = lazy(() => import("./pages/Credits"));
-const VideoGenerator = lazy(() => import("./pages/VideoGenerator"));
-const CarouselGenerator = lazy(() => import("./pages/CarouselGenerator"));
-const ConversionHistory = lazy(() => import("./pages/ConversionHistory"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const Index = lazy(() => import(/* webpackChunkName: "landing" */ "./pages/Index"));
+const Auth = lazy(() => import(/* webpackChunkName: "auth" */ "./pages/Auth"));
+const ForgotPassword = lazy(() => import(/* webpackChunkName: "auth" */ "./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ "./pages/ResetPassword"));
+const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ "./pages/Dashboard"));
+const CreateHub = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/CreateHub"));
+const CreateFromScratch = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/CreateFromScratch"));
+const ConvertSite = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/ConvertSite"));
+const ConvertFile = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/ConvertFile"));
+const ConvertToAAB = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/ConvertToAAB"));
+const Generator = lazy(() => import(/* webpackChunkName: "generator" */ "./pages/Generator"));
+const Processing = lazy(() => import(/* webpackChunkName: "processing" */ "./pages/Processing"));
+const ProjectDetail = lazy(() => import(/* webpackChunkName: "project" */ "./pages/ProjectDetail"));
+const Pricing = lazy(() => import(/* webpackChunkName: "pricing" */ "./pages/Pricing"));
+const Tools = lazy(() => import(/* webpackChunkName: "tools" */ "./pages/Tools"));
+const BusinessGenerator = lazy(() => import(/* webpackChunkName: "business" */ "./pages/BusinessGenerator"));
+const Admin = lazy(() => import(/* webpackChunkName: "admin" */ "./pages/Admin"));
+const Credits = lazy(() => import(/* webpackChunkName: "credits" */ "./pages/Credits"));
+const VideoGenerator = lazy(() => import(/* webpackChunkName: "video" */ "./pages/VideoGenerator"));
+const CarouselGenerator = lazy(() => import(/* webpackChunkName: "carousel" */ "./pages/CarouselGenerator"));
+const ConversionHistory = lazy(() => import(/* webpackChunkName: "history" */ "./pages/ConversionHistory"));
+const NotFound = lazy(() => import(/* webpackChunkName: "notfound" */ "./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,7 +45,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize analytics (only activates if GA_MEASUREMENT_ID is set)
 initAnalytics();
 
 const Loading = () => (
