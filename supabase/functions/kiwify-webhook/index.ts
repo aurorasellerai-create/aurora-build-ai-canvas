@@ -28,9 +28,11 @@ async function sendTransactionalEmail(
   }
 }
 
+// Webhook endpoints don't need CORS (server-to-server), but keep minimal headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Origin": "https://aurorabuild.com.br",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-kiwify-signature, signature",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Credit packages mapping
@@ -55,6 +57,38 @@ function getAdminClient() {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+}
+
+// HMAC-SHA256 signature verification
+async function verifyHmacSignature(
+  rawBody: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
+    const computed = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Constant-time comparison
+    if (computed.length !== signature.length) return false;
+    let result = 0;
+    for (let i = 0; i < computed.length; i++) {
+      result |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
+    }
+    return result === 0;
+  } catch {
+    return false;
+  }
 }
 
 function parseWebhookBody(body: any) {
@@ -103,9 +137,14 @@ function detectCreditPackage(productName: string): { packageName: string; credit
 }
 
 async function findOrCreateUser(adminClient: any, email: string, name: string) {
-  // Try to find existing user
-  const { data: { users } } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-  let user = users?.find((u: any) => u.email === email);
+  // Use admin API to find user by email efficiently (instead of listing all users)
+  const { data: usersResult } = await adminClient.auth.admin.listUsers({
+    page: 1,
+    perPage: 1,
+    filter: email,
+  });
+  
+  let user = usersResult?.users?.find((u: any) => u.email === email);
 
   if (!user) {
     // Auto-create user with a random password (they can reset later)
@@ -337,8 +376,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = await req.json();
-    console.log("Kiwify webhook received:", JSON.stringify(body));
+    // Read raw body for HMAC verification
+    const rawBody = await req.text();
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Sanitized log (no sensitive data)
+    const { orderStatus, customerEmail, customerName, transactionId, amount, productName } = parseWebhookBody(body);
+    console.log(`Kiwify webhook: status=${orderStatus}, product=${productName}, txn=${transactionId}`);
 
     // Validate webhook token (REQUIRED)
     const webhookToken = Deno.env.get("KIWIFY_WEBHOOK_TOKEN");
@@ -350,19 +402,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    const signature = req.headers.get("x-kiwify-signature") ||
-      req.headers.get("signature") ||
-      body?.signature;
+    // Try HMAC verification first, then fall back to direct token comparison
+    const headerSignature = req.headers.get("x-kiwify-signature") ||
+      req.headers.get("signature");
+    const bodySignature = body?.signature;
 
-    if (!signature || signature !== webhookToken) {
+    let isValid = false;
+
+    // HMAC-SHA256 verification (preferred)
+    if (headerSignature) {
+      isValid = await verifyHmacSignature(rawBody, headerSignature, webhookToken);
+    }
+
+    // Fallback: constant-time comparison for direct token (body.signature or header)
+    if (!isValid) {
+      const sig = headerSignature || bodySignature;
+      if (sig && typeof sig === "string" && sig.length === webhookToken.length) {
+        let diff = 0;
+        for (let i = 0; i < sig.length; i++) {
+          diff |= sig.charCodeAt(i) ^ webhookToken.charCodeAt(i);
+        }
+        isValid = diff === 0;
+      }
+    }
+
+    if (!isValid) {
       console.error("❌ Invalid webhook signature");
       return new Response(JSON.stringify({ error: "Invalid signature" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const { orderStatus, customerEmail, customerName, transactionId, amount, productName } = parseWebhookBody(body);
 
     if (!customerEmail) {
       return new Response(JSON.stringify({ error: "Customer email not found" }), {
@@ -429,7 +499,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("❌ Webhook error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
