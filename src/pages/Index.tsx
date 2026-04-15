@@ -1,51 +1,51 @@
+import { lazy, Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import PainSection from "@/components/PainSection";
-import SolutionSection from "@/components/SolutionSection";
-import WhatYouCreateSection from "@/components/WhatYouCreateSection";
-import WhyItWorksSection from "@/components/WhyItWorksSection";
-import ProductFeaturesSection from "@/components/ProductFeaturesSection";
-import DifferentialSection from "@/components/DifferentialSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
-import PricingSection from "@/components/PricingSection";
-import AIToolsSection from "@/components/AIToolsSection";
-import CreditsInfoSection from "@/components/CreditsInfoSection";
-import FAQSection from "@/components/FAQSection";
-import FinalCTASection from "@/components/FinalCTASection";
-import FooterSection from "@/components/FooterSection";
+
+// Lazy load below-fold sections to reduce initial bundle
+const PainSection = lazy(() => import("@/components/PainSection"));
+const SolutionSection = lazy(() => import("@/components/SolutionSection"));
+const WhatYouCreateSection = lazy(() => import("@/components/WhatYouCreateSection"));
+const WhyItWorksSection = lazy(() => import("@/components/WhyItWorksSection"));
+const ProductFeaturesSection = lazy(() => import("@/components/ProductFeaturesSection"));
+const DifferentialSection = lazy(() => import("@/components/DifferentialSection"));
+const TestimonialsSection = lazy(() => import("@/components/TestimonialsSection"));
+const PricingSection = lazy(() => import("@/components/PricingSection"));
+const AIToolsSection = lazy(() => import("@/components/AIToolsSection"));
+const CreditsInfoSection = lazy(() => import("@/components/CreditsInfoSection"));
+const FAQSection = lazy(() => import("@/components/FAQSection"));
+const FinalCTASection = lazy(() => import("@/components/FinalCTASection"));
+const FooterSection = lazy(() => import("@/components/FooterSection"));
+
+const SectionFallback = () => (
+  <div className="py-20 flex justify-center">
+    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+  </div>
+);
 
 const Index = () => (
   <div className="min-h-screen bg-background">
     <Navbar />
     <main>
-      {/* 1. HERO — Promessa + CTA acima da dobra */}
       <HeroSection />
-      {/* 2. DOR — Identificação emocional */}
-      <PainSection />
-      {/* 3. SOLUÇÃO — Como funciona (3 passos) + CTA */}
-      <SolutionSection />
-      {/* 4. O QUE VOCÊ CRIA — Tipos de app */}
-      <WhatYouCreateSection />
-      {/* 5. ANTES vs DEPOIS — Transformação */}
-      <WhyItWorksSection />
-      {/* 6. FEATURES — Funcionalidades detalhadas + CTA */}
-      <ProductFeaturesSection />
-      {/* 7. DIFERENCIAIS — Por que a Aurora é única */}
-      <DifferentialSection />
-      {/* 8. PROVA SOCIAL — Depoimentos com resultados */}
-      <TestimonialsSection />
-      {/* 9. PREÇOS — Planos + CTA de compra */}
-      <PricingSection />
-      {/* 10. FERRAMENTAS IA — Grid completo */}
-      <AIToolsSection />
-      {/* 11. CRÉDITOS — Como funciona */}
-      <CreditsInfoSection />
-      {/* 12. FAQ — SEO + quebra de objeções */}
-      <FAQSection />
-      {/* 13. CTA FINAL — Urgência + último push */}
-      <FinalCTASection />
+      <Suspense fallback={<SectionFallback />}>
+        <PainSection />
+        <SolutionSection />
+        <WhatYouCreateSection />
+        <WhyItWorksSection />
+        <ProductFeaturesSection />
+        <DifferentialSection />
+        <TestimonialsSection />
+        <PricingSection />
+        <AIToolsSection />
+        <CreditsInfoSection />
+        <FAQSection />
+        <FinalCTASection />
+      </Suspense>
     </main>
-    <FooterSection />
+    <Suspense fallback={null}>
+      <FooterSection />
+    </Suspense>
   </div>
 );
 
