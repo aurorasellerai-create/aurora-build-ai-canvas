@@ -4,6 +4,8 @@ const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
   "https://www.aurorabuild.com.br",
   "https://aurora-build-ai-canvas.lovable.app",
+  "https://id-preview--6db001cd-6f98-4de0-bc1d-7aa673f8d426.lovable.app",
+  "https://6db001cd-6f98-4de0-bc1d-7aa673f8d426.lovableproject.com",
 ];
 
 function getCorsHeaders(req?: Request) {
