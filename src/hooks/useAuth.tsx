@@ -20,25 +20,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let initialSessionResolved = false;
-
-    // Set up listener FIRST — it will handle all future changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      // Only set loading false from listener after initial session is resolved
-      if (initialSessionResolved) {
+    // onAuthStateChange handles INITIAL_SESSION + all subsequent events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         setLoading(false);
       }
-    });
-
-    // Then get the initial session — this is the single source of truth for first load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      initialSessionResolved = true;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, []);
