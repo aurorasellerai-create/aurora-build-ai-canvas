@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { Zap, Shield, Clock, TrendingUp, Sparkles } from "lucide-react";
 
@@ -9,7 +10,7 @@ const items = [
   { icon: Shield, text: "App pronto para publicar na Google Play Store" },
 ];
 
-const DifferentialSection = () => (
+const DifferentialSection = memo(() => (
   <section className="py-20 px-4 bg-aurora-gradient" aria-label="Diferenciais exclusivos da Aurora Build AI">
     <div className="max-w-3xl mx-auto text-center">
       <motion.h2
@@ -46,6 +47,7 @@ const DifferentialSection = () => (
       </div>
     </div>
   </section>
-);
+));
+DifferentialSection.displayName = "DifferentialSection";
 
 export default DifferentialSection;

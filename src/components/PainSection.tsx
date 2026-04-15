@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { XCircle } from "lucide-react";
 
@@ -9,7 +10,7 @@ const pains = [
   "Precisa de um app para o seu negócio, mas não tem orçamento",
 ];
 
-const PainSection = () => (
+const PainSection = memo(() => (
   <section className="py-16 px-4" aria-label="Problemas que a Aurora resolve">
     <div className="max-w-3xl mx-auto text-center">
       <motion.h2
@@ -55,6 +56,7 @@ const PainSection = () => (
       </motion.p>
     </div>
   </section>
-);
+));
+PainSection.displayName = "PainSection";
 
 export default PainSection;

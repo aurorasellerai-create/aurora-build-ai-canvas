@@ -1,4 +1,4 @@
-/* Fonts loaded via preload in index.html — no render-blocking @import */
+/* Fonts self-hosted as WOFF2 — declared inline in index.html <head> for zero render-blocking */
 
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
