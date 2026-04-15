@@ -68,5 +68,5 @@ Deno.test("handles OPTIONS (CORS preflight)", async () => {
   });
   await res.text();
   assertEquals(res.status, 200);
-  assertEquals(res.headers.get("Access-Control-Allow-Origin"), "*");
+  assertEquals(res.headers.get("Access-Control-Allow-Origin"), "https://aurorabuild.com.br");
 });
