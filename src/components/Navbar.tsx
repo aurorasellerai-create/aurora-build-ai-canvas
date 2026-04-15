@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu, X, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
-import auroraSymbol from "@/assets/aurora-symbol.png";
+import AuroraLogo from "@/components/AuroraLogo";
 
 const navLinks = [
   { label: "Benefícios", href: "#beneficios" },
