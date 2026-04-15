@@ -202,8 +202,7 @@ const HeroSection = () => {
             loading="eager"
             fetchPriority="high"
             style={{
-              filter: "drop-shadow(0 0 20px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 40px hsl(190 100% 50% / 0.2))",
-              animation: "symbol-pulse 3s ease-in-out infinite",
+              animation: "symbol-glow 3s ease-in-out infinite",
             }}
           />
         </div>

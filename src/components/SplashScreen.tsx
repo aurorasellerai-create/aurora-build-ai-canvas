@@ -34,7 +34,7 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="w-[140px] sm:w-[180px] md:w-[220px] h-auto"
             style={{
-              filter: "drop-shadow(0 0 24px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 48px hsl(190 100% 50% / 0.15))",
+              animation: "symbol-glow 3s ease-in-out infinite",
             }}
           />
           <motion.p

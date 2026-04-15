@@ -148,6 +148,17 @@
   }
 }
 
+@keyframes symbol-glow {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 20px hsl(51 100% 50% / 0.45)) drop-shadow(0 0 50px hsl(51 100% 50% / 0.2)) drop-shadow(0 0 80px hsl(190 100% 50% / 0.15));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 35px hsl(51 100% 50% / 0.65)) drop-shadow(0 0 70px hsl(51 100% 50% / 0.35)) drop-shadow(0 0 100px hsl(190 100% 50% / 0.25));
+  }
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
