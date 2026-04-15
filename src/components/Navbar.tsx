@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +67,7 @@ const Navbar = () => {
           {user ? (
             <Link
               to="/dashboard"
+              onMouseEnter={() => import("@/pages/Dashboard")}
               className="px-5 py-2 text-sm font-display font-bold rounded-lg bg-primary text-primary-foreground glow-gold hover:scale-[1.03] transition-transform"
             >
               Dashboard
@@ -74,6 +75,7 @@ const Navbar = () => {
           ) : (
             <Link
               to="/auth"
+              onMouseEnter={() => import("@/pages/Auth")}
               className="px-5 py-2 text-sm font-display font-bold rounded-lg bg-primary text-primary-foreground glow-gold hover:scale-[1.03] transition-transform"
             >
               Entrar
