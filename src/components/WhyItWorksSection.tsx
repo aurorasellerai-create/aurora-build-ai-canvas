@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 
@@ -15,7 +16,7 @@ const after = [
   "Zero código — só colar a URL e pronto",
 ];
 
-const WhyItWorksSection = () => (
+const WhyItWorksSection = memo(() => (
   <section id="como-funciona" className="py-20 px-4" aria-label="Antes e depois com Aurora Build AI">
     <div className="max-w-4xl mx-auto text-center">
       <motion.h2
@@ -72,6 +73,7 @@ const WhyItWorksSection = () => (
       </div>
     </div>
   </section>
-);
+));
+WhyItWorksSection.displayName = "WhyItWorksSection";
 
 export default WhyItWorksSection;
