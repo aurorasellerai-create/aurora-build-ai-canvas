@@ -28,12 +28,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-5 h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 group transition-transform duration-300 hover:scale-105">
-          <img
-            src={auroraSymbol}
-            alt="Aurora Build AI"
-            className="h-9 md:h-8 w-auto object-contain transition-all duration-300"
-            style={{ background: "transparent", border: "none" }}
-          />
+          <AuroraLogo size={34} className="transition-all duration-300" />
           <span className="font-display font-bold text-sm md:text-base tracking-wide hidden sm:inline">
             <span className="text-foreground">Aurora </span>
             <span className="bg-gradient-to-r from-secondary to-[hsl(210,100%,60%)] bg-clip-text text-transparent">Build AI</span>
