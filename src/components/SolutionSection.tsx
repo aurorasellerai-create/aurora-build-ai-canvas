@@ -1,59 +1,173 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Globe, Sparkles, Download } from "lucide-react";
 
 const steps = [
-  { number: "01", title: "Cole a URL do seu site", desc: "Ou descreva sua ideia — a IA entende o que você precisa." },
-  { number: "02", title: "A IA cria seu app", desc: "Em minutos, seu aplicativo Android fica pronto automaticamente." },
-  { number: "03", title: "Exporte e publique", desc: "Baixe em APK, AAB ou PWA e publique na Play Store." },
+  {
+    number: "01",
+    title: "Cole a URL do seu site",
+    desc: "Ou descreva sua ideia — a IA entende o que você precisa.",
+    icon: Globe,
+    color: "hsl(190, 100%, 50%)",
+  },
+  {
+    number: "02",
+    title: "A IA cria seu app",
+    desc: "Em minutos, seu aplicativo Android fica pronto automaticamente.",
+    icon: Sparkles,
+    color: "hsl(51, 100%, 50%)",
+  },
+  {
+    number: "03",
+    title: "Exporte e publique",
+    desc: "Baixe em APK, AAB ou PWA e publique na Play Store.",
+    icon: Download,
+    color: "hsl(150, 80%, 50%)",
+  },
 ];
 
+function OrbitalTimeline() {
+  return (
+    <div className="relative flex flex-col md:flex-row items-center justify-center gap-8 md:gap-0 py-8">
+      {/* Connecting line (desktop) */}
+      <div className="hidden md:block absolute top-1/2 left-[15%] right-[15%] h-px" aria-hidden="true">
+        <motion.div
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.3 }}
+          className="h-full origin-left"
+          style={{
+            background: "linear-gradient(90deg, hsl(190 100% 50% / 0.3), hsl(51 100% 50% / 0.5), hsl(150 80% 50% / 0.3))",
+          }}
+        />
+      </div>
+
+      {/* Connecting line (mobile) */}
+      <div className="md:hidden absolute top-[10%] bottom-[10%] left-1/2 w-px -translate-x-1/2" aria-hidden="true">
+        <motion.div
+          initial={{ scaleY: 0 }}
+          whileInView={{ scaleY: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.3 }}
+          className="h-full origin-top"
+          style={{
+            background: "linear-gradient(180deg, hsl(190 100% 50% / 0.3), hsl(51 100% 50% / 0.5), hsl(150 80% 50% / 0.3))",
+          }}
+        />
+      </div>
+
+      {steps.map((step, i) => (
+        <motion.div
+          key={step.number}
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.2, duration: 0.5, type: "spring" }}
+          className="relative z-10 flex-1 max-w-[280px] mx-4"
+        >
+          {/* Orbiting ring */}
+          <div className="relative w-24 h-24 mx-auto mb-5">
+            {/* Outer ring */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 8 + i * 2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full border"
+              style={{ borderColor: `${step.color}20` }}
+            >
+              <div
+                className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor: step.color,
+                  boxShadow: `0 0 8px ${step.color}`,
+                }}
+              />
+            </motion.div>
+
+            {/* Inner circle */}
+            <div
+              className="absolute inset-3 rounded-full flex items-center justify-center"
+              style={{
+                background: `radial-gradient(circle, ${step.color}15, transparent)`,
+                border: `1px solid ${step.color}30`,
+              }}
+            >
+              <step.icon className="w-7 h-7" style={{ color: step.color }} />
+            </div>
+
+            {/* Step number */}
+            <div
+              className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+              style={{
+                background: step.color,
+                color: "#0B0F1A",
+              }}
+            >
+              {step.number}
+            </div>
+          </div>
+
+          {/* Text */}
+          <div className="text-center">
+            <h3 className="font-display text-lg font-bold text-foreground mb-2">{step.title}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 const SolutionSection = () => (
-  <section className="py-16 px-4 bg-aurora-gradient" aria-label="Como criar app com a Aurora">
-    <div className="max-w-4xl mx-auto">
+  <section className="py-20 px-4 relative overflow-hidden" aria-label="Como criar app com a Aurora">
+    {/* Background glow */}
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        background: "radial-gradient(ellipse 60% 40% at 50% 50%, hsl(51 100% 50% / 0.03), transparent)",
+      }}
+    />
+
+    <div className="max-w-4xl mx-auto relative">
       <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="text-center mb-12"
+        className="text-center mb-8"
       >
+        <motion.span
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="inline-block px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-medium text-primary mb-4"
+        >
+          Simples como 1-2-3
+        </motion.span>
         <h2 className="text-3xl md:text-4xl font-display font-bold text-gradient-gold mb-3">
-          Como funciona: 3 passos para criar seu app
+          Como funciona
         </h2>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Simples assim. Sem código, sem espera, sem complicação.
+          Sem código, sem espera, sem complicação.
         </p>
       </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-10">
-        {steps.map((step, i) => (
-          <motion.div
-            key={step.number}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: i * 0.12 }}
-            className="card-aurora text-center relative"
-          >
-            <span className="text-4xl font-display font-black text-primary/20 absolute top-3 right-4">{step.number}</span>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-5 h-5 text-primary" />
-            </div>
-            <h3 className="font-display text-lg font-bold text-foreground mb-2">{step.title}</h3>
-            <p className="text-muted-foreground text-sm">{step.desc}</p>
-          </motion.div>
-        ))}
-      </div>
+      <OrbitalTimeline />
 
-      {/* Mid-page CTA */}
-      <div className="text-center">
+      {/* CTA */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.6 }}
+        className="text-center mt-10"
+      >
         <Link
           to="/auth"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all hover:scale-105"
+          className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground font-display font-bold rounded-xl glow-gold glow-gold-hover transition-all hover:scale-105"
         >
           Criar meu app agora <ArrowRight className="w-4 h-4" />
         </Link>
-      </div>
+      </motion.div>
     </div>
   </section>
 );
