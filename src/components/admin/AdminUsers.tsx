@@ -432,7 +432,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                     <Select
                       value={u.plan}
                       onValueChange={(val) => updatePlan.mutate({ user_id: u.user_id, plan: val })}
-                      disabled={founder}
                     >
                       <SelectTrigger className="w-24 mx-auto h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -455,7 +454,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       >
                         <Eye className="w-4 h-4 text-primary" />
                       </button>
-                      {!founder && (
                         <DropdownMenu>
                           <DropdownMenuTrigger className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
@@ -472,14 +470,14 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
-                            {u.access_role !== "admin" && u.access_role !== "founder" && (
+                            {u.access_role !== "admin" && (
                               <DropdownMenuItem onClick={() => toggleAdmin.mutate({ user_id: u.user_id, makeAdmin: true })}>
                                 <ShieldCheck className="w-3 h-3 mr-2 text-blue-400" /> Tornar Admin
                               </DropdownMenuItem>
                             )}
-                            {u.access_role === "admin" && (
+                            {(u.access_role === "admin" || u.access_role === "founder") && (
                               <DropdownMenuItem onClick={() => toggleAdmin.mutate({ user_id: u.user_id, makeAdmin: false })}>
-                                <ShieldOff className="w-3 h-3 mr-2" /> Remover Admin
+                                <ShieldOff className="w-3 h-3 mr-2" /> Remover Admin/Founder
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => updatePlan.mutate({ user_id: u.user_id, plan: "free" })}>
@@ -507,7 +505,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      )}
                     </div>
                   </td>
                 </tr>
