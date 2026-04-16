@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff } from "lucide-react";
+import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PROTECTED_ADMIN_EMAILS = [
@@ -17,12 +17,113 @@ interface AdminPinGateProps {
   children: ReactNode;
 }
 
+const AdminForgotPassword = ({ onBack }: { onBack: () => void }) => {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke("auth-reset-password", {
+        body: { email },
+      });
+      if (error) throw error;
+      setSent(true);
+    } catch {
+      setError("Erro ao enviar. Verifique o e-mail e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm card-aurora p-8 text-center">
+          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
+          <h1 className="font-display text-xl font-bold text-foreground mb-2">E-mail enviado!</h1>
+          <p className="text-muted-foreground text-sm mb-6">
+            Se este e-mail pertence a um administrador, você receberá um link para redefinir sua senha.
+          </p>
+          <button
+            onClick={onBack}
+            className="text-primary text-sm hover:underline inline-flex items-center gap-1"
+          >
+            <ArrowLeft className="w-3 h-3" /> Voltar ao login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-sm card-aurora p-8">
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <Shield className="w-6 h-6 text-primary" />
+          <h1 className="font-display text-xl font-bold text-gradient-gold">Recuperar Senha</h1>
+        </div>
+
+        <p className="text-muted-foreground text-sm text-center mb-4">
+          Insira seu e-mail administrativo para receber o link de redefinição.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <Mail className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
+            <input
+              type="email"
+              placeholder="Email administrativo"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+              <ShieldAlert className="w-4 h-4 text-destructive flex-shrink-0" />
+              <p className="text-destructive text-sm">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-primary text-primary-foreground font-display font-bold rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Enviar Link
+          </button>
+        </form>
+
+        <button
+          onClick={onBack}
+          className="w-full text-center text-muted-foreground text-xs mt-4 hover:text-foreground transition inline-flex items-center justify-center gap-1"
+        >
+          <ArrowLeft className="w-3 h-3" /> Voltar ao login
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const AdminLoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+
+  if (showForgot) {
+    return <AdminForgotPassword onBack={() => setShowForgot(false)} />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +142,6 @@ const AdminLoginForm = () => {
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
-        // Session set triggers onAuthStateChange → AdminPinGate re-renders automatically
       }
     } catch {
       setError("Erro interno. Tente novamente.");
@@ -88,6 +188,16 @@ const AdminLoginForm = () => {
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-primary text-xs hover:underline"
+            >
+              Esqueceu a senha?
             </button>
           </div>
 
