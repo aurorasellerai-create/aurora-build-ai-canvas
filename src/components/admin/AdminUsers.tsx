@@ -714,10 +714,6 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                   {[
                     { label: "Nome", value: selectedUser.display_name || "—" },
                     { label: "Email", value: selectedUser.email },
-                    { label: "Tipo", value: selectedUser.tipo_usuario === "vip" ? "👑 VIP" : "👤 Cliente" },
-                    { label: "Acesso", value: selectedUser.access_role === "founder" ? "👑 Founder" : selectedUser.access_role === "admin" ? "🛠️ Admin" : "👤 User" },
-                    { label: "Plano", value: selectedUser.plan?.toUpperCase() },
-                    { label: "Créditos", value: selectedUser.credits_balance },
                     { label: "Apps Total", value: selectedUser.total_projects },
                     { label: "Apps Prontos", value: selectedUser.completed_projects },
                     { label: "Builds Hoje", value: selectedUser.daily_builds_count ?? 0 },
@@ -730,6 +726,66 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       <p className="text-sm font-medium text-foreground mt-0.5">{field.value}</p>
                     </div>
                   ))}
+                </div>
+
+                {/* Editable: Tipo, Acesso, Plano */}
+                <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+                  <p className="text-xs text-muted-foreground uppercase font-semibold">✏️ Editar Usuário</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase font-semibold mb-1 block">Tipo</label>
+                      <Select
+                        value={selectedUser.tipo_usuario}
+                        onValueChange={(val) => {
+                          updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: val });
+                          setSelectedUser({ ...selectedUser, tipo_usuario: val });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cliente">👤 Cliente</SelectItem>
+                          <SelectItem value="vip">👑 VIP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase font-semibold mb-1 block">Acesso</label>
+                      <Select
+                        value={selectedUser.access_role}
+                        onValueChange={(val) => {
+                          if (val === "admin") {
+                            toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: true });
+                          } else {
+                            toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: false });
+                          }
+                          setSelectedUser({ ...selectedUser, access_role: val });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">👤 User</SelectItem>
+                          <SelectItem value="admin">🛠️ Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground uppercase font-semibold mb-1 block">Plano</label>
+                      <Select
+                        value={selectedUser.plan}
+                        onValueChange={(val) => {
+                          updatePlan.mutate({ user_id: selectedUser.user_id, plan: val });
+                          setSelectedUser({ ...selectedUser, plan: val });
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Credit Adjust */}
@@ -770,8 +826,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                         if (!days || days <= 0) { toast({ title: "Dias inválido", variant: "destructive" }); return; }
                         extendTrial.mutate({ user_id: selectedUser.user_id, days });
                       }}
-                      disabled={isFounder(selectedUser)}
-                      className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                      className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors flex items-center gap-1"
                     >
                       <Clock className="w-3 h-3" /> Estender
                     </button>
@@ -782,78 +837,34 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase font-semibold">Ações Rápidas</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedUser.tipo_usuario !== "vip" && (
-                      <button
-                        onClick={() => { updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "vip" }); setSelectedUser({ ...selectedUser, tipo_usuario: "vip" }); }}
-                        disabled={isFounder(selectedUser)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs font-semibold hover:bg-amber-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
-                      >
-                        <Crown className="w-3 h-3" /> Tornar VIP
-                      </button>
-                    )}
-                    {selectedUser.tipo_usuario !== "cliente" && (
-                      <button
-                        onClick={() => { updateTipo.mutate({ user_id: selectedUser.user_id, tipo_usuario: "cliente" }); setSelectedUser({ ...selectedUser, tipo_usuario: "cliente" }); }}
-                        disabled={isFounder(selectedUser)}
-                        className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold hover:bg-muted/80 transition-colors flex items-center gap-1 disabled:opacity-50"
-                      >
-                        <User className="w-3 h-3" /> Tornar Cliente
-                      </button>
-                    )}
-                    {selectedUser.access_role !== "admin" && selectedUser.access_role !== "founder" && (
-                      <button
-                        onClick={() => { toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: true }); setSelectedUser({ ...selectedUser, access_role: "admin" }); }}
-                        className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors flex items-center gap-1"
-                      >
-                        <ShieldCheck className="w-3 h-3" /> Tornar Admin
-                      </button>
-                    )}
-                    {selectedUser.access_role === "admin" && (
-                      <button
-                        onClick={() => { toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: false }); setSelectedUser({ ...selectedUser, access_role: "user" }); }}
-                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
-                      >
-                        <ShieldOff className="w-3 h-3" /> Remover Admin
-                      </button>
-                    )}
                     {selectedUser.status === "ativo" ? (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" }); setSelectedUser({ ...selectedUser, status: "bloqueado" }); }}
-                        disabled={isFounder(selectedUser)}
-                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
                       >
                         <Lock className="w-3 h-3" /> Bloquear
                       </button>
                     ) : (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "ativo" }); setSelectedUser({ ...selectedUser, status: "ativo" }); }}
-                        disabled={isFounder(selectedUser)}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-1 disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
                       >
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
                     )}
-                    {!isFounder(selectedUser) && (
-                      <button
-                        onClick={() => {
-                          if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
-                            deleteUser.mutate({ user_id: selectedUser.user_id });
-                            setSelectedUser(null);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-red-900/20 text-red-400 text-xs font-semibold hover:bg-red-900/30 transition-colors flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" /> Excluir Usuário
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
+                          deleteUser.mutate({ user_id: selectedUser.user_id });
+                          setSelectedUser(null);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-900/20 text-red-400 text-xs font-semibold hover:bg-red-900/30 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Excluir Usuário
+                    </button>
                   </div>
                 </div>
-
-                {isFounder(selectedUser) && (
-                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 text-center">
-                    <p className="text-xs text-purple-300 font-semibold">👑 Conta Founder — protegida contra alterações</p>
-                  </div>
-                )}
               </div>
             </motion.div>
           </motion.div>
