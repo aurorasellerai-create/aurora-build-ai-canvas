@@ -8,6 +8,14 @@ const ALLOWED_ORIGINS = [
   "https://6db001cd-6f98-4de0-bc1d-7aa673f8d426.lovableproject.com",
 ];
 
+const PRIMARY_FOUNDER_EMAIL = "aurora.seller.ai@gmail.com";
+const PROTECTED_ADMIN_EMAILS = [
+  PRIMARY_FOUNDER_EMAIL,
+  "dayse74correia@hotmail.com",
+];
+
+const normalizeEmail = (email?: string | null) => (email || "").trim().toLowerCase();
+
 function getCorsHeaders(req?: Request) {
   const origin = req?.headers.get("Origin") || "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -47,6 +55,52 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const currentEmail = normalizeEmail(user.email);
+    const currentUserIsProtectedAdmin = PROTECTED_ADMIN_EMAILS.includes(currentEmail);
+
+    const ensureProtectedAccess = async () => {
+      if (currentUserIsProtectedAdmin) {
+        await adminClient
+          .from("user_roles")
+          .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
+      }
+
+      if (currentEmail === PRIMARY_FOUNDER_EMAIL) {
+        const { data: founderUsers } = await adminClient
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "founder");
+
+        const otherFounderIds = (founderUsers || [])
+          .map((entry: any) => entry.user_id)
+          .filter((founderId: string) => founderId !== user.id);
+
+        if (otherFounderIds.length > 0) {
+          await adminClient
+            .from("user_roles")
+            .delete()
+            .eq("role", "founder")
+            .in("user_id", otherFounderIds);
+        }
+
+        await adminClient
+          .from("user_roles")
+          .upsert({ user_id: user.id, role: "founder" }, { onConflict: "user_id,role" });
+      }
+    };
+
+    const getTargetEmail = async (userId: string) => {
+      const { data, error } = await adminClient.auth.admin.getUserById(userId);
+      if (error) return "";
+      return normalizeEmail(data.user?.email);
+    };
+
+    const isProtectedTarget = async (userId: string) => {
+      const targetEmail = await getTargetEmail(userId);
+      return PROTECTED_ADMIN_EMAILS.includes(targetEmail);
+    };
+
+    await ensureProtectedAccess();
     
     // Check admin OR founder
     const { data: roles } = await adminClient
@@ -55,7 +109,7 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .in("role", ["admin", "founder"]);
 
-    if (!roles || roles.length === 0) {
+    if ((!roles || roles.length === 0) && !currentUserIsProtectedAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -114,9 +168,13 @@ Deno.serve(async (req) => {
       const enriched = (profiles || []).map((p) => {
         const userProjects = (projects || []).filter((pr) => pr.user_id === p.user_id);
         const userRoles = roleMap[p.user_id] || [];
+        const normalizedEmail = normalizeEmail(emailMap[p.user_id]);
+        const isPrimaryFounder = normalizedEmail === PRIMARY_FOUNDER_EMAIL;
+        const isProtectedAdminUser = PROTECTED_ADMIN_EMAILS.includes(normalizedEmail);
+
         let accessRole = "user";
-        if (userRoles.includes("founder")) accessRole = "founder";
-        else if (userRoles.includes("admin")) accessRole = "admin";
+        if (userRoles.includes("founder") || isPrimaryFounder) accessRole = "founder";
+        else if (userRoles.includes("admin") || isProtectedAdminUser) accessRole = "admin";
 
         return {
           ...p,
@@ -538,6 +596,9 @@ Deno.serve(async (req) => {
       const { user_id, makeAdmin } = await req.json();
       if (!user_id) return jsonErr("Missing user_id");
       if (await isTargetFounder(user_id)) return jsonErr("Cannot modify founder roles");
+      if (await isProtectedTarget(user_id)) {
+        return jsonErr("Cannot remove protected administrative access");
+      }
 
       if (makeAdmin) {
         await adminClient.from("user_roles").upsert({ user_id, role: "admin" }, { onConflict: "user_id,role" });
@@ -566,7 +627,9 @@ Deno.serve(async (req) => {
     if (action === "update_status" && req.method === "POST") {
       const { user_id, status } = await req.json();
       if (!user_id || !status) return jsonErr("Missing user_id or status");
-      if (await isTargetFounder(user_id) && !callerIsFounder) return jsonErr("Cannot modify founder");
+      if ((await isTargetFounder(user_id) && !callerIsFounder) || ((await isProtectedTarget(user_id)) && status !== "ativo")) {
+        return jsonErr("Cannot block protected administrative access");
+      }
 
       const { error } = await adminClient
         .from("profiles")
@@ -606,7 +669,7 @@ Deno.serve(async (req) => {
     if (action === "delete_user" && req.method === "POST") {
       const { user_id } = await req.json();
       if (!user_id) return jsonErr("Missing user_id");
-      if (await isTargetFounder(user_id)) return jsonErr("Cannot delete founder");
+      if (await isTargetFounder(user_id) || await isProtectedTarget(user_id)) return jsonErr("Cannot delete protected administrative account");
 
       await adminClient.from("profiles").delete().eq("user_id", user_id);
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
