@@ -862,14 +862,14 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       >
                         <Lock className="w-3 h-3" /> Bloquear
                       </button>
-                    ) : (
+                    ) : selectedUser.status !== "ativo" ? (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "ativo" }); setSelectedUser({ ...selectedUser, status: "ativo" }); }}
                         className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors flex items-center gap-1"
                       >
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
-                    )}
+                    ) : null}
                     {!isProtectedAdminEmail(selectedUser.email) && <button
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
