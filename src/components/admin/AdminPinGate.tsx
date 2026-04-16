@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Loader2, Lock, Mail, ShieldAlert } from "lucide-react";
+import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PROTECTED_ADMIN_EMAILS = [
