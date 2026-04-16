@@ -30,6 +30,14 @@ interface UserDetail {
 
 type FilterType = "all" | "vip" | "cliente" | "premium" | "teste";
 
+const PROTECTED_ADMIN_EMAILS = [
+  "aurora.seller.ai@gmail.com",
+  "dayse74correia@hotmail.com",
+];
+
+const isProtectedAdminEmail = (email?: string | null) =>
+  !!email && PROTECTED_ADMIN_EMAILS.includes(email.toLowerCase());
+
 const getRoleBadge = (role: string) => {
   if (role === "founder") return <Badge className="bg-purple-600 text-white border-purple-500 text-[10px]">👑 Founder</Badge>;
   if (role === "admin") return <Badge className="bg-blue-600 text-white border-blue-500 text-[10px]">🛠️ Admin</Badge>;
@@ -139,6 +147,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
   };
 
   const isFounder = (u: any) => u.access_role === "founder";
+  const isProtectedPrincipal = (u: any) => isProtectedAdminEmail(u.email);
 
   // Selection handlers
   const toggleSelect = (id: string) => {
@@ -164,9 +173,12 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
 
   // Bulk actions
   const executeBulkAction = useCallback(async (action: string) => {
-    const targets = selectedUsers.filter((u: any) => u.access_role !== "founder");
+    const targets = selectedUsers.filter((u: any) => {
+      if (["bloquear", "excluir"].includes(action)) return !isProtectedPrincipal(u);
+      return true;
+    });
     if (targets.length === 0) {
-      toast({ title: "Nenhum usuário selecionado (founders são protegidos)", variant: "destructive" });
+      toast({ title: "Nenhum usuário elegível para esta ação", variant: "destructive" });
       return;
     }
 
@@ -402,6 +414,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
             {paginated.map((u: any) => {
               const daysLeft = getTrialDaysLeft(u.teste_expira_em);
               const founder = isFounder(u);
+              const protectedPrincipal = isProtectedPrincipal(u);
               const isSelected = selectedIds.has(u.user_id);
               return (
                 <tr key={u.user_id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${u.status === "bloqueado" ? "opacity-60" : ""} ${founder ? "bg-purple-500/5" : ""} ${isSelected ? "bg-primary/5" : ""}`}>
@@ -475,7 +488,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                                 <ShieldCheck className="w-3 h-3 mr-2 text-blue-400" /> Tornar Admin
                               </DropdownMenuItem>
                             )}
-                            {(u.access_role === "admin" || u.access_role === "founder") && (
+                            {(u.access_role === "admin" || u.access_role === "founder") && !protectedPrincipal && (
                               <DropdownMenuItem onClick={() => toggleAdmin.mutate({ user_id: u.user_id, makeAdmin: false })}>
                                 <ShieldOff className="w-3 h-3 mr-2" /> Remover Admin/Founder
                               </DropdownMenuItem>
@@ -484,16 +497,16 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                               <ChevronDown className="w-3 h-3 mr-2" /> Rebaixar → Free
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {u.status === "ativo" ? (
+                            {u.status === "ativo" && !protectedPrincipal ? (
                               <DropdownMenuItem onClick={() => updateStatus.mutate({ user_id: u.user_id, status: "bloqueado" })} className="text-destructive">
                                 <Lock className="w-3 h-3 mr-2" /> Bloquear
                               </DropdownMenuItem>
-                            ) : (
+                            ) : u.status !== "ativo" ? (
                               <DropdownMenuItem onClick={() => updateStatus.mutate({ user_id: u.user_id, status: "ativo" })}>
                                 <Unlock className="w-3 h-3 mr-2 text-emerald-400" /> Desbloquear
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
+                            ) : null}
+                            {!protectedPrincipal && <DropdownMenuItem
                               onClick={() => {
                                 if (confirm("Tem certeza que deseja excluir este usuário?")) {
                                   deleteUser.mutate({ user_id: u.user_id });
@@ -502,7 +515,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                               className="text-destructive"
                             >
                               <Trash2 className="w-3 h-3 mr-2" /> Excluir
-                            </DropdownMenuItem>
+                            </DropdownMenuItem>}
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -753,6 +766,10 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       <Select
                         value={selectedUser.access_role}
                         onValueChange={(val) => {
+                          if (isProtectedAdminEmail(selectedUser.email) && val !== selectedUser.access_role) {
+                            toast({ title: "Acesso administrativo protegido", variant: "destructive" });
+                            return;
+                          }
                           if (val === "admin") {
                             toggleAdmin.mutate({ user_id: selectedUser.user_id, makeAdmin: true });
                           } else {
@@ -765,6 +782,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                         <SelectContent>
                           <SelectItem value="user">👤 User</SelectItem>
                           <SelectItem value="admin">🛠️ Admin</SelectItem>
+                          {selectedUser.access_role === "founder" && <SelectItem value="founder">👑 Founder</SelectItem>}
                         </SelectContent>
                       </Select>
                     </div>
@@ -837,7 +855,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase font-semibold">Ações Rápidas</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedUser.status === "ativo" ? (
+                    {selectedUser.status === "ativo" && !isProtectedAdminEmail(selectedUser.email) ? (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" }); setSelectedUser({ ...selectedUser, status: "bloqueado" }); }}
                         className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
@@ -852,7 +870,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
                     )}
-                    <button
+                    {!isProtectedAdminEmail(selectedUser.email) && <button
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
                           deleteUser.mutate({ user_id: selectedUser.user_id });
@@ -862,7 +880,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       className="px-3 py-1.5 rounded-lg bg-red-900/20 text-red-400 text-xs font-semibold hover:bg-red-900/30 transition-colors flex items-center gap-1"
                     >
                       <Trash2 className="w-3 h-3" /> Excluir Usuário
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
