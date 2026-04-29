@@ -8,6 +8,8 @@ export type ValidatorHistoryItem = {
   issuesCount: number;
   warningCount: number;
   summary: string;
+  baseValidationId?: string;
+  rerunCount?: number;
 };
 
 const STORAGE_KEY = "aurora-validator-history";
@@ -44,4 +46,20 @@ export const getValidatorHistoryItem = (id?: string) => {
   const history = getValidatorHistory();
   if (!id || id === "latest") return history[0] ?? null;
   return history.find((item) => item.id === id) ?? null;
+};
+
+export const reexecuteValidatorHistoryItem = (item: ValidatorHistoryItem) => {
+  const rerunCount = (item.rerunCount ?? 0) + 1;
+  const nextItem: ValidatorHistoryItem = {
+    ...item,
+    id: `validator-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    appName: `${item.appName} · Revalidação ${rerunCount}`,
+    summary: `${item.summary} · Diagnóstico anterior reutilizado como base`,
+    baseValidationId: item.baseValidationId ?? item.id,
+    rerunCount,
+  };
+
+  saveValidatorHistoryItem(nextItem);
+  return nextItem;
 };
