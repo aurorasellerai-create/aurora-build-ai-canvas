@@ -1,0 +1,47 @@
+export type ValidatorStatus = "approved" | "warning" | "blocked";
+
+export type ValidatorHistoryItem = {
+  id: string;
+  appName: string;
+  status: ValidatorStatus;
+  createdAt: string;
+  issuesCount: number;
+  warningCount: number;
+  summary: string;
+};
+
+const STORAGE_KEY = "aurora-validator-history";
+
+export const validatorStatusLabel: Record<ValidatorStatus, string> = {
+  approved: "Aprovado",
+  warning: "Atenção",
+  blocked: "Correção necessária",
+};
+
+export const getValidatorHistory = (): ValidatorHistoryItem[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveValidatorHistoryItem = (item: ValidatorHistoryItem) => {
+  if (typeof window === "undefined") return;
+
+  const current = getValidatorHistory();
+  const next = [item, ...current.filter((entry) => entry.id !== item.id)].slice(0, 10);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent("aurora-validator-history-updated"));
+};
+
+export const getValidatorHistoryItem = (id?: string) => {
+  const history = getValidatorHistory();
+  if (!id || id === "latest") return history[0] ?? null;
+  return history.find((item) => item.id === id) ?? null;
+};
