@@ -198,8 +198,8 @@ export default function AuroraValidatorSection() {
                       <p className="text-sm text-primary font-semibold">🟡 Alerta: Tempo de carregamento elevado</p>
                       <p className="text-sm text-secondary font-semibold">🟢 OK: Navegação geral funcional</p>
                     </div>
-                    <Link to="/generator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
-                      <Rocket className="w-4 h-4" /> Publicar agora
+                    <Link to="/validator/latest" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
+                      <Rocket className="w-4 h-4" /> Ver detalhes da validação
                     </Link>
                   </motion.div>
                 ) : (
