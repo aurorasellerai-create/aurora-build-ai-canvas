@@ -10,14 +10,14 @@ const highlights = [
   "Testa automaticamente todo o fluxo do app",
   "Verifica botões, páginas e navegação",
   "Identifica bugs e travamentos",
-  "Valida funcionamento do checkout",
+  "Valida funcionamento do checkout (sem alterar seu app)",
   "Analisa pontos críticos de segurança",
   "Garante funcionamento completo antes de publicar",
 ];
 
 const prices = [
   { amount: "1", label: "validação", price: "R$ 9,90" },
-  { amount: "5", label: "validações", price: "R$ 39,90" },
+  { amount: "5", label: "validações", price: "R$ 37,00" },
   { amount: "15", label: "validações", price: "R$ 97,00" },
 ];
 
@@ -130,8 +130,15 @@ export default function AuroraValidatorSection() {
             <div className="rounded-xl border border-secondary/25 bg-secondary/5 p-4 mb-6">
               <p className="text-sm text-foreground font-semibold flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
-                Um pequeno erro pode interromper vendas, gerar frustração e comprometer a experiência. Validar antes de publicar é essencial.
+                Um pequeno erro pode interromper vendas, gerar frustração e comprometer a experiência. Não publique no escuro.
               </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/20 p-4 mb-6 space-y-2">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Exemplo de validação</p>
+              <p className="text-sm text-secondary font-semibold">🟢 Fluxo: OK</p>
+              <p className="text-sm text-destructive font-semibold">🔴 Botão “Comprar” não responde</p>
+              <p className="text-sm text-primary font-semibold">🟡 Tempo de carregamento alto</p>
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3 mb-6">
@@ -142,6 +149,11 @@ export default function AuroraValidatorSection() {
                 </div>
               ))}
             </div>
+
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary glow-gold">
+              <AlertTriangle className="w-3.5 h-3.5" /> Recomendado antes de publicar qualquer app
+            </div>
+            <p className="mb-3 text-sm font-semibold text-foreground">Seu usuário não vai avisar o erro. Ele vai sair.</p>
 
             <button
               type="button"
@@ -154,7 +166,7 @@ export default function AuroraValidatorSection() {
               }`}
             >
               {isValidating ? <Zap className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              {isValidating ? "Analisando seu app…" : "Validar meu app agora"}
+              {isValidating ? "Analisando seu app…" : "Validar meu app antes de publicar"}
             </button>
           </div>
 
