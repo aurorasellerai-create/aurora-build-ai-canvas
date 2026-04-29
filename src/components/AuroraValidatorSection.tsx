@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, ArrowRight, Check, CheckCircle2, CreditCard, Lock, Play, Rocket, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useCredits } from "@/hooks/useCredits";
 import { saveValidatorHistoryItem } from "@/lib/validatorHistory";
+import { APP_FORMAT_EVENT, getSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
 
 const highlights = [
   "Testa automaticamente todo o fluxo do app",
@@ -38,17 +39,50 @@ const reportItems = [
   { status: "error", label: "Pagamento", value: "Erro detectado", icon: "🔴" },
 ];
 
+const validationExamples: Record<AuroraAppFormat, string[]> = {
+  apk: [
+    "🟢 APK: instalação local funcionando",
+    "🔴 Teste no celular: botão principal não responde",
+    "🟡 Permissões: revisar comportamento em alguns aparelhos",
+  ],
+  aab: [
+    "🟢 AAB: formato pronto para publicação",
+    "🔴 Página de venda: botão de pagamento não responde",
+    "🟡 Play Store: revisar tempo de carregamento inicial",
+  ],
+  pwa: [
+    "🟢 PWA: instalação pelo navegador funcionando",
+    "🔴 Atalho inicial: abertura falha em uma tela",
+    "🟡 WebView: carregamento acima do ideal",
+  ],
+};
+
 export default function AuroraValidatorSection() {
   const { balance, consumeCredits } = useCredits();
   const [isValidating, setIsValidating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [validationId, setValidationId] = useState("latest");
+  const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(() => getSelectedAppFormatPreference());
 
   const progress = useMemo(() => {
     if (!isValidating && showResult) return 100;
     return Math.round(((currentStep + 1) / validationSteps.length) * 100);
   }, [currentStep, isValidating, showResult]);
+
+  useEffect(() => {
+    const syncFormat = (event: Event) => {
+      const customEvent = event as CustomEvent<AuroraAppFormat>;
+      setSelectedFormat(customEvent.detail ?? getSelectedAppFormatPreference());
+    };
+
+    window.addEventListener(APP_FORMAT_EVENT, syncFormat);
+    window.addEventListener("storage", syncFormat);
+    return () => {
+      window.removeEventListener(APP_FORMAT_EVENT, syncFormat);
+      window.removeEventListener("storage", syncFormat);
+    };
+  }, []);
 
   const handleValidate = async () => {
     if (isValidating) return;
