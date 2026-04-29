@@ -9,6 +9,7 @@ import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
+import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -189,6 +190,7 @@ const Generator = () => {
                     onClick={() => {
                       if (allowed) {
                         setFormat(f);
+                        setSelectedAppFormatPreference(f);
                       } else {
                         checkAccess("premium_format");
                       }
