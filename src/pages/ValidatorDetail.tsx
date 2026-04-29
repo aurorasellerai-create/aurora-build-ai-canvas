@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { getValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 
 const summary = [
@@ -13,6 +14,8 @@ const summary = [
 const errors = [
   {
     severity: "critical",
+    category: "seguranca",
+    categoryLabel: "Segurança",
     title: "Botão “Começar agora” não executa ação",
     location: "Página inicial · Chamada principal",
     impact: "O usuário pode tentar iniciar a jornada e não avançar para o próximo passo.",
@@ -20,6 +23,8 @@ const errors = [
   },
   {
     severity: "critical",
+    category: "pagamento",
+    categoryLabel: "Pagamento",
     title: "Checkout não abriu durante o teste",
     location: "Plano Pro · Finalização de compra",
     impact: "A venda pode ser interrompida antes do pagamento.",
@@ -27,6 +32,8 @@ const errors = [
   },
   {
     severity: "warning",
+    category: "performance",
+    categoryLabel: "Performance",
     title: "Tempo de carregamento elevado",
     location: "Primeiro carregamento do app",
     impact: "Parte dos usuários pode abandonar antes de visualizar a tela principal.",
@@ -48,11 +55,53 @@ const getSeverityClasses = (severity: string) => {
   return "border-primary/30 bg-primary/5 text-primary";
 };
 
+const severityOptions = [
+  { value: "all", label: "Todos" },
+  { value: "critical", label: "Críticos" },
+  { value: "warning", label: "Atenção" },
+];
+
+const categoryOptions = [
+  { value: "all", label: "Todas" },
+  { value: "seguranca", label: "Segurança" },
+  { value: "pagamento", label: "Pagamento" },
+  { value: "performance", label: "Performance" },
+];
+
+const severityLabel: Record<string, string> = {
+  critical: "Crítico",
+  warning: "Atenção",
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const validation = getValidatorHistoryItem(id);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+
+  const filteredErrors = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return errors.filter((error) => {
+      const matchesSeverity = severityFilter === "all" || error.severity === severityFilter;
+      const matchesCategory = categoryFilter === "all" || error.category === categoryFilter;
+      const searchableText = `${error.categoryLabel} ${error.title} ${error.location} ${error.impact} ${error.recommendation}`.toLowerCase();
+      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+
+      return matchesSeverity && matchesCategory && matchesSearch;
+    });
+  }, [categoryFilter, searchTerm, severityFilter]);
+
+  const groupedErrors = useMemo(() => {
+    return filteredErrors.reduce<Record<string, typeof errors>>((groups, error) => {
+      const key = error.categoryLabel;
+      groups[key] = groups[key] ? [...groups[key], error] : [error];
+      return groups;
+    }, {});
+  }, [filteredErrors]);
 
   return (
     <div className="min-h-screen bg-background">
