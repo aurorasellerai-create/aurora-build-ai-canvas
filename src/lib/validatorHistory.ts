@@ -51,7 +51,7 @@ export const getValidatorHistoryItem = (id?: string) => {
   return history.find((item) => item.id === id) ?? null;
 };
 
-export const reexecuteValidatorHistoryItem = (item: ValidatorHistoryItem) => {
+export const reexecuteValidatorHistoryItem = (item: ValidatorHistoryItem, appFormat = item.appFormat) => {
   const rerunCount = (item.rerunCount ?? 0) + 1;
   const nextItem: ValidatorHistoryItem = {
     ...item,
@@ -59,6 +59,7 @@ export const reexecuteValidatorHistoryItem = (item: ValidatorHistoryItem) => {
     createdAt: new Date().toISOString(),
     appName: `${item.appName} · Revalidação ${rerunCount}`,
     summary: `${item.summary} · Diagnóstico anterior reutilizado como base`,
+    appFormat,
     baseValidationId: item.baseValidationId ?? item.id,
     rerunCount,
   };
