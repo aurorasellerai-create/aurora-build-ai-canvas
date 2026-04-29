@@ -185,7 +185,7 @@ const VideoGenerator = () => {
 
       <header className="border-b border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link to="/tools" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Voltar para o dashboard">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <h1 className="font-display font-bold text-lg text-gradient-gold flex items-center gap-2">
