@@ -132,6 +132,19 @@ const getStoredUndoFilters = (id: string): ValidatorFilters | null => {
   }
 };
 
+const getStoredUndoExpiresAt = (id: string): number | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getUndoStorageKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { expiresAt?: number };
+    return parsed.expiresAt && parsed.expiresAt > Date.now() ? parsed.expiresAt : null;
+  } catch {
+    return null;
+  }
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
   const navigate = useNavigate();
@@ -140,7 +153,9 @@ export default function ValidatorDetail() {
   const [severityFilter, setSeverityFilter] = useState(initialFilters.severityFilter);
   const [categoryFilter, setCategoryFilter] = useState(initialFilters.categoryFilter);
   const [undoFilters, setUndoFilters] = useState<ValidatorFilters | null>(null);
+  const [undoSecondsLeft, setUndoSecondsLeft] = useState(0);
   const undoTimeoutRef = useRef<number | null>(null);
+  const undoIntervalRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
@@ -158,14 +173,33 @@ export default function ValidatorDetail() {
     setSeverityFilter(storedFilters.severityFilter);
     setCategoryFilter(storedFilters.categoryFilter);
     const storedUndo = getStoredUndoFilters(id);
+    const storedUndoExpiresAt = getStoredUndoExpiresAt(id);
     setUndoFilters(storedUndo);
+    setUndoSecondsLeft(storedUndoExpiresAt ? Math.ceil((storedUndoExpiresAt - Date.now()) / 1000) : 0);
   }, [id]);
 
   useEffect(() => {
     return () => {
       if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+      if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!undoFilters) return;
+
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
+    undoIntervalRef.current = window.setInterval(() => {
+      const expiresAt = getStoredUndoExpiresAt(id);
+      const secondsLeft = expiresAt ? Math.ceil((expiresAt - Date.now()) / 1000) : 0;
+      setUndoSecondsLeft(secondsLeft);
+      if (secondsLeft <= 0) {
+        setUndoFilters(null);
+        window.sessionStorage.removeItem(getUndoStorageKey(id));
+        if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
+      }
+    }, 500);
+  }, [id, undoFilters]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -181,9 +215,12 @@ export default function ValidatorDetail() {
     if (!confirmed) return;
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
     const previousFilters = { searchTerm, severityFilter, categoryFilter };
+    const expiresAt = Date.now() + 6000;
     setUndoFilters(previousFilters);
-    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt: Date.now() + 6000 }));
+    setUndoSecondsLeft(6);
+    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt }));
 
     setSearchTerm(defaultFilters.searchTerm);
     setSeverityFilter(defaultFilters.severityFilter);
@@ -191,6 +228,7 @@ export default function ValidatorDetail() {
 
     undoTimeoutRef.current = window.setTimeout(() => {
       setUndoFilters(null);
+      setUndoSecondsLeft(0);
       window.sessionStorage.removeItem(getUndoStorageKey(id));
     }, 6000);
   };
@@ -202,9 +240,11 @@ export default function ValidatorDetail() {
     setSeverityFilter(undoFilters.severityFilter);
     setCategoryFilter(undoFilters.categoryFilter);
     setUndoFilters(null);
+    setUndoSecondsLeft(0);
     window.sessionStorage.removeItem(getUndoStorageKey(id));
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
   };
 
   const handleReexecuteWithFormat = () => {
@@ -377,7 +417,7 @@ export default function ValidatorDetail() {
 
               {undoFilters && (
                 <div className="flex flex-col gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground">Busca e filtros limpos.</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Busca e filtros limpos. Desfazer expira em <span className="text-primary font-bold">{undoSecondsLeft}s</span>.</p>
                   <button type="button" onClick={handleUndoClearFilters} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground glow-gold transition-all hover:scale-[1.02]">
                     <RefreshCw className="h-3.5 w-3.5" /> Desfazer
                   </button>
