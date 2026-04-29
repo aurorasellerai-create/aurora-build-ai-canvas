@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
+import { getValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 
 const summary = [
   { label: "Fluxo", value: "OK", status: "ok", icon: CheckCircle2 },
@@ -49,7 +50,9 @@ const getSeverityClasses = (severity: string) => {
 
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
-  const buildLabel = id === "latest" ? "Última validação" : id;
+  const validation = getValidatorHistoryItem(id);
+  const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
+  const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,7 +63,7 @@ export default function ValidatorDetail() {
           </Link>
           <div>
             <h1 className="font-display font-bold text-lg text-gradient-gold">Detalhes da validação</h1>
-            <p className="text-xs text-muted-foreground">{buildLabel}</p>
+            <p className="text-xs text-muted-foreground">{buildLabel} · {statusLabel}</p>
           </div>
         </div>
       </header>
@@ -75,7 +78,7 @@ export default function ValidatorDetail() {
               </div>
               <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-3">STATUS DO APP</h2>
               <p className="text-muted-foreground max-w-2xl">
-                O Aurora Validator analisou a build simulando navegação, cliques, campos, checkout e pontos críticos antes da publicação.
+                {validation?.summary ?? "O Aurora Validator analisou a build simulando navegação, cliques, campos, checkout e pontos críticos antes da publicação."}
               </p>
             </div>
 
