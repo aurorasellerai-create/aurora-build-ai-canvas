@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,10 +26,27 @@ const planLabels = { free: "Free", pro: "Pro", premium: "Premium" };
 const planLimits = { free: 1, pro: 5, premium: 999999 };
 const planCreditDefaults = { free: 5, pro: 50, premium: 500 };
 
+const validatorStatusClasses = {
+  approved: "text-secondary border-secondary/25 bg-secondary/5",
+  warning: "text-primary border-primary/25 bg-primary/5",
+  blocked: "text-destructive border-destructive/25 bg-destructive/5",
+};
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [validatorHistory, setValidatorHistory] = useState<ValidatorHistoryItem[]>(() => getValidatorHistory());
+
+  useEffect(() => {
+    const syncHistory = () => setValidatorHistory(getValidatorHistory());
+    window.addEventListener("aurora-validator-history-updated", syncHistory);
+    window.addEventListener("storage", syncHistory);
+    return () => {
+      window.removeEventListener("aurora-validator-history-updated", syncHistory);
+      window.removeEventListener("storage", syncHistory);
+    };
+  }, []);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
