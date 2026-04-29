@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { getValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
-import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
+import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
+import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
 
 const summary = [
   { label: "Fluxo", value: "OK", status: "ok", icon: CheckCircle2 },
@@ -74,6 +74,12 @@ const severityLabel: Record<string, string> = {
   warning: "Atenção",
 };
 
+const appFormatOptions: { value: AuroraAppFormat; label: string }[] = [
+  { value: "apk", label: "APK" },
+  { value: "aab", label: "AAB" },
+  { value: "pwa", label: "PWA" },
+];
+
 type ValidatorFilters = {
   searchTerm: string;
   severityFilter: string;
@@ -128,18 +134,22 @@ const getStoredUndoFilters = (id: string): ValidatorFilters | null => {
 
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
+  const navigate = useNavigate();
   const initialFilters = useMemo(() => getStoredFilters(id), [id]);
   const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
   const [severityFilter, setSeverityFilter] = useState(initialFilters.severityFilter);
   const [categoryFilter, setCategoryFilter] = useState(initialFilters.categoryFilter);
   const [undoFilters, setUndoFilters] = useState<ValidatorFilters | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const undoTimeoutRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
 
   useEffect(() => {
-    if (validation?.appFormat) setSelectedAppFormatPreference(validation.appFormat);
+    const format = validation?.appFormat ?? "apk";
+    setSelectedFormat(format);
+    setSelectedAppFormatPreference(format);
   }, [validation?.appFormat]);
 
   useEffect(() => {
