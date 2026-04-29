@@ -1,3 +1,5 @@
+import type { AuroraAppFormat } from "@/lib/appFormatPreference";
+
 export type ValidatorStatus = "approved" | "warning" | "blocked";
 
 export type ValidatorHistoryItem = {
@@ -8,6 +10,7 @@ export type ValidatorHistoryItem = {
   issuesCount: number;
   warningCount: number;
   summary: string;
+  appFormat?: AuroraAppFormat;
   baseValidationId?: string;
   rerunCount?: number;
 };
