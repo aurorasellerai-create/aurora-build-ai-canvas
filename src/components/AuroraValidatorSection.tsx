@@ -136,9 +136,9 @@ export default function AuroraValidatorSection() {
 
             <div className="rounded-xl border border-border bg-muted/20 p-4 mb-6 space-y-2">
               <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Exemplo de validação</p>
-              <p className="text-sm text-secondary font-semibold">🟢 Fluxo: OK</p>
-              <p className="text-sm text-destructive font-semibold">🔴 Botão “Comprar” não responde</p>
-              <p className="text-sm text-primary font-semibold">🟡 Tempo de carregamento alto</p>
+              <p className="text-sm text-secondary font-semibold">🟢 App criado: fluxo principal funcionando</p>
+              <p className="text-sm text-destructive font-semibold">🔴 Página de venda: botão de pagamento não responde</p>
+              <p className="text-sm text-primary font-semibold">🟡 WebView: carregamento acima do ideal</p>
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3 mb-6">
