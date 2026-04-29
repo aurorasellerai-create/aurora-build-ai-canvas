@@ -87,6 +87,7 @@ const defaultFilters: ValidatorFilters = {
 };
 
 const getFiltersStorageKey = (id: string) => `aurora-validator-filters-${id}`;
+const getUndoStorageKey = (id: string) => `aurora-validator-undo-${id}`;
 
 const getStoredFilters = (id: string): ValidatorFilters => {
   if (typeof window === "undefined") return defaultFilters;
@@ -103,6 +104,25 @@ const getStoredFilters = (id: string): ValidatorFilters => {
     };
   } catch {
     return defaultFilters;
+  }
+};
+
+const getStoredUndoFilters = (id: string): ValidatorFilters | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getUndoStorageKey(id));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { expiresAt?: number; filters?: ValidatorFilters };
+    if (!parsed.expiresAt || parsed.expiresAt < Date.now() || !parsed.filters) {
+      window.sessionStorage.removeItem(getUndoStorageKey(id));
+      return null;
+    }
+
+    return parsed.filters;
+  } catch {
+    return null;
   }
 };
 
