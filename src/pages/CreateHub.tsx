@@ -221,6 +221,8 @@ export default function CreateHub() {
             <p className="text-xs text-muted-foreground">
               <strong>Quer publicar?</strong> → Sempre use <span className="text-primary font-bold">AAB</span>
               <span className="text-border mx-2">|</span>
+              <strong>Validar antes de publicar</strong> <span className="text-primary font-bold">(recomendado)</span>
+              <span className="text-border mx-2 hidden sm:inline">|</span>
               <strong>Quer testar?</strong> → Use <span className="font-bold text-foreground">APK</span>
             </p>
           </div>
