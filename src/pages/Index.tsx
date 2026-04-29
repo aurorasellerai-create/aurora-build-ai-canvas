@@ -11,6 +11,7 @@ const ProductFeaturesSection = lazy(() => import("@/components/ProductFeaturesSe
 const DifferentialSection = lazy(() => import("@/components/DifferentialSection"));
 const TestimonialsSection = lazy(() => import("@/components/TestimonialsSection"));
 const PricingSection = lazy(() => import("@/components/PricingSection"));
+const AuroraValidatorSection = lazy(() => import("@/components/AuroraValidatorSection"));
 const AIToolsSection = lazy(() => import("@/components/AIToolsSection"));
 const CreditsInfoSection = lazy(() => import("@/components/CreditsInfoSection"));
 const FAQSection = lazy(() => import("@/components/FAQSection"));
@@ -37,6 +38,7 @@ const Index = () => (
         <DifferentialSection />
         <TestimonialsSection />
         <PricingSection />
+        <AuroraValidatorSection />
         <AIToolsSection />
         <CreditsInfoSection />
         <FAQSection />
