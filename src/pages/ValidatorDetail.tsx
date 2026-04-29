@@ -207,6 +207,23 @@ export default function ValidatorDetail() {
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
   };
 
+  const handleReexecuteWithFormat = () => {
+    const baseValidation = validation ?? {
+      id,
+      appName: buildLabel,
+      status: "blocked" as const,
+      createdAt: new Date().toISOString(),
+      issuesCount: 2,
+      warningCount: 1,
+      summary: "Publicação não recomendada até correção",
+      appFormat: selectedFormat,
+    };
+
+    setSelectedAppFormatPreference(selectedFormat);
+    const nextValidation = reexecuteValidatorHistoryItem(baseValidation, selectedFormat);
+    navigate(`/validator/${nextValidation.id}`);
+  };
+
   const filteredErrors = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
