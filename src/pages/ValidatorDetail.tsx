@@ -147,7 +147,7 @@ export default function ValidatorDetail() {
     setSearchTerm(storedFilters.searchTerm);
     setSeverityFilter(storedFilters.severityFilter);
     setCategoryFilter(storedFilters.categoryFilter);
-    setUndoFilters(null);
+    setUndoFilters(getStoredUndoFilters(id));
   }, [id]);
 
   useEffect(() => {
@@ -170,13 +170,18 @@ export default function ValidatorDetail() {
     if (!confirmed) return;
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
-    setUndoFilters({ searchTerm, severityFilter, categoryFilter });
+    const previousFilters = { searchTerm, severityFilter, categoryFilter };
+    setUndoFilters(previousFilters);
+    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt: Date.now() + 6000 }));
 
     setSearchTerm(defaultFilters.searchTerm);
     setSeverityFilter(defaultFilters.severityFilter);
     setCategoryFilter(defaultFilters.categoryFilter);
 
-    undoTimeoutRef.current = window.setTimeout(() => setUndoFilters(null), 6000);
+    undoTimeoutRef.current = window.setTimeout(() => {
+      setUndoFilters(null);
+      window.sessionStorage.removeItem(getUndoStorageKey(id));
+    }, 6000);
   };
 
   const handleUndoClearFilters = () => {
@@ -186,6 +191,7 @@ export default function ValidatorDetail() {
     setSeverityFilter(undoFilters.severityFilter);
     setCategoryFilter(undoFilters.categoryFilter);
     setUndoFilters(null);
+    window.sessionStorage.removeItem(getUndoStorageKey(id));
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
   };
