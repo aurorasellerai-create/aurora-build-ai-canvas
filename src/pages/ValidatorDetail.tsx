@@ -87,6 +87,7 @@ const defaultFilters: ValidatorFilters = {
 };
 
 const getFiltersStorageKey = (id: string) => `aurora-validator-filters-${id}`;
+const getUndoStorageKey = (id: string) => `aurora-validator-undo-${id}`;
 
 const getStoredFilters = (id: string): ValidatorFilters => {
   if (typeof window === "undefined") return defaultFilters;
@@ -103,6 +104,25 @@ const getStoredFilters = (id: string): ValidatorFilters => {
     };
   } catch {
     return defaultFilters;
+  }
+};
+
+const getStoredUndoFilters = (id: string): ValidatorFilters | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getUndoStorageKey(id));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { expiresAt?: number; filters?: ValidatorFilters };
+    if (!parsed.expiresAt || parsed.expiresAt < Date.now() || !parsed.filters) {
+      window.sessionStorage.removeItem(getUndoStorageKey(id));
+      return null;
+    }
+
+    return parsed.filters;
+  } catch {
+    return null;
   }
 };
 
@@ -127,7 +147,8 @@ export default function ValidatorDetail() {
     setSearchTerm(storedFilters.searchTerm);
     setSeverityFilter(storedFilters.severityFilter);
     setCategoryFilter(storedFilters.categoryFilter);
-    setUndoFilters(null);
+    const storedUndo = getStoredUndoFilters(id);
+    setUndoFilters(storedUndo);
   }, [id]);
 
   useEffect(() => {
@@ -150,13 +171,18 @@ export default function ValidatorDetail() {
     if (!confirmed) return;
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
-    setUndoFilters({ searchTerm, severityFilter, categoryFilter });
+    const previousFilters = { searchTerm, severityFilter, categoryFilter };
+    setUndoFilters(previousFilters);
+    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt: Date.now() + 6000 }));
 
     setSearchTerm(defaultFilters.searchTerm);
     setSeverityFilter(defaultFilters.severityFilter);
     setCategoryFilter(defaultFilters.categoryFilter);
 
-    undoTimeoutRef.current = window.setTimeout(() => setUndoFilters(null), 6000);
+    undoTimeoutRef.current = window.setTimeout(() => {
+      setUndoFilters(null);
+      window.sessionStorage.removeItem(getUndoStorageKey(id));
+    }, 6000);
   };
 
   const handleUndoClearFilters = () => {
@@ -166,6 +192,7 @@ export default function ValidatorDetail() {
     setSeverityFilter(undoFilters.severityFilter);
     setCategoryFilter(undoFilters.categoryFilter);
     setUndoFilters(null);
+    window.sessionStorage.removeItem(getUndoStorageKey(id));
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
   };
