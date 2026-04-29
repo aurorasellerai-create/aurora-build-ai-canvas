@@ -108,6 +108,7 @@ export default function AuroraValidatorSection() {
         saveValidatorHistoryItem({
           id,
           appName: "Build Aurora",
+          appFormat: selectedFormat,
           status: "blocked",
           createdAt: new Date().toISOString(),
           issuesCount: 2,

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { getValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
+import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 
 const summary = [
   { label: "Fluxo", value: "OK", status: "ok", icon: CheckCircle2 },
@@ -116,6 +117,10 @@ export default function ValidatorDetail() {
   const validation = getValidatorHistoryItem(id);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+
+  useEffect(() => {
+    if (validation?.appFormat) setSelectedAppFormatPreference(validation.appFormat);
+  }, [validation?.appFormat]);
 
   useEffect(() => {
     const storedFilters = getStoredFilters(id);

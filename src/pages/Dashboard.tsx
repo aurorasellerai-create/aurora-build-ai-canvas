@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
 import CreditHistoryWidget from "@/components/CreditHistoryWidget";
 import { getValidatorHistory, reexecuteValidatorHistoryItem, validatorStatusLabel, type ValidatorHistoryItem } from "@/lib/validatorHistory";
+import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -99,6 +100,7 @@ const Dashboard = () => {
   };
 
   const handleReexecuteValidation = (item: ValidatorHistoryItem) => {
+    if (item.appFormat) setSelectedAppFormatPreference(item.appFormat);
     const nextValidation = reexecuteValidatorHistoryItem(item);
     toast({ title: "Validação reexecutada", description: "O diagnóstico anterior foi reutilizado como base." });
     navigate(`/validator/${nextValidation.id}`);
@@ -348,7 +350,7 @@ const Dashboard = () => {
                     <div>
                       <p className="font-semibold text-foreground">{item.appName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · {(item.appFormat ?? "apk").toUpperCase()}
                       </p>
                     </div>
                   </div>
@@ -359,7 +361,7 @@ const Dashboard = () => {
                     <button onClick={() => handleReexecuteValidation(item)} className="px-4 py-2 border border-primary/30 text-primary text-sm font-semibold rounded-lg hover:bg-primary/10 transition-all flex items-center gap-1">
                       <RefreshCw className="w-4 h-4" /> Reexecutar
                     </button>
-                    <Link to={`/validator/${item.id}`} className="px-4 py-2 border border-border text-foreground text-sm font-semibold rounded-lg hover:border-secondary transition-all flex items-center gap-1">
+                    <Link to={`/validator/${item.id}`} onClick={() => item.appFormat && setSelectedAppFormatPreference(item.appFormat)} className="px-4 py-2 border border-border text-foreground text-sm font-semibold rounded-lg hover:border-secondary transition-all flex items-center gap-1">
                       <Eye className="w-4 h-4" /> Diagnóstico
                     </Link>
                   </div>
