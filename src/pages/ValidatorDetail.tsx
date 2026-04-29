@@ -132,6 +132,19 @@ const getStoredUndoFilters = (id: string): ValidatorFilters | null => {
   }
 };
 
+const getStoredUndoExpiresAt = (id: string): number | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getUndoStorageKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { expiresAt?: number };
+    return parsed.expiresAt && parsed.expiresAt > Date.now() ? parsed.expiresAt : null;
+  } catch {
+    return null;
+  }
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
   const navigate = useNavigate();
@@ -140,7 +153,9 @@ export default function ValidatorDetail() {
   const [severityFilter, setSeverityFilter] = useState(initialFilters.severityFilter);
   const [categoryFilter, setCategoryFilter] = useState(initialFilters.categoryFilter);
   const [undoFilters, setUndoFilters] = useState<ValidatorFilters | null>(null);
+  const [undoSecondsLeft, setUndoSecondsLeft] = useState(0);
   const undoTimeoutRef = useRef<number | null>(null);
+  const undoIntervalRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
