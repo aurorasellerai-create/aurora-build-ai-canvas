@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { getValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 
 const summary = [
@@ -13,6 +14,8 @@ const summary = [
 const errors = [
   {
     severity: "critical",
+    category: "seguranca",
+    categoryLabel: "Segurança",
     title: "Botão “Começar agora” não executa ação",
     location: "Página inicial · Chamada principal",
     impact: "O usuário pode tentar iniciar a jornada e não avançar para o próximo passo.",
@@ -20,6 +23,8 @@ const errors = [
   },
   {
     severity: "critical",
+    category: "pagamento",
+    categoryLabel: "Pagamento",
     title: "Checkout não abriu durante o teste",
     location: "Plano Pro · Finalização de compra",
     impact: "A venda pode ser interrompida antes do pagamento.",
@@ -27,6 +32,8 @@ const errors = [
   },
   {
     severity: "warning",
+    category: "performance",
+    categoryLabel: "Performance",
     title: "Tempo de carregamento elevado",
     location: "Primeiro carregamento do app",
     impact: "Parte dos usuários pode abandonar antes de visualizar a tela principal.",
@@ -48,11 +55,53 @@ const getSeverityClasses = (severity: string) => {
   return "border-primary/30 bg-primary/5 text-primary";
 };
 
+const severityOptions = [
+  { value: "all", label: "Todos" },
+  { value: "critical", label: "Críticos" },
+  { value: "warning", label: "Atenção" },
+];
+
+const categoryOptions = [
+  { value: "all", label: "Todas" },
+  { value: "seguranca", label: "Segurança" },
+  { value: "pagamento", label: "Pagamento" },
+  { value: "performance", label: "Performance" },
+];
+
+const severityLabel: Record<string, string> = {
+  critical: "Crítico",
+  warning: "Atenção",
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const validation = getValidatorHistoryItem(id);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+
+  const filteredErrors = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return errors.filter((error) => {
+      const matchesSeverity = severityFilter === "all" || error.severity === severityFilter;
+      const matchesCategory = categoryFilter === "all" || error.category === categoryFilter;
+      const searchableText = `${error.categoryLabel} ${error.title} ${error.location} ${error.impact} ${error.recommendation}`.toLowerCase();
+      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+
+      return matchesSeverity && matchesCategory && matchesSearch;
+    });
+  }, [categoryFilter, searchTerm, severityFilter]);
+
+  const groupedErrors = useMemo(() => {
+    return filteredErrors.reduce<Record<string, typeof errors>>((groups, error) => {
+      const key = error.categoryLabel;
+      groups[key] = groups[key] ? [...groups[key], error] : [error];
+      return groups;
+    }, {});
+  }, [filteredErrors]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,23 +167,73 @@ export default function ValidatorDetail() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground">Lista de erros da build</h2>
-                <p className="text-sm text-muted-foreground">Corrija os itens abaixo e rode uma nova validação.</p>
+                <p className="text-sm text-muted-foreground">Filtre por criticidade, categoria ou termo para agir mais rápido.</p>
               </div>
               <AlertTriangle className="w-6 h-6 text-destructive shrink-0" />
             </div>
 
-            <div className="space-y-4">
-              {errors.map((error, index) => (
-                <div key={error.title} className={`rounded-xl border p-4 ${getSeverityClasses(error.severity)}`}>
-                  <div className="flex items-start gap-3">
-                    <span className="w-8 h-8 rounded-lg bg-background/80 border border-border flex items-center justify-center text-sm font-bold shrink-0">{index + 1}</span>
-                    <div className="space-y-2">
-                      <h3 className="font-display font-bold text-foreground">{error.title}</h3>
-                      <p className="text-xs text-muted-foreground"><strong className="text-foreground">Local:</strong> {error.location}</p>
-                      <p className="text-sm text-muted-foreground"><strong className="text-foreground">Impacto:</strong> {error.impact}</p>
-                      <p className="text-sm text-muted-foreground"><strong className="text-foreground">Correção recomendada:</strong> {error.recommendation}</p>
-                    </div>
+            <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar por erro, local, impacto ou correção"
+                  className="w-full rounded-lg border border-border bg-background/70 py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><SlidersHorizontal className="h-3.5 w-3.5 text-primary" /> Criticidade</p>
+                  <div className="flex flex-wrap gap-2">
+                    {severityOptions.map((option) => (
+                      <button key={option.value} type="button" onClick={() => setSeverityFilter(option.value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${severityFilter === option.value ? "border-primary bg-primary text-primary-foreground shadow-[0_0_18px_hsl(var(--primary)/0.25)]" : "border-border bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categoria</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categoryOptions.map((option) => (
+                      <button key={option.value} type="button" onClick={() => setCategoryFilter(option.value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${categoryFilter === option.value ? "border-secondary bg-secondary text-secondary-foreground shadow-[0_0_18px_hsl(var(--secondary)/0.22)]" : "border-border bg-background/60 text-muted-foreground hover:border-secondary/40 hover:text-foreground"}`}>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {filteredErrors.length === 0 ? (
+                <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground">Nenhum erro encontrado com os filtros atuais.</div>
+              ) : Object.entries(groupedErrors).map(([category, categoryErrors]) => (
+                <div key={category} className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="font-display text-lg font-bold text-foreground">{category}</h3>
+                    <span className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-muted-foreground">{categoryErrors.length} item{categoryErrors.length > 1 ? "s" : ""}</span>
+                  </div>
+
+                  {categoryErrors.map((error, index) => (
+                    <div key={error.title} className={`rounded-xl border p-4 ${getSeverityClasses(error.severity)}`}>
+                      <div className="flex items-start gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-background/80 border border-border flex items-center justify-center text-sm font-bold shrink-0">{index + 1}</span>
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-display font-bold text-foreground">{error.title}</h4>
+                            <span className="rounded-full border border-current/25 px-2 py-0.5 text-[11px] font-bold uppercase">{severityLabel[error.severity]}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground"><strong className="text-foreground">Local:</strong> {error.location}</p>
+                          <p className="text-sm text-muted-foreground"><strong className="text-foreground">Impacto:</strong> {error.impact}</p>
+                          <p className="text-sm text-muted-foreground"><strong className="text-foreground">Correção recomendada:</strong> {error.recommendation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
