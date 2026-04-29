@@ -132,6 +132,12 @@ export default function ValidatorDetail() {
             </div>
 
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+              {validation?.baseValidationId && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Base reutilizada</span>
+                  <strong className="text-foreground">Revalidação</strong>
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Duração</span>
                 <strong className="text-foreground">4,2 segundos</strong>
