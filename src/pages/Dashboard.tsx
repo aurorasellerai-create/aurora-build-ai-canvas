@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
 import CreditHistoryWidget from "@/components/CreditHistoryWidget";
 import { getValidatorHistory, reexecuteValidatorHistoryItem, validatorStatusLabel, type ValidatorHistoryItem } from "@/lib/validatorHistory";
+import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -99,6 +100,7 @@ const Dashboard = () => {
   };
 
   const handleReexecuteValidation = (item: ValidatorHistoryItem) => {
+    if (item.appFormat) setSelectedAppFormatPreference(item.appFormat);
     const nextValidation = reexecuteValidatorHistoryItem(item);
     toast({ title: "Validação reexecutada", description: "O diagnóstico anterior foi reutilizado como base." });
     navigate(`/validator/${nextValidation.id}`);
@@ -348,7 +350,7 @@ const Dashboard = () => {
                     <div>
                       <p className="font-semibold text-foreground">{item.appName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · {(item.appFormat ?? "apk").toUpperCase()}
                       </p>
                     </div>
                   </div>
