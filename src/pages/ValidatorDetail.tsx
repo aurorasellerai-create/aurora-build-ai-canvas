@@ -215,9 +215,12 @@ export default function ValidatorDetail() {
     if (!confirmed) return;
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
     const previousFilters = { searchTerm, severityFilter, categoryFilter };
+    const expiresAt = Date.now() + 6000;
     setUndoFilters(previousFilters);
-    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt: Date.now() + 6000 }));
+    setUndoSecondsLeft(6);
+    window.sessionStorage.setItem(getUndoStorageKey(id), JSON.stringify({ filters: previousFilters, expiresAt }));
 
     setSearchTerm(defaultFilters.searchTerm);
     setSeverityFilter(defaultFilters.severityFilter);
@@ -225,6 +228,7 @@ export default function ValidatorDetail() {
 
     undoTimeoutRef.current = window.setTimeout(() => {
       setUndoFilters(null);
+      setUndoSecondsLeft(0);
       window.sessionStorage.removeItem(getUndoStorageKey(id));
     }, 6000);
   };
@@ -236,9 +240,11 @@ export default function ValidatorDetail() {
     setSeverityFilter(undoFilters.severityFilter);
     setCategoryFilter(undoFilters.categoryFilter);
     setUndoFilters(null);
+    setUndoSecondsLeft(0);
     window.sessionStorage.removeItem(getUndoStorageKey(id));
 
     if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
   };
 
   const handleReexecuteWithFormat = () => {
