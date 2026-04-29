@@ -13,7 +13,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
 import CreditHistoryWidget from "@/components/CreditHistoryWidget";
-import { getValidatorHistory, validatorStatusLabel, type ValidatorHistoryItem } from "@/lib/validatorHistory";
+import { getValidatorHistory, reexecuteValidatorHistoryItem, validatorStatusLabel, type ValidatorHistoryItem } from "@/lib/validatorHistory";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
@@ -96,6 +96,12 @@ const Dashboard = () => {
     } else {
       toast({ title: "Download indisponível", description: "O arquivo ainda não está pronto.", variant: "destructive" });
     }
+  };
+
+  const handleReexecuteValidation = (item: ValidatorHistoryItem) => {
+    const nextValidation = reexecuteValidatorHistoryItem(item);
+    toast({ title: "Validação reexecutada", description: "O diagnóstico anterior foi reutilizado como base." });
+    navigate(`/validator/${nextValidation.id}`);
   };
 
   const plan = (profile?.plan || "free") as keyof typeof planLabels;
@@ -350,6 +356,9 @@ const Dashboard = () => {
                     <span className={`px-3 py-1 rounded-full border text-xs font-bold ${validatorStatusClasses[item.status]}`}>
                       {validatorStatusLabel[item.status]}
                     </span>
+                    <button onClick={() => handleReexecuteValidation(item)} className="px-4 py-2 border border-primary/30 text-primary text-sm font-semibold rounded-lg hover:bg-primary/10 transition-all flex items-center gap-1">
+                      <RefreshCw className="w-4 h-4" /> Reexecutar
+                    </button>
                     <Link to={`/validator/${item.id}`} className="px-4 py-2 border border-border text-foreground text-sm font-semibold rounded-lg hover:border-secondary transition-all flex items-center gap-1">
                       <Eye className="w-4 h-4" /> Diagnóstico
                     </Link>
