@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRight, Check, CheckCircle2, CreditCard, Lock, Play,
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useCredits } from "@/hooks/useCredits";
+import { saveValidatorHistoryItem } from "@/lib/validatorHistory";
 
 const highlights = [
   "Testa automaticamente todo o fluxo do app",
@@ -42,6 +43,7 @@ export default function AuroraValidatorSection() {
   const [isValidating, setIsValidating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [validationId, setValidationId] = useState("latest");
 
   const progress = useMemo(() => {
     if (!isValidating && showResult) return 100;
@@ -67,6 +69,17 @@ export default function AuroraValidatorSection() {
       });
 
       window.setTimeout(() => {
+        const id = `validator-${Date.now()}`;
+        setValidationId(id);
+        saveValidatorHistoryItem({
+          id,
+          appName: "Build Aurora",
+          status: "blocked",
+          createdAt: new Date().toISOString(),
+          issuesCount: 2,
+          warningCount: 1,
+          summary: "Publicação não recomendada até correção",
+        });
         setIsValidating(false);
         setShowResult(true);
         toast.success("Diagnóstico concluído.");
@@ -198,7 +211,7 @@ export default function AuroraValidatorSection() {
                       <p className="text-sm text-primary font-semibold">🟡 Alerta: Tempo de carregamento elevado</p>
                       <p className="text-sm text-secondary font-semibold">🟢 OK: Navegação geral funcional</p>
                     </div>
-                    <Link to="/validator/latest" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
+                    <Link to={`/validator/${validationId}`} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
                       <Rocket className="w-4 h-4" /> Ver detalhes da validação
                     </Link>
                   </motion.div>
