@@ -132,6 +132,9 @@ export default function ValidatorDetail() {
   }, [categoryFilter, id, searchTerm, severityFilter]);
 
   const handleClearFilters = () => {
+    const confirmed = window.confirm("Limpar busca e filtros desta validação?");
+    if (!confirmed) return;
+
     setSearchTerm(defaultFilters.searchTerm);
     setSeverityFilter(defaultFilters.severityFilter);
     setCategoryFilter(defaultFilters.categoryFilter);
