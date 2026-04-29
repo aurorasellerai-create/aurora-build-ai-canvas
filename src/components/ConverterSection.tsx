@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
 
 const ConverterSection = () => {
   const [format, setFormat] = useState("apk");
@@ -61,10 +62,13 @@ const ConverterSection = () => {
             <div>
               <label className="block text-sm font-semibold text-muted-foreground mb-3">Formato</label>
               <div className="flex gap-4">
-                {["apk", "aab", "pwa"].map((f) => (
+                {(["apk", "aab", "pwa"] as AuroraAppFormat[]).map((f) => (
                   <button
                     key={f}
-                    onClick={() => setFormat(f)}
+                    onClick={() => {
+                      setFormat(f);
+                      setSelectedAppFormatPreference(f);
+                    }}
                     className={`px-6 py-2 rounded-lg font-display font-semibold text-sm uppercase transition-all duration-300 ${
                       format === f
                         ? "bg-primary text-primary-foreground glow-gold"
