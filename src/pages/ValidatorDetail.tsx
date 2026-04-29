@@ -147,7 +147,8 @@ export default function ValidatorDetail() {
     setSearchTerm(storedFilters.searchTerm);
     setSeverityFilter(storedFilters.severityFilter);
     setCategoryFilter(storedFilters.categoryFilter);
-    setUndoFilters(getStoredUndoFilters(id));
+    const storedUndo = getStoredUndoFilters(id);
+    setUndoFilters(storedUndo);
   }, [id]);
 
   useEffect(() => {
