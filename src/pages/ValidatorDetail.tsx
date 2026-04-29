@@ -89,7 +89,7 @@ export default function ValidatorDetail() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2"><FileWarning className="w-4 h-4 text-primary" /> Falhas encontradas</span>
-                <strong className="text-destructive">3</strong>
+                <strong className="text-destructive">{validation ? validation.issuesCount + validation.warningCount : 3}</strong>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> Itens aprovados</span>
