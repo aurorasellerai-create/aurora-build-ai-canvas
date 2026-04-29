@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
@@ -73,14 +73,63 @@ const severityLabel: Record<string, string> = {
   warning: "Atenção",
 };
 
+type ValidatorFilters = {
+  searchTerm: string;
+  severityFilter: string;
+  categoryFilter: string;
+};
+
+const defaultFilters: ValidatorFilters = {
+  searchTerm: "",
+  severityFilter: "all",
+  categoryFilter: "all",
+};
+
+const getFiltersStorageKey = (id: string) => `aurora-validator-filters-${id}`;
+
+const getStoredFilters = (id: string): ValidatorFilters => {
+  if (typeof window === "undefined") return defaultFilters;
+
+  try {
+    const raw = window.localStorage.getItem(getFiltersStorageKey(id));
+    if (!raw) return defaultFilters;
+
+    const parsed = JSON.parse(raw) as Partial<ValidatorFilters>;
+    return {
+      searchTerm: typeof parsed.searchTerm === "string" ? parsed.searchTerm : defaultFilters.searchTerm,
+      severityFilter: severityOptions.some((option) => option.value === parsed.severityFilter) ? parsed.severityFilter! : defaultFilters.severityFilter,
+      categoryFilter: categoryOptions.some((option) => option.value === parsed.categoryFilter) ? parsed.categoryFilter! : defaultFilters.categoryFilter,
+    };
+  } catch {
+    return defaultFilters;
+  }
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const initialFilters = useMemo(() => getStoredFilters(id), [id]);
+  const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
+  const [severityFilter, setSeverityFilter] = useState(initialFilters.severityFilter);
+  const [categoryFilter, setCategoryFilter] = useState(initialFilters.categoryFilter);
   const validation = getValidatorHistoryItem(id);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+
+  useEffect(() => {
+    const storedFilters = getStoredFilters(id);
+    setSearchTerm(storedFilters.searchTerm);
+    setSeverityFilter(storedFilters.severityFilter);
+    setCategoryFilter(storedFilters.categoryFilter);
+  }, [id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      getFiltersStorageKey(id),
+      JSON.stringify({ searchTerm, severityFilter, categoryFilter }),
+    );
+  }, [categoryFilter, id, searchTerm, severityFilter]);
 
   const filteredErrors = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
