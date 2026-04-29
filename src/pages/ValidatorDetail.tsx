@@ -131,6 +131,12 @@ export default function ValidatorDetail() {
     );
   }, [categoryFilter, id, searchTerm, severityFilter]);
 
+  const handleClearFilters = () => {
+    setSearchTerm(defaultFilters.searchTerm);
+    setSeverityFilter(defaultFilters.severityFilter);
+    setCategoryFilter(defaultFilters.categoryFilter);
+  };
+
   const filteredErrors = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -261,6 +267,10 @@ export default function ValidatorDetail() {
                   </div>
                 </div>
               </div>
+
+              <button type="button" onClick={handleClearFilters} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-4 py-2 text-xs font-semibold text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground">
+                <RefreshCw className="h-3.5 w-3.5 text-primary" /> Limpar busca e filtros
+              </button>
             </div>
 
             <div className="space-y-4">
