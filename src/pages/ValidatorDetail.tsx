@@ -140,9 +140,9 @@ export default function ValidatorDetail() {
   const [severityFilter, setSeverityFilter] = useState(initialFilters.severityFilter);
   const [categoryFilter, setCategoryFilter] = useState(initialFilters.categoryFilter);
   const [undoFilters, setUndoFilters] = useState<ValidatorFilters | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const undoTimeoutRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
+  const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
 
