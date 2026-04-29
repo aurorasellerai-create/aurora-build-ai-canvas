@@ -318,6 +318,48 @@ const Dashboard = () => {
         {/* Credit History */}
         <CreditHistoryWidget />
 
+        {/* Validator History */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} className="card-aurora mb-8">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-primary" /> Histórico de validações
+            </h2>
+            <Link to="/#aurora-validator" className="text-xs text-primary hover:underline font-semibold">
+              Nova validação →
+            </Link>
+          </div>
+
+          {validatorHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Nenhuma validação executada ainda. <Link to="/#aurora-validator" className="text-primary hover:underline">Validar meu app</Link>
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {validatorHistory.map((item) => (
+                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">{item.appName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 sm:justify-end">
+                    <span className={`px-3 py-1 rounded-full border text-xs font-bold ${validatorStatusClasses[item.status]}`}>
+                      {validatorStatusLabel[item.status]}
+                    </span>
+                    <Link to={`/validator/${item.id}`} className="px-4 py-2 border border-border text-foreground text-sm font-semibold rounded-lg hover:border-secondary transition-all flex items-center gap-1">
+                      <Eye className="w-4 h-4" /> Diagnóstico
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
         {/* Monetization */}
         {projects.some((p) => p.status === "completed") && (
           <motion.div
