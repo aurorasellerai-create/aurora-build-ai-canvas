@@ -173,14 +173,33 @@ export default function ValidatorDetail() {
     setSeverityFilter(storedFilters.severityFilter);
     setCategoryFilter(storedFilters.categoryFilter);
     const storedUndo = getStoredUndoFilters(id);
+    const storedUndoExpiresAt = getStoredUndoExpiresAt(id);
     setUndoFilters(storedUndo);
+    setUndoSecondsLeft(storedUndoExpiresAt ? Math.ceil((storedUndoExpiresAt - Date.now()) / 1000) : 0);
   }, [id]);
 
   useEffect(() => {
     return () => {
       if (undoTimeoutRef.current) window.clearTimeout(undoTimeoutRef.current);
+      if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!undoFilters) return;
+
+    if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
+    undoIntervalRef.current = window.setInterval(() => {
+      const expiresAt = getStoredUndoExpiresAt(id);
+      const secondsLeft = expiresAt ? Math.ceil((expiresAt - Date.now()) / 1000) : 0;
+      setUndoSecondsLeft(secondsLeft);
+      if (secondsLeft <= 0) {
+        setUndoFilters(null);
+        window.sessionStorage.removeItem(getUndoStorageKey(id));
+        if (undoIntervalRef.current) window.clearInterval(undoIntervalRef.current);
+      }
+    }, 500);
+  }, [id, undoFilters]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
