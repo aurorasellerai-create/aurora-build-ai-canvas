@@ -233,8 +233,9 @@ export default function AuroraValidatorSection() {
                       <p className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                         <Lock className="w-4 h-4 text-primary" /> O Validator não altera seu aplicativo
                       </p>
-                      <p className="text-sm text-muted-foreground">Ele detecta, analisa e mostra onde corrigir antes da publicação.</p>
+                      <p className="text-sm text-muted-foreground">Ele detecta, analisa e mostra onde corrigir antes da publicação. Evite erros antes que seus usuários encontrem.</p>
                     </div>
+                    <p className="text-sm font-display font-bold text-foreground">Como funciona na prática</p>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       {["Rodar", "Corrigir", "Aprovar"].map((item) => (
                         <div key={item} className="rounded-lg border border-border bg-background/70 p-3">
@@ -256,7 +257,7 @@ export default function AuroraValidatorSection() {
             </div>
 
             <p className="text-xs text-muted-foreground flex items-center gap-2">
-              <ArrowRight className="w-3.5 h-3.5 text-primary" /> Seu app só está pronto quando o Aurora Validator diz que está.
+              <ArrowRight className="w-3.5 h-3.5 text-primary" /> Seu usuário não vai avisar o erro. Ele vai sair.
             </p>
           </div>
         </motion.div>
