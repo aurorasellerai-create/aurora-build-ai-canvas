@@ -6,12 +6,13 @@ import { motion } from "framer-motion";
 import {
   Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock,
   LogOut, Sparkles, Trash2, Crown, Zap, TrendingUp, ShieldCheck, RefreshCw,
-  History,
+  History, ShieldAlert,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "@/hooks/use-toast";
 import ReferralCard from "@/components/ReferralCard";
 import CreditHistoryWidget from "@/components/CreditHistoryWidget";
+import { getValidatorHistory, validatorStatusLabel, type ValidatorHistoryItem } from "@/lib/validatorHistory";
 
 const statusConfig = {
   pending: { icon: Clock, label: "Pendente", className: "text-muted-foreground" },
