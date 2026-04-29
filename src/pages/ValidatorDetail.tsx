@@ -417,7 +417,7 @@ export default function ValidatorDetail() {
 
               {undoFilters && (
                 <div className="flex flex-col gap-3 rounded-lg border border-primary/25 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground">Busca e filtros limpos.</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Busca e filtros limpos. Desfazer expira em <span className="text-primary font-bold">{undoSecondsLeft}s</span>.</p>
                   <button type="button" onClick={handleUndoClearFilters} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground glow-gold transition-all hover:scale-[1.02]">
                     <RefreshCw className="h-3.5 w-3.5" /> Desfazer
                   </button>
