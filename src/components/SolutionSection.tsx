@@ -189,10 +189,16 @@ const SolutionSection = () => (
           <p className="relative z-10 mt-3 text-sm text-foreground/78 leading-relaxed">
             Depois disso, é só abrir no Android Studio e clicar em “Build”. Pronto. Seu aplicativo está criado — mesmo que você nunca tenha feito isso antes.
           </p>
-          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-3 text-xs text-foreground/68">
-            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Qualquer pessoa consegue fazer</span>
-            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Não precisa de experiência</span>
-            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Processo rápido e simples</span>
+          <div className="relative z-10 mt-4 grid overflow-hidden rounded-lg border border-foreground/8 bg-card/28 text-xs text-foreground/68 shadow-[0_0_22px_hsl(var(--primary)/0.06)] sm:grid-cols-2 lg:grid-cols-3">
+            <span className="flex min-h-12 items-center justify-center gap-1.5 px-3 text-center whitespace-nowrap border-b border-foreground/8 sm:border-r lg:border-b-0">
+              <span className="text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]">✔</span> Qualquer pessoa consegue fazer
+            </span>
+            <span className="flex min-h-12 items-center justify-center gap-1.5 px-3 text-center whitespace-nowrap border-b border-foreground/8 lg:border-b-0 lg:border-r">
+              <span className="text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]">✔</span> Não precisa de experiência
+            </span>
+            <span className="flex min-h-12 items-center justify-center gap-1.5 px-3 text-center whitespace-nowrap sm:col-span-2 lg:col-span-1">
+              <span className="text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.32)]">✔</span> Processo rápido e simples
+            </span>
           </div>
         </motion.div>
       </motion.div>
