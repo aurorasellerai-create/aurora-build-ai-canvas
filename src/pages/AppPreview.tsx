@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Check, Copy, Share2, Smartphone, MessageCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AppSimulation, appExamples } from "@/components/AppExamplesSection";
+import { analytics } from "@/lib/analytics";
 
 const AppPreview = () => {
   const { slug } = useParams();
@@ -14,12 +15,18 @@ const AppPreview = () => {
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${currentUrl}`)}`;
 
   const copyLink = async () => {
+    if (!app) return;
+
+    analytics.previewCopyLinkClicked(app.slug, app.name, "clicked");
+
     try {
       await navigator.clipboard.writeText(currentUrl);
       setCopyStatus("copied");
+      analytics.previewCopyLinkClicked(app.slug, app.name, "success");
     } catch (error) {
       console.error("Erro ao copiar link do preview", error);
       setCopyStatus("error");
+      analytics.previewCopyLinkClicked(app.slug, app.name, "error");
     } finally {
       window.setTimeout(() => setCopyStatus("idle"), 1800);
     }
@@ -84,6 +91,7 @@ const AppPreview = () => {
             <div className="flex flex-col gap-3 md:min-w-[250px]">
               <Link
                 to="/auth"
+                onClick={() => analytics.previewCreateAppClicked(app.slug, app.name, "page")}
                 className="inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-4 font-display font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.24)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_38px_hsl(var(--primary)/0.36)]"
               >
                 Criar app como este
