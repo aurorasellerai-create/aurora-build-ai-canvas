@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { CalendarDays, CreditCard, PlayCircle, ShoppingBag, Utensils, Wrench } from "lucide-react";
 import {
   Dialog,
@@ -9,8 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const appExamples = [
+export const appExamples = [
   {
+    slug: "loja-virtual",
     icon: ShoppingBag,
     emoji: "🛍️",
     name: "Loja Virtual",
@@ -25,6 +27,7 @@ const appExamples = [
     accent: "primary",
   },
   {
+    slug: "petshop",
     icon: CalendarDays,
     emoji: "🐶",
     name: "Pet Shop",
@@ -39,6 +42,7 @@ const appExamples = [
     accent: "accent",
   },
   {
+    slug: "curso-online",
     icon: PlayCircle,
     emoji: "🎓",
     name: "Curso Online",
@@ -53,6 +57,7 @@ const appExamples = [
     accent: "primary",
   },
   {
+    slug: "delivery",
     icon: Utensils,
     emoji: "🍔",
     name: "Delivery",
@@ -67,6 +72,7 @@ const appExamples = [
     accent: "accent",
   },
   {
+    slug: "servicos",
     icon: Wrench,
     emoji: "💼",
     name: "Serviços",
@@ -81,6 +87,7 @@ const appExamples = [
     accent: "primary",
   },
   {
+    slug: "assinaturas",
     icon: CreditCard,
     emoji: "💳",
     name: "Assinaturas",
@@ -96,7 +103,7 @@ const appExamples = [
   },
 ];
 
-type AppExample = (typeof appExamples)[number];
+export type AppExample = (typeof appExamples)[number];
 
 const getAccentClasses = (accent: AppExample["accent"]) =>
   accent === "primary"
@@ -126,7 +133,7 @@ const PhoneMockup = ({ app, large = false }: { app: AppExample; large?: boolean 
   </div>
 );
 
-const AppSimulation = ({ app }: { app: AppExample }) => (
+export const AppSimulation = ({ app }: { app: AppExample }) => (
   <div className="grid gap-5 md:grid-cols-[240px_1fr] md:items-center">
     <div className="mx-auto w-full max-w-[240px] rounded-[2.4rem] border border-foreground/15 bg-background p-2 shadow-[0_0_38px_hsl(var(--accent)/0.18)]">
       <div className="overflow-hidden rounded-[1.8rem] border border-border bg-card">
@@ -186,6 +193,14 @@ const AppSimulation = ({ app }: { app: AppExample }) => (
           Este preview mostra como o cliente veria a experiência principal do app: tela inicial, ação de conversão, destaques e navegação mobile.
         </p>
       </div>
+      <div className="flex justify-end">
+        <Link
+          to="/auth"
+          className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-display font-bold text-primary-foreground shadow-[0_0_22px_hsl(var(--primary)/0.22)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_34px_hsl(var(--primary)/0.34)]"
+        >
+          Criar um app como este
+        </Link>
+      </div>
       <div className="grid gap-2 sm:grid-cols-3">
         {app.stats.map((stat) => (
           <div key={stat} className="rounded-lg border border-border bg-muted/25 p-3 text-center">
@@ -233,13 +248,21 @@ const AppExamplesSection = () => {
                 <h3 className="font-display text-lg font-bold text-foreground">{app.name}</h3>
               </div>
               <p className="mt-2 min-h-[40px] text-sm text-muted-foreground">{app.description}</p>
-              <button
-                type="button"
-                onClick={() => setSelectedApp(app)}
-                className="mt-4 rounded-lg border border-primary/35 bg-transparent px-4 py-2 text-xs font-bold text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(var(--primary)/0.16)]"
-              >
-                Ver preview
-              </button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSelectedApp(app)}
+                  className="rounded-lg border border-primary/35 bg-transparent px-4 py-2 text-xs font-bold text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(var(--primary)/0.16)]"
+                >
+                  Ver preview rápido
+                </button>
+                <Link
+                  to={`/preview/${app.slug}`}
+                  className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 text-xs font-bold text-accent transition-all duration-300 hover:border-accent/55 hover:bg-accent/15 hover:shadow-[0_0_20px_hsl(var(--accent)/0.14)]"
+                >
+                  Abrir completo
+                </Link>
+              </div>
             </motion.article>
           ))}
         </div>
