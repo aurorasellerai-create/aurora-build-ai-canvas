@@ -218,7 +218,7 @@
 @media (max-width: 768px) {
   .benefits-bar {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 10px;
     padding: 16px;
   }
@@ -226,8 +226,8 @@
   .benefit-item {
     width: 100%;
     min-height: 42px;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    text-align: center;
   }
 
   .divider {
@@ -238,13 +238,14 @@
 @media (min-width: 769px) and (max-width: 1024px) {
   .benefits-bar {
     padding: 18px 16px;
+    gap: 14px;
   }
 
   .benefit-item {
     gap: 8px;
     padding-inline: 8px;
     font-size: 13px;
-    white-space: normal;
+    white-space: nowrap;
   }
 }
 
