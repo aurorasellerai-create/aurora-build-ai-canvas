@@ -10,7 +10,7 @@ import PaywallModal from "@/components/PaywallModal";
 import GenerationRetryButton from "@/components/GenerationRetryButton";
 import { useCredits } from "@/hooks/useCredits";
 import { pwaAndroidFlowSteps, pwaAndroidImplementations } from "@/lib/pwaAndroidFlow";
-import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
+import { clearLastGenerationError, getGenerationExceptionMessage, getGenerationFailureMessage, getLastGenerationError, saveLastGenerationError } from "@/lib/generationErrorMessages";
 import { confirmAndClearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
@@ -32,7 +32,7 @@ const ConvertSite = () => {
   const [appName, setAppName] = useState("");
   const [format, setFormat] = useState<Enums<"app_format">>("apk");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => getLastGenerationError());
   const [siteUrlTouched, setSiteUrlTouched] = useState(false);
   const [urlHistory, setUrlHistory] = useState<string[]>(() => getNormalizedSiteUrlHistory());
   const [lastFailedSubmission, setLastFailedSubmission] = useState<GenerationFormData | null>(null);
@@ -53,6 +53,7 @@ const ConvertSite = () => {
 
     const failGeneration = (message: string) => {
       setError(message);
+      saveLastGenerationError(message);
       setLastFailedSubmission(formData);
     };
 
@@ -91,6 +92,7 @@ const ConvertSite = () => {
         failGeneration(getGenerationFailureMessage("database", insertError.message));
         return;
       }
+      clearLastGenerationError();
       navigate(`/processing/${data.id}`);
     } catch (err) {
       failGeneration(getGenerationExceptionMessage(err));
@@ -104,6 +106,7 @@ const ConvertSite = () => {
     setSiteUrlTouched(true);
     if (!siteUrlValidation.isValid) {
       setError(siteUrlValidation.message);
+      saveLastGenerationError(siteUrlValidation.message);
       setLastFailedSubmission(null);
       return;
     }
