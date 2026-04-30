@@ -9,6 +9,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { pwaAndroidFlowSteps, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
+import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -39,33 +40,48 @@ const CreateFromScratch = () => {
     if (!user) return;
     setError("");
     if (!checkAccess("second_app")) return;
-    setLoading(true);
 
-    if (!allowedFormats.includes(format)) {
-      if (!checkAccess("premium_format")) { setLoading(false); return; }
-      setError(`Formato ${format.toUpperCase()} não disponível no plano ${plan}.`);
+    try {
+      setLoading(true);
+
+      if (!allowedFormats.includes(format)) {
+        if (!checkAccess("premium_format")) return;
+        setError(getGenerationFailureMessage("format_unavailable"));
+        return;
+      }
+
+      const credited = await consumeCredits("generate_app");
+      if (!credited) {
+        setError(getGenerationFailureMessage("credits"));
+        return;
+      }
+
+      const { data: canBuild, error: buildError } = await supabase.rpc("check_and_increment_build", { p_user_id: user.id });
+      if (buildError) {
+        setError(getGenerationFailureMessage("database", buildError.message));
+        return;
+      }
+      if (!canBuild) {
+        setError(getGenerationFailureMessage("daily_limit"));
+        return;
+      }
+
+      const { data, error: insertError } = await supabase
+        .from("projects")
+        .insert({ user_id: user.id, site_url: siteUrl, app_name: appName, format, status: "processing", progress: 0 })
+        .select()
+        .single();
+
+      if (insertError) {
+        setError(getGenerationFailureMessage("database", insertError.message));
+        return;
+      }
+      navigate(`/processing/${data.id}`);
+    } catch (err) {
+      setError(getGenerationExceptionMessage(err));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const credited = await consumeCredits("generate_app");
-    if (!credited) { setLoading(false); return; }
-
-    const { data: canBuild } = await supabase.rpc("check_and_increment_build", { p_user_id: user.id });
-    if (!canBuild) {
-      setError("Limite diário atingido! Faça upgrade para mais builds.");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error: insertError } = await supabase
-      .from("projects")
-      .insert({ user_id: user.id, site_url: siteUrl, app_name: appName, format, status: "processing", progress: 0 })
-      .select()
-      .single();
-
-    if (insertError) { setError(insertError.message); setLoading(false); return; }
-    navigate(`/processing/${data.id}`);
   };
 
   return (
