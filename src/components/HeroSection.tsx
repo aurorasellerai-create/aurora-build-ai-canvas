@@ -176,6 +176,20 @@ const HeroSection = () => {
           </a>
         </div>
 
+        <div className="max-w-xl mx-auto rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 text-left backdrop-blur-sm">
+          <h2 className="font-display text-sm font-bold text-foreground mb-2">
+            🧠 É difícil transformar meu site em app?
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Não. Basta colar o link do seu site, clicar em gerar e baixar o projeto. Em poucos minutos, seu aplicativo estará pronto para ser criado no Android Studio.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-3 text-xs text-muted-foreground">
+            <span><span className="text-primary">✔</span> Sem programação</span>
+            <span><span className="text-primary">✔</span> Processo simples</span>
+            <span><span className="text-primary">✔</span> Resultado rápido</span>
+          </div>
+        </div>
+
         {/* Trust badges */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 pt-1 text-sm text-muted-foreground">
           {trustBadges.map((t) => (

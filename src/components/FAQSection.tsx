@@ -4,6 +4,10 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
+    q: "Como transformar meu site em aplicativo (APK ou AAB)? Preciso programar?",
+    a: "Não — o processo é simples e automático. Você não precisa programar nem converter arquivos manualmente. Cole o link do seu site, clique em “Criar app”, baixe o arquivo do projeto (.ZIP), abra no Android Studio, clique em “Build” e gere APK ou AAB. Pronto. Seu aplicativo estará funcionando. Importante: você não está convertendo o site diretamente; o sistema cria um aplicativo baseado no seu site, garantindo mais estabilidade, compatibilidade com Android e padrão profissional.",
+  },
+  {
     q: "Preciso saber programar para criar um app?",
     a: "Não! A Aurora Build AI usa inteligência artificial para criar seu aplicativo automaticamente. Basta colar a URL do seu site ou descrever sua ideia. Zero código necessário.",
   },
