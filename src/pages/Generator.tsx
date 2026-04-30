@@ -8,6 +8,7 @@ import { Loader2, ArrowLeft, Globe, Type, AlertTriangle, Zap } from "lucide-reac
 import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
+import GenerationRetryButton from "@/components/GenerationRetryButton";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
@@ -309,15 +310,7 @@ const Generator = () => {
                 <p className="text-destructive text-sm">{error}</p>
               </div>
               {lastFailedSubmission && (
-                <button
-                  type="button"
-                  onClick={() => submitGeneration(lastFailedSubmission)}
-                  disabled={loading}
-                  className="w-full rounded-lg border border-destructive/30 bg-background/40 px-3 py-2 text-sm font-bold text-foreground transition hover:border-destructive/60 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Tentar novamente
-                </button>
+                <GenerationRetryButton loading={loading} onRetry={() => submitGeneration(lastFailedSubmission)} />
               )}
             </div>
           )}
