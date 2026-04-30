@@ -127,7 +127,7 @@ export default function ValidatorDetail() {
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
-  const validatorResult = useMemo(() => createAuroraValidatorResult(selectedFormat), [selectedFormat]);
+  const validatorResult = useMemo(() => validation?.diagnostic ?? createAuroraValidatorResult(selectedFormat), [selectedFormat, validation?.diagnostic]);
   const summary = useMemo(() => getAuroraValidatorSummary(validatorResult), [validatorResult]);
   const errors = useMemo(() => validatorResult.problemas.map((problem) => ({
     severity: problem.tipo === "erro" ? "critical" : "warning",
@@ -233,8 +233,9 @@ export default function ValidatorDetail() {
       createdAt: new Date().toISOString(),
       issuesCount: 2,
       warningCount: 1,
-      summary: "Publicação não recomendada até correção",
+      summary: validatorResult.resumo,
       appFormat: selectedFormat,
+      diagnostic: validatorResult,
     };
 
     setSelectedAppFormatPreference(selectedFormat);
