@@ -173,7 +173,7 @@ const SolutionSection = () => (
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.8, duration: 0.45 }}
-          className="aurora-premium-info-card group relative mx-auto mt-8 max-w-xl overflow-hidden rounded-xl px-5 py-4 text-left backdrop-blur-md transition-all duration-700 hover:scale-[1.015]"
+          className="aurora-premium-info-card group relative mx-auto mt-8 max-w-[800px] overflow-hidden rounded-xl px-5 py-4 text-left backdrop-blur-md transition-all duration-700 hover:scale-[1.015]"
         >
           <div className="aurora-premium-copy relative z-10">
             <h3 className="font-display text-sm font-bold text-foreground mb-3 drop-shadow-[0_0_10px_hsl(var(--primary)/0.18)]">
@@ -208,6 +208,15 @@ const SolutionSection = () => (
             </div>
           </div>
         </motion.div>
+
+        <div className="mt-5 flex justify-center">
+          <a
+            href="#beneficios"
+            className="inline-flex items-center gap-2 rounded-xl border border-accent/35 bg-transparent px-6 py-3 text-sm font-display font-bold text-accent transition-all duration-300 hover:border-accent/60 hover:bg-accent/5 hover:shadow-[0_0_24px_hsl(var(--accent)/0.18)]"
+          >
+            Ver exemplos de apps
+          </a>
+        </div>
       </motion.div>
     </div>
   </section>
