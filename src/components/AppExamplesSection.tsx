@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { CalendarDays, CreditCard, PlayCircle, ShoppingBag, Utensils, Wrench } from "lucide-react";
@@ -134,9 +134,9 @@ const PhoneMockup = ({ app, large = false }: { app: AppExample; large?: boolean 
   </div>
 );
 
-export const AppSimulation = ({ app }: { app: AppExample }) => (
+export const AppSimulation = ({ app, trackingPrefix }: { app: AppExample; trackingPrefix?: string }) => (
   <div className="grid gap-5 md:grid-cols-[240px_1fr] md:items-center">
-    <div className="mx-auto w-full max-w-[240px] rounded-[2.4rem] border border-foreground/15 bg-background p-2 shadow-[0_0_38px_hsl(var(--accent)/0.18)]">
+    <div data-preview-section={trackingPrefix ? `${trackingPrefix}-simulacao` : undefined} className="mx-auto w-full max-w-[240px] rounded-[2.4rem] border border-foreground/15 bg-background p-2 shadow-[0_0_38px_hsl(var(--accent)/0.18)]">
       <div className="overflow-hidden rounded-[1.8rem] border border-border bg-card">
         <div className="flex items-center justify-between px-4 py-3 text-[10px] text-muted-foreground">
           <span>9:41</span>
@@ -194,7 +194,7 @@ export const AppSimulation = ({ app }: { app: AppExample }) => (
           Este preview mostra como o cliente veria a experiência principal do app: tela inicial, ação de conversão, destaques e navegação mobile.
         </p>
       </div>
-      <div className="flex justify-end">
+      <div data-preview-section={trackingPrefix ? `${trackingPrefix}-cta` : undefined} className="flex justify-end">
         <Link
           to={`/auth?source=preview&preview=${app.slug}&origin=modal`}
           onClick={() => analytics.previewCreateAppClicked(app.slug, app.name, "modal")}
