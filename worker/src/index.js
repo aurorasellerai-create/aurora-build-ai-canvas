@@ -36,6 +36,7 @@ redis.on("connect", () => {
 
 // BullMQ queue
 const convertQueue = new Queue("convert-aab", { connection: redis });
+const aabToApkQueue = new Queue("aab-to-apk", { connection: redis });
 
 // Webhook endpoint — called by Supabase Edge Function
 app.post("/webhook/convert", async (req, res) => {
@@ -62,6 +63,33 @@ app.post("/webhook/convert", async (req, res) => {
   } catch (err) {
     console.error("[QUEUE] Error adding job:", err);
     res.status(500).json({ error: "Failed to queue job" });
+  }
+});
+
+app.post("/webhook/aab-to-apk", async (req, res) => {
+  const auth = req.headers["x-worker-secret"];
+  if (auth !== WORKER_SECRET) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { job_id, aab_url, user_id } = req.body;
+  if (!job_id || !aab_url || !user_id) {
+    return res.status(400).json({ error: "Missing job_id, aab_url, or user_id" });
+  }
+
+  try {
+    await aabToApkQueue.add("bundletool-universal-apk", { job_id, aab_url, user_id }, {
+      attempts: 2,
+      backoff: { type: "exponential", delay: 5000 },
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    });
+
+    console.log(`[QUEUE] AAB→APK job ${job_id} added`);
+    res.json({ status: "queued", job_id });
+  } catch (err) {
+    console.error("[QUEUE] Error adding AAB→APK job:", err);
+    res.status(500).json({ error: "Failed to queue AAB→APK job" });
   }
 });
 
