@@ -10,6 +10,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
+import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
 import { getSiteUrlPreview, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
@@ -62,58 +63,63 @@ const Generator = () => {
     // Paywall: check if creating second+ app on free
     if (!checkAccess("second_app")) return;
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    // Check format allowed
-    if (!allowedFormats.includes(format)) {
-      if (!checkAccess("premium_format")) {
-        setLoading(false);
+      // Check format allowed
+      if (!allowedFormats.includes(format)) {
+        if (!checkAccess("premium_format")) return;
+        setError(getGenerationFailureMessage("format_unavailable"));
         return;
       }
-      setError(`Formato ${format.toUpperCase()} não disponível no plano ${plan}. Faça upgrade!`);
+
+      // Consume credits
+      const credited = await consumeCredits("generate_app");
+      if (!credited) {
+        setError(getGenerationFailureMessage("credits"));
+        return;
+      }
+
+      // Check build limit
+      const { data: canBuild, error: buildError } = await supabase.rpc("check_and_increment_build", {
+        p_user_id: user.id,
+      });
+
+      if (buildError) {
+        setError(getGenerationFailureMessage("database", buildError.message));
+        return;
+      }
+
+      if (!canBuild) {
+        setError(getGenerationFailureMessage("daily_limit"));
+        return;
+      }
+
+      // Create project
+      const { data, error: insertError } = await supabase
+        .from("projects")
+        .insert({
+          user_id: user.id,
+          site_url: siteUrlValidation.value,
+          app_name: appName,
+          format,
+          status: "processing",
+          progress: 0,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        setError(getGenerationFailureMessage("database", insertError.message));
+        return;
+      }
+
+      navigate(`/processing/${data.id}`);
+    } catch (err) {
+      setError(getGenerationExceptionMessage(err));
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Consume credits
-    const credited = await consumeCredits("generate_app");
-    if (!credited) {
-      setLoading(false);
-      return;
-    }
-
-    // Check build limit
-    const { data: canBuild } = await supabase.rpc("check_and_increment_build", {
-      p_user_id: user.id,
-    });
-
-    if (!canBuild) {
-      setError("Limite diário atingido! Faça upgrade para mais builds.");
-      setLoading(false);
-      return;
-    }
-
-    // Create project
-    const { data, error: insertError } = await supabase
-      .from("projects")
-      .insert({
-        user_id: user.id,
-        site_url: siteUrlValidation.value,
-        app_name: appName,
-        format,
-        status: "processing",
-        progress: 0,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      setError(insertError.message);
-      setLoading(false);
-      return;
-    }
-
-    navigate(`/processing/${data.id}`);
   };
 
   return (
