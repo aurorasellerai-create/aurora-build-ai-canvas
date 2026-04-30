@@ -25,6 +25,7 @@ const Generator = lazy(() => import(/* webpackChunkName: "generator" */ "./pages
 const Processing = lazy(() => import(/* webpackChunkName: "processing" */ "./pages/Processing"));
 const ProjectDetail = lazy(() => import(/* webpackChunkName: "project" */ "./pages/ProjectDetail"));
 const Pricing = lazy(() => import(/* webpackChunkName: "pricing" */ "./pages/Pricing"));
+const AppPreview = lazy(() => import(/* webpackChunkName: "preview" */ "./pages/AppPreview"));
 const Tools = lazy(() => import(/* webpackChunkName: "tools" */ "./pages/Tools"));
 const BusinessGenerator = lazy(() => import(/* webpackChunkName: "business" */ "./pages/BusinessGenerator"));
 const Admin = lazy(() => import(/* webpackChunkName: "admin" */ "./pages/Admin"));
@@ -85,6 +86,7 @@ const App = () => (
               <Route path="/processing/:id" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
               <Route path="/project/:id" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/preview/:slug" element={<AppPreview />} />
               <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
               <Route path="/business" element={<ProtectedRoute><BusinessGenerator /></ProtectedRoute>} />
               <Route path="/admin" element={<Admin />} />
