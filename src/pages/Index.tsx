@@ -5,6 +5,7 @@ import HeroSection from "@/components/HeroSection";
 // Lazy load below-fold sections to reduce initial bundle
 const PainSection = lazy(() => import("@/components/PainSection"));
 const SolutionSection = lazy(() => import("@/components/SolutionSection"));
+const AppExamplesSection = lazy(() => import("@/components/AppExamplesSection"));
 const WhatYouCreateSection = lazy(() => import("@/components/WhatYouCreateSection"));
 const WhyItWorksSection = lazy(() => import("@/components/WhyItWorksSection"));
 const ProductFeaturesSection = lazy(() => import("@/components/ProductFeaturesSection"));
@@ -32,6 +33,7 @@ const Index = () => (
       <Suspense fallback={<SectionFallback />}>
         <PainSection />
         <SolutionSection />
+        <AppExamplesSection />
         <WhatYouCreateSection />
         <WhyItWorksSection />
         <ProductFeaturesSection />

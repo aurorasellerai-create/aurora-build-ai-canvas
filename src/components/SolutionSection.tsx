@@ -211,7 +211,11 @@ const SolutionSection = () => (
 
         <div className="mt-5 flex justify-center">
           <a
-            href="#beneficios"
+            href="#exemplos-apps"
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById("exemplos-apps")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-accent/35 bg-transparent px-6 py-3 text-sm font-display font-bold text-accent transition-all duration-300 hover:border-accent/60 hover:bg-accent/5 hover:shadow-[0_0_24px_hsl(var(--accent)/0.18)]"
           >
             Ver exemplos de apps
