@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCredits } from "@/hooks/useCredits";
 import { saveValidatorHistoryItem } from "@/lib/validatorHistory";
 import { APP_FORMAT_EVENT, getSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
+import { createAuroraValidatorResult, getAuroraValidatorSummary } from "@/lib/auroraValidator";
 
 const highlights = [
   "Testa automaticamente todo o fluxo do app",
@@ -30,13 +31,6 @@ const validationSteps = [
   "Validando pagamentos…",
   "Checando segurança…",
   "Finalizando diagnóstico…",
-];
-
-const reportItems = [
-  { status: "ok", label: "Fluxo", value: "OK", icon: "🟢" },
-  { status: "ok", label: "Navegação", value: "OK", icon: "🟢" },
-  { status: "warn", label: "Performance", value: "Atenção", icon: "🟡" },
-  { status: "error", label: "Pagamento", value: "Erro detectado", icon: "🔴" },
 ];
 
 const validationExamples: Record<AuroraAppFormat, string[]> = {
@@ -64,6 +58,8 @@ export default function AuroraValidatorSection() {
   const [showResult, setShowResult] = useState(false);
   const [validationId, setValidationId] = useState("latest");
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(() => getSelectedAppFormatPreference());
+  const validatorResult = useMemo(() => createAuroraValidatorResult(selectedFormat), [selectedFormat]);
+  const reportItems = useMemo(() => getAuroraValidatorSummary(validatorResult), [validatorResult]);
 
   const progress = useMemo(() => {
     if (!isValidating && showResult) return 100;
@@ -113,7 +109,7 @@ export default function AuroraValidatorSection() {
           createdAt: new Date().toISOString(),
           issuesCount: 2,
           warningCount: 1,
-          summary: "Publicação não recomendada até correção",
+          summary: validatorResult.resumo,
         });
         setIsValidating(false);
         setShowResult(true);
