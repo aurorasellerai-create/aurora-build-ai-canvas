@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, ArrowRight, Lightbulb, CheckCircle2 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
+import { useConversionJob } from "@/hooks/useConversionJob";
 
 type ConversionType = null | "apk-to-aab" | "aab-to-apk" | "to-pwa";
 
@@ -31,30 +32,50 @@ const CONVERSIONS = [
   },
 ];
 
+const fileToBase64 = (input: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+  reader.readAsDataURL(input);
+});
+
 const ConvertFile = () => {
   const [conversionType, setConversionType] = useState<ConversionType>(null);
   const [file, setFile] = useState<File | null>(null);
   const [converting, setConverting] = useState(false);
   const { balance, consumeCredits, getCost } = useCredits();
+  const job = useConversionJob();
 
   const handleConvert = async () => {
     if (!file || !conversionType) return;
-
-    const credited = await consumeCredits("generate_app");
-    if (!credited) return;
-
     setConverting(true);
-    setTimeout(() => {
-      setConverting(false);
+    try {
+      const credited = await consumeCredits("generate_app");
+      if (!credited) return;
+
+      if (conversionType === "aab-to-apk") {
+        const fileBase64 = await fileToBase64(file);
+        await job.submit("aab-upload", {
+          functionName: "convert-aab-to-apk",
+          body: { fileName: file.name, fileBase64 },
+        });
+        return;
+      }
+
       toast({
         title: "Conversão em processamento",
         description: "Seu arquivo está sendo convertido. Você receberá o resultado em breve.",
       });
-    }, 3000);
+    } catch (error) {
+      toast({ title: "Erro na conversão", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
+    } finally {
+      setConverting(false);
+    }
   };
 
   const currentStep = conversionType === null ? 1 : !file ? 2 : 3;
   const selectedConversion = CONVERSIONS.find((c) => c.id === conversionType);
+  const isAabToApkRunning = conversionType === "aab-to-apk" && (job.status === "processing" || job.status === "submitting" || job.status === "reconnecting");
 
   return (
     <div className="min-h-screen bg-background">
