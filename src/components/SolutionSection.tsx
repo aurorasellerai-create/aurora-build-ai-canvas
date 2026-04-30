@@ -189,10 +189,10 @@ const SolutionSection = () => (
           <p className="relative z-10 mt-3 text-sm text-foreground/78 leading-relaxed">
             Depois disso, é só abrir no Android Studio e clicar em “Build”. Pronto. Seu aplicativo está criado — mesmo que você nunca tenha feito isso antes.
           </p>
-          <div className="relative z-10 flex flex-wrap gap-x-4 gap-y-1 pt-3 text-xs text-foreground/68">
-            <span><span className="text-primary">✔</span> Qualquer pessoa consegue fazer</span>
-            <span><span className="text-primary">✔</span> Não precisa de experiência</span>
-            <span><span className="text-primary">✔</span> Processo rápido e simples</span>
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-3 text-xs text-foreground/68">
+            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Qualquer pessoa consegue fazer</span>
+            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Não precisa de experiência</span>
+            <span className="flex items-center justify-center gap-1.5 text-center whitespace-nowrap"><span className="text-primary">✔</span> Processo rápido e simples</span>
           </div>
         </motion.div>
       </motion.div>
