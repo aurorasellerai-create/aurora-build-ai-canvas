@@ -18,7 +18,7 @@ function getBundletoolCommand() {
   return `java -jar "${jarPath}"`;
 }
 
-function convertAABToUniversalAPK(aabPath, jobId, onProgress = async () => {}) {
+async function convertAABToUniversalAPK(aabPath, jobId, onProgress = async () => {}) {
   if (!fs.existsSync(aabPath)) {
     throw new Error("Arquivo AAB não encontrado para conversão.");
   }
@@ -31,13 +31,13 @@ function convertAABToUniversalAPK(aabPath, jobId, onProgress = async () => {}) {
   fs.mkdirSync(extractDir, { recursive: true });
 
   const bundletool = getBundletoolCommand();
-  onProgress(3);
+  await onProgress(3);
   execSync(`${bundletool} build-apks --bundle="${aabPath}" --output="${apksPath}" --mode=universal`, {
     stdio: "pipe",
     timeout: 180000,
   });
 
-  onProgress(4);
+  await onProgress(4);
   execSync(`jar xf "${apksPath}" universal.apk`, {
     cwd: extractDir,
     stdio: "pipe",
