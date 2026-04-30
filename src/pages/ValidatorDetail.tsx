@@ -293,6 +293,12 @@ export default function ValidatorDetail() {
               <p className="text-muted-foreground max-w-2xl">
                 {validatorResult.resumo}
               </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold">
+                <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-muted-foreground">Status: {validatorResult.status.toUpperCase()}</span>
+                <span className={`rounded-full border px-3 py-1 ${validatorResult.pronto_para_publicacao ? "border-secondary/30 bg-secondary/10 text-secondary" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
+                  {validatorResult.pronto_para_publicacao ? "Pronto para publicação" : "Publicação não recomendada"}
+                </span>
+              </div>
             </div>
 
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
@@ -454,7 +460,7 @@ export default function ValidatorDetail() {
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="rounded-xl border border-primary/25 bg-primary/5 p-6">
               <h2 className="font-display font-bold text-foreground mb-2">Próximo passo</h2>
-              <p className="text-sm text-muted-foreground mb-5">Corrija os erros críticos, valide novamente e publique apenas quando o status estiver aprovado.</p>
+              <p className="text-sm text-muted-foreground mb-5">{validatorResult.sugestao}</p>
               <div className="space-y-3">
                 <Link to="/#aurora-validator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
                   <RefreshCw className="w-4 h-4" /> Rodar novamente
