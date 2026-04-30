@@ -8,6 +8,7 @@ type GenerationFailureReason =
   | "unknown";
 
 const LAST_GENERATION_ERROR_KEY = "aurora-last-generation-error";
+const LAST_GENERATION_ERROR_TTL_MS = 24 * 60 * 60 * 1000;
 
 const cleanDetails = (details?: string) => details?.replace(/\s+/g, " ").trim().slice(0, 180);
 
@@ -48,8 +49,16 @@ export const getLastGenerationError = () => {
   try {
     const raw = window.localStorage.getItem(LAST_GENERATION_ERROR_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
+    const createdAt = typeof parsed?.createdAt === "string" ? new Date(parsed.createdAt).getTime() : 0;
+
+    if (!createdAt || Date.now() - createdAt > LAST_GENERATION_ERROR_TTL_MS) {
+      clearLastGenerationError();
+      return "";
+    }
+
     return typeof parsed?.message === "string" ? parsed.message : "";
   } catch {
+    clearLastGenerationError();
     return "";
   }
 };
