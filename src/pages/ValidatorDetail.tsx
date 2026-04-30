@@ -135,7 +135,7 @@ export default function ValidatorDetail() {
     categoryLabel: problem.area.charAt(0).toUpperCase() + problem.area.slice(1),
     title: problem.descricao,
     location: problem.area === "checkout" ? "Finalização de compra" : problem.area === "botão" ? "Fluxo principal" : "Análise automática do app",
-    impact: problem.impact === "alto" ? "Alto impacto: pode impedir publicação ou vendas." : problem.impact === "médio" ? "Impacto médio: pode reduzir confiança e conversão." : "Baixo impacto: ajuste recomendado antes da entrega.",
+    impact: problem.impacto === "alto" ? "Alto impacto: pode impedir publicação ou vendas." : problem.impacto === "médio" ? "Impacto médio: pode reduzir confiança e conversão." : "Baixo impacto: ajuste recomendado antes da entrega.",
     recommendation: problem.acao_recomendada,
   })), [validatorResult]);
 
@@ -332,7 +332,7 @@ export default function ValidatorDetail() {
 
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {summary.map((item, index) => {
-            const Icon = item.icon;
+            const Icon = summaryIcons[item.label as keyof typeof summaryIcons];
             const statusClass = item.status === "error" ? "text-destructive border-destructive/25 bg-destructive/5" : item.status === "warn" ? "text-primary border-primary/25 bg-primary/5" : "text-secondary border-secondary/25 bg-secondary/5";
             return (
               <motion.div key={item.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }} className={`rounded-xl border p-5 ${statusClass}`}>
