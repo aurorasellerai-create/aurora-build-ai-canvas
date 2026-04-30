@@ -82,3 +82,10 @@ export const saveNormalizedSiteUrlToHistory = (value: string) => {
   window.localStorage.setItem(NORMALIZED_SITE_URL_HISTORY_KEY, JSON.stringify(next));
   return next;
 };
+
+export const clearNormalizedSiteUrlHistory = () => {
+  if (typeof window === "undefined") return [];
+
+  window.localStorage.removeItem(NORMALIZED_SITE_URL_HISTORY_KEY);
+  return [];
+};
