@@ -10,6 +10,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
+import { validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -25,6 +26,7 @@ const Generator = () => {
   const [format, setFormat] = useState<Enums<"app_format">>("apk");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [siteUrlTouched, setSiteUrlTouched] = useState(false);
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature, projectCount } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
 
@@ -42,11 +44,19 @@ const Generator = () => {
   });
 
   const allowedFormats = formatLimits[plan as Enums<"user_plan">];
+  const siteUrlValidation = validateSiteUrl(siteUrl);
+  const showSiteUrlError = siteUrlTouched && !siteUrlValidation.isValid;
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setError("");
+    setSiteUrlTouched(true);
+
+    if (!siteUrlValidation.isValid) {
+      setError(siteUrlValidation.message);
+      return;
+    }
 
     // Paywall: check if creating second+ app on free
     if (!checkAccess("second_app")) return;
@@ -87,7 +97,7 @@ const Generator = () => {
       .from("projects")
       .insert({
         user_id: user.id,
-        site_url: siteUrl,
+        site_url: siteUrlValidation.value,
         app_name: appName,
         format,
         status: "processing",
@@ -144,11 +154,23 @@ const Generator = () => {
                 type="url"
                 placeholder="https://meusite.com"
                 value={siteUrl}
-                onChange={(e) => setSiteUrl(e.target.value)}
+                onChange={(e) => {
+                  setSiteUrl(e.target.value);
+                  if (!siteUrlTouched) setSiteUrlTouched(true);
+                  if (error === siteUrlValidation.message) setError("");
+                }}
+                onBlur={() => setSiteUrlTouched(true)}
+                aria-invalid={showSiteUrlError}
+                aria-describedby="site-url-error"
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
+                className={`w-full pl-10 pr-4 py-3 rounded-lg bg-muted border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition ${showSiteUrlError ? "border-destructive focus:ring-destructive" : "border-border focus:ring-primary"}`}
               />
             </div>
+            {showSiteUrlError && (
+              <p id="site-url-error" className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {siteUrlValidation.message}
+              </p>
+            )}
           </div>
 
           {/* Step 2 */}
@@ -225,7 +247,7 @@ const Generator = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !siteUrlValidation.isValid}
             className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex flex-col items-center justify-center gap-1"
           >
             <span className="flex items-center gap-2">
