@@ -8,6 +8,7 @@ import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
+import { pwaAndroidFlowSteps, pwaAndroidImplementations } from "@/lib/pwaAndroidFlow";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -108,7 +109,16 @@ const ConvertSite = () => {
           <div className="text-center">
             <Globe className="w-8 h-8 text-secondary mx-auto mb-2" />
             <h2 className="font-display text-xl font-bold text-foreground">Transforme seu site em app</h2>
-            <p className="text-sm text-muted-foreground mt-1">Cole o link e escolha o formato de saída</p>
+            <p className="text-sm text-muted-foreground mt-1">URL → base PWA → APK, AAB ou PWA</p>
+          </div>
+
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+            <p className="text-xs font-bold text-foreground">Núcleo Aurora Build</p>
+            {pwaAndroidFlowSteps.slice(1).map((step) => (
+              <p key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="mt-0.5 text-primary">✓</span> {step}
+              </p>
+            ))}
           </div>
 
           <div>
@@ -183,6 +193,18 @@ const ConvertSite = () => {
                 <AlertTriangle className="w-3 h-3" /> APK não é aceito na Play Store — use AAB para publicar
               </p>
             )}
+            {format === "aab" && (
+              <p className="text-xs text-primary flex items-center gap-1 mt-2">✓ Padrão ideal: PWA como base e AAB para publicação</p>
+            )}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            {pwaAndroidImplementations.map((item) => (
+              <div key={item.title} className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[11px] font-bold text-primary">{item.badge}</p>
+                <p className="text-xs font-bold text-foreground">{item.title}</p>
+              </div>
+            ))}
           </div>
 
           {error && (
