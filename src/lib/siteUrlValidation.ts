@@ -32,3 +32,16 @@ export const validateSiteUrl = (value: string) => {
     value: result.data,
   };
 };
+
+export const getSiteUrlPreview = (value: string) => {
+  try {
+    const url = new URL(value.trim());
+
+    return {
+      protocol: url.protocol.replace(":", "").toUpperCase(),
+      domain: url.hostname,
+    };
+  } catch {
+    return null;
+  }
+};
