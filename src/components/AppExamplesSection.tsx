@@ -309,17 +309,17 @@ const AppExamplesSection = () => {
       <Dialog open={!!selectedApp} onOpenChange={(open) => !open && setSelectedApp(null)}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-border bg-background">
           {selectedApp && (
-            <>
+            <div ref={modalContentRef} className="contents">
               <DialogHeader data-preview-section="modal-nome">
                 <DialogTitle className="font-display text-xl text-foreground">
                   Preview — {selectedApp.name}
                 </DialogTitle>
                 <DialogDescription>{selectedApp.description}</DialogDescription>
               </DialogHeader>
-              <div ref={modalContentRef} className="rounded-xl border border-accent/20 bg-card/70 p-4 md:p-5">
+              <div className="rounded-xl border border-accent/20 bg-card/70 p-4 md:p-5">
                 <AppSimulation app={selectedApp} trackingPrefix="modal" />
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
