@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, ArrowRight, Lightbulb, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, Lightbulb, CheckCircle2 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 import { useConversionJob } from "@/hooks/useConversionJob";
@@ -201,6 +201,14 @@ const ConvertFile = () => {
                   Saldo: <span className="font-bold text-primary">{balance}</span>
                 </p>
               </div>
+
+              {conversionType === "aab-to-apk" && (
+                <div className="rounded-lg border border-secondary/25 bg-secondary/5 p-3 text-xs text-muted-foreground space-y-1.5">
+                  <p className="font-bold text-foreground">Método oficial Google</p>
+                  <p>Usa bundletool em modo universal para gerar APK de teste local, sem modificar manualmente a estrutura do AAB.</p>
+                  <p className="font-semibold text-primary">Comando base: bundletool build-apks --mode=universal</p>
+                </div>
+              )}
 
               <button
                 onClick={handleConvert}
