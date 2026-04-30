@@ -228,6 +228,25 @@ export default function CreateHub() {
             </p>
           </div>
 
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            {pwaAndroidOutputs.map((output) => (
+              <div key={output.label} className="rounded-lg border border-secondary/20 bg-secondary/5 p-3">
+                <p className="text-xs font-bold text-secondary">Exporta {output.label}</p>
+                <p className="text-xs text-muted-foreground">{output.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            {pwaAndroidImplementations.map((item) => (
+              <div key={item.title} className="rounded-lg border border-border bg-background p-3">
+                <p className="mb-1 text-[11px] font-bold uppercase text-primary">{item.badge}</p>
+                <p className="text-xs font-bold text-foreground">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+          </div>
+
           {/* Conversions */}
           <div className="grid sm:grid-cols-2 gap-2">
             {[
