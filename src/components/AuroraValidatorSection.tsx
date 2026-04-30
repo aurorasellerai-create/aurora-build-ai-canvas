@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCredits } from "@/hooks/useCredits";
 import { saveValidatorHistoryItem } from "@/lib/validatorHistory";
 import { APP_FORMAT_EVENT, getSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
+import { createAuroraValidatorResult, getAuroraValidatorSummary } from "@/lib/auroraValidator";
 
 const highlights = [
   "Testa automaticamente todo o fluxo do app",
@@ -30,13 +31,6 @@ const validationSteps = [
   "Validando pagamentos…",
   "Checando segurança…",
   "Finalizando diagnóstico…",
-];
-
-const reportItems = [
-  { status: "ok", label: "Fluxo", value: "OK", icon: "🟢" },
-  { status: "ok", label: "Navegação", value: "OK", icon: "🟢" },
-  { status: "warn", label: "Performance", value: "Atenção", icon: "🟡" },
-  { status: "error", label: "Pagamento", value: "Erro detectado", icon: "🔴" },
 ];
 
 const validationExamples: Record<AuroraAppFormat, string[]> = {
@@ -64,6 +58,8 @@ export default function AuroraValidatorSection() {
   const [showResult, setShowResult] = useState(false);
   const [validationId, setValidationId] = useState("latest");
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(() => getSelectedAppFormatPreference());
+  const validatorResult = useMemo(() => createAuroraValidatorResult(selectedFormat), [selectedFormat]);
+  const reportItems = useMemo(() => getAuroraValidatorSummary(validatorResult), [validatorResult]);
 
   const progress = useMemo(() => {
     if (!isValidating && showResult) return 100;
@@ -113,7 +109,8 @@ export default function AuroraValidatorSection() {
           createdAt: new Date().toISOString(),
           issuesCount: 2,
           warningCount: 1,
-          summary: "Publicação não recomendada até correção",
+          summary: validatorResult.resumo,
+          diagnostic: validatorResult,
         });
         setIsValidating(false);
         setShowResult(true);
@@ -246,7 +243,7 @@ export default function AuroraValidatorSection() {
                       <div className="space-y-2">
                         {reportItems.map((item) => (
                           <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg bg-background/70 border border-border p-3">
-                            <span className="text-sm text-foreground">{item.icon} {item.label}</span>
+                            <span className="text-sm text-foreground">{item.status === "error" ? "🔴" : item.status === "warn" ? "🟡" : "🟢"} {item.label}</span>
                             <span className={`text-xs font-bold ${item.status === "error" ? "text-destructive" : item.status === "warn" ? "text-primary" : "text-secondary"}`}>{item.value}</span>
                           </div>
                         ))}
@@ -254,9 +251,12 @@ export default function AuroraValidatorSection() {
                       <p className="mt-4 text-sm font-bold text-destructive">Publicação não recomendada até correção</p>
                     </div>
                     <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
-                      <p className="text-sm text-destructive font-semibold">🔴 Erro crítico: Botão “Começar agora” não executa ação</p>
-                      <p className="text-sm text-primary font-semibold">🟡 Alerta: Tempo de carregamento elevado</p>
-                      <p className="text-sm text-secondary font-semibold">🟢 OK: Navegação geral funcional</p>
+                      {validatorResult.problemas.map((problem) => (
+                        <p key={`${problem.area}-${problem.descricao}`} className={`text-sm font-semibold ${problem.tipo === "erro" ? "text-destructive" : "text-primary"}`}>
+                          {problem.tipo === "erro" ? "🔴 ERRO" : "🟡 ALERTA"}: {problem.descricao}
+                        </p>
+                      ))}
+                      <p className="text-sm text-secondary font-semibold">🟢 OK: Verificações restantes concluídas</p>
                     </div>
                     <Link to={`/validator/${validationId}`} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
                       <Rocket className="w-4 h-4" /> Ver detalhes da validação

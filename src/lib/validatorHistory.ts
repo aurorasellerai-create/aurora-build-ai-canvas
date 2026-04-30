@@ -1,4 +1,6 @@
 import type { AuroraAppFormat } from "@/lib/appFormatPreference";
+import type { AuroraValidatorResult } from "@/lib/auroraValidator";
+import { createAuroraValidatorResult } from "@/lib/auroraValidator";
 
 export type ValidatorStatus = "approved" | "warning" | "blocked";
 
@@ -11,6 +13,7 @@ export type ValidatorHistoryItem = {
   warningCount: number;
   summary: string;
   appFormat?: AuroraAppFormat;
+  diagnostic?: AuroraValidatorResult;
   baseValidationId?: string;
   rerunCount?: number;
 };
@@ -58,8 +61,9 @@ export const reexecuteValidatorHistoryItem = (item: ValidatorHistoryItem, appFor
     id: `validator-${Date.now()}`,
     createdAt: new Date().toISOString(),
     appName: `${item.appName} · Revalidação ${rerunCount}`,
-    summary: `${item.summary} · Diagnóstico anterior reutilizado como base`,
+    summary: `${createAuroraValidatorResult(appFormat).resumo} · Diagnóstico anterior reutilizado como base`,
     appFormat,
+    diagnostic: createAuroraValidatorResult(appFormat),
     baseValidationId: item.baseValidationId ?? item.id,
     rerunCount,
   };

@@ -4,52 +4,16 @@ import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
+import { createAuroraValidatorResult, getAuroraValidatorChecks, getAuroraValidatorSummary } from "@/lib/auroraValidator";
 
-const summary = [
-  { label: "Fluxo", value: "OK", status: "ok", icon: CheckCircle2 },
-  { label: "Navegação", value: "OK", status: "ok", icon: CheckCircle2 },
-  { label: "Performance", value: "Atenção", status: "warn", icon: Gauge },
-  { label: "Pagamento", value: "Erro detectado", status: "error", icon: CreditCard },
-];
+const summaryIcons = {
+  Fluxo: CheckCircle2,
+  Navegação: CheckCircle2,
+  Performance: Gauge,
+  Checkout: CreditCard,
+};
 
-const errors = [
-  {
-    severity: "critical",
-    category: "seguranca",
-    categoryLabel: "Segurança",
-    title: "Botão “Começar agora” não executa ação",
-    location: "Página inicial · Chamada principal",
-    impact: "O usuário pode tentar iniciar a jornada e não avançar para o próximo passo.",
-    recommendation: "Conectar o botão ao fluxo correto antes de publicar.",
-  },
-  {
-    severity: "critical",
-    category: "pagamento",
-    categoryLabel: "Pagamento",
-    title: "Checkout não abriu durante o teste",
-    location: "Plano Pro · Finalização de compra",
-    impact: "A venda pode ser interrompida antes do pagamento.",
-    recommendation: "Validar o link de pagamento e testar novamente o redirecionamento.",
-  },
-  {
-    severity: "warning",
-    category: "performance",
-    categoryLabel: "Performance",
-    title: "Tempo de carregamento elevado",
-    location: "Primeiro carregamento do app",
-    impact: "Parte dos usuários pode abandonar antes de visualizar a tela principal.",
-    recommendation: "Reduzir elementos pesados e revisar imagens antes da publicação.",
-  },
-];
-
-const checks = [
-  "Páginas principais carregadas",
-  "Botões e chamadas testados",
-  "Campos e entradas simulados",
-  "Fluxo de usuário percorrido",
-  "Abertura de checkout verificada",
-  "Pontos básicos de segurança analisados",
-];
+const checks = getAuroraValidatorChecks();
 
 const getSeverityClasses = (severity: string) => {
   if (severity === "critical") return "border-destructive/30 bg-destructive/5 text-destructive";
@@ -64,9 +28,12 @@ const severityOptions = [
 
 const categoryOptions = [
   { value: "all", label: "Todas" },
-  { value: "seguranca", label: "Segurança" },
-  { value: "pagamento", label: "Pagamento" },
+  { value: "fluxo", label: "Fluxo" },
+  { value: "navegação", label: "Navegação" },
+  { value: "botão", label: "Botão" },
+  { value: "checkout", label: "Checkout" },
   { value: "performance", label: "Performance" },
+  { value: "segurança", label: "Segurança" },
 ];
 
 const severityLabel: Record<string, string> = {
@@ -160,6 +127,20 @@ export default function ValidatorDetail() {
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+  const validatorResult = useMemo(
+    () => (validation?.diagnostic && validation.appFormat === selectedFormat ? validation.diagnostic : createAuroraValidatorResult(selectedFormat)),
+    [selectedFormat, validation?.appFormat, validation?.diagnostic],
+  );
+  const summary = useMemo(() => getAuroraValidatorSummary(validatorResult), [validatorResult]);
+  const errors = useMemo(() => validatorResult.problemas.map((problem) => ({
+    severity: problem.tipo === "erro" ? "critical" : "warning",
+    category: problem.area,
+    categoryLabel: problem.area.charAt(0).toUpperCase() + problem.area.slice(1),
+    title: problem.descricao,
+    location: problem.area === "checkout" ? "Finalização de compra" : problem.area === "botão" ? "Fluxo principal" : "Análise automática do app",
+    impact: problem.impacto === "alto" ? "Alto impacto: pode impedir publicação ou vendas." : problem.impacto === "médio" ? "Impacto médio: pode reduzir confiança e conversão." : "Baixo impacto: ajuste recomendado antes da entrega.",
+    recommendation: problem.acao_recomendada,
+  })), [validatorResult]);
 
   useEffect(() => {
     const format = validation?.appFormat ?? "apk";
@@ -255,8 +236,9 @@ export default function ValidatorDetail() {
       createdAt: new Date().toISOString(),
       issuesCount: 2,
       warningCount: 1,
-      summary: "Publicação não recomendada até correção",
+      summary: validatorResult.resumo,
       appFormat: selectedFormat,
+      diagnostic: validatorResult,
     };
 
     setSelectedAppFormatPreference(selectedFormat);
@@ -309,8 +291,14 @@ export default function ValidatorDetail() {
               </div>
               <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-3">STATUS DO APP</h2>
               <p className="text-muted-foreground max-w-2xl">
-                {validation?.summary ?? "O Aurora Validator analisou a build simulando navegação, cliques, campos, checkout e pontos críticos antes da publicação."}
+                {validatorResult.resumo}
               </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold">
+                <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-muted-foreground">Status: {validatorResult.status.toUpperCase()}</span>
+                <span className={`rounded-full border px-3 py-1 ${validatorResult.pronto_para_publicacao ? "border-secondary/30 bg-secondary/10 text-secondary" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
+                  {validatorResult.pronto_para_publicacao ? "Pronto para publicação" : "Publicação não recomendada"}
+                </span>
+              </div>
             </div>
 
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
@@ -354,7 +342,7 @@ export default function ValidatorDetail() {
 
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {summary.map((item, index) => {
-            const Icon = item.icon;
+            const Icon = summaryIcons[item.label as keyof typeof summaryIcons];
             const statusClass = item.status === "error" ? "text-destructive border-destructive/25 bg-destructive/5" : item.status === "warn" ? "text-primary border-primary/25 bg-primary/5" : "text-secondary border-secondary/25 bg-secondary/5";
             return (
               <motion.div key={item.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }} className={`rounded-xl border p-5 ${statusClass}`}>
@@ -472,7 +460,7 @@ export default function ValidatorDetail() {
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }} className="rounded-xl border border-primary/25 bg-primary/5 p-6">
               <h2 className="font-display font-bold text-foreground mb-2">Próximo passo</h2>
-              <p className="text-sm text-muted-foreground mb-5">Corrija os erros críticos, valide novamente e publique apenas quando o status estiver aprovado.</p>
+              <p className="text-sm text-muted-foreground mb-5">{validatorResult.sugestao}</p>
               <div className="space-y-3">
                 <Link to="/#aurora-validator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
                   <RefreshCw className="w-4 h-4" /> Rodar novamente
