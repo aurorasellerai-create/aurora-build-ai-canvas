@@ -11,7 +11,7 @@ import GenerationRetryButton from "@/components/GenerationRetryButton";
 import { useCredits } from "@/hooks/useCredits";
 import { pwaAndroidFlowSteps, pwaAndroidImplementations } from "@/lib/pwaAndroidFlow";
 import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
-import { getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
+import { clearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -214,7 +214,16 @@ const ConvertSite = () => {
             )}
             {urlHistory.length > 0 && (
               <div className="mt-3 space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
+                  <button
+                    type="button"
+                    onClick={() => setUrlHistory(clearNormalizedSiteUrlHistory())}
+                    className="text-[11px] font-bold text-muted-foreground transition hover:text-destructive"
+                  >
+                    Limpar histórico
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {urlHistory.map((url) => (
                     <button
