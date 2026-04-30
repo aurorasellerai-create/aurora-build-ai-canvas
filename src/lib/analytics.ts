@@ -43,6 +43,8 @@ export const analytics = {
   pageView: (path: string) => trackEvent("page_view", { page_path: path }),
   previewModalViewed: (slug: string, name: string) =>
     trackEvent("preview_modal_viewed", { preview_slug: slug, preview_name: name }),
+  previewModalSectionViewed: (slug: string, name: string, section: "nome" | "simulacao" | "cta") =>
+    trackEvent("preview_modal_section_viewed", { preview_slug: slug, preview_name: name, section }),
   previewCreateAppClicked: (slug: string, name: string, location: "modal" | "page") =>
     trackEvent("preview_create_app_clicked", { preview_slug: slug, preview_name: name, location }),
   previewCopyLinkClicked: (slug: string, name: string, status: "clicked" | "success" | "error") =>
