@@ -319,7 +319,7 @@ const Generator = () => {
                 <p className="text-destructive text-sm">{error}</p>
               </div>
               {lastFailedSubmission && (
-                <GenerationRetryButton loading={loading} onRetry={() => submitGeneration(lastFailedSubmission)} />
+                <GenerationRetryButton loading={loading} lastError={error} onRetry={() => submitGeneration(lastFailedSubmission)} />
               )}
             </div>
           )}
