@@ -4,52 +4,16 @@ import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileWarning, Gauge, Lock, RefreshCw, Rocket, Search, ShieldAlert, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
+import { createAuroraValidatorResult, getAuroraValidatorChecks, getAuroraValidatorSummary } from "@/lib/auroraValidator";
 
-const summary = [
-  { label: "Fluxo", value: "OK", status: "ok", icon: CheckCircle2 },
-  { label: "Navegação", value: "OK", status: "ok", icon: CheckCircle2 },
-  { label: "Performance", value: "Atenção", status: "warn", icon: Gauge },
-  { label: "Pagamento", value: "Erro detectado", status: "error", icon: CreditCard },
-];
+const summaryIcons = {
+  Fluxo: CheckCircle2,
+  Navegação: CheckCircle2,
+  Performance: Gauge,
+  Checkout: CreditCard,
+};
 
-const errors = [
-  {
-    severity: "critical",
-    category: "seguranca",
-    categoryLabel: "Segurança",
-    title: "Botão “Começar agora” não executa ação",
-    location: "Página inicial · Chamada principal",
-    impact: "O usuário pode tentar iniciar a jornada e não avançar para o próximo passo.",
-    recommendation: "Conectar o botão ao fluxo correto antes de publicar.",
-  },
-  {
-    severity: "critical",
-    category: "pagamento",
-    categoryLabel: "Pagamento",
-    title: "Checkout não abriu durante o teste",
-    location: "Plano Pro · Finalização de compra",
-    impact: "A venda pode ser interrompida antes do pagamento.",
-    recommendation: "Validar o link de pagamento e testar novamente o redirecionamento.",
-  },
-  {
-    severity: "warning",
-    category: "performance",
-    categoryLabel: "Performance",
-    title: "Tempo de carregamento elevado",
-    location: "Primeiro carregamento do app",
-    impact: "Parte dos usuários pode abandonar antes de visualizar a tela principal.",
-    recommendation: "Reduzir elementos pesados e revisar imagens antes da publicação.",
-  },
-];
-
-const checks = [
-  "Páginas principais carregadas",
-  "Botões e chamadas testados",
-  "Campos e entradas simulados",
-  "Fluxo de usuário percorrido",
-  "Abertura de checkout verificada",
-  "Pontos básicos de segurança analisados",
-];
+const checks = getAuroraValidatorChecks();
 
 const getSeverityClasses = (severity: string) => {
   if (severity === "critical") return "border-destructive/30 bg-destructive/5 text-destructive";
@@ -64,9 +28,12 @@ const severityOptions = [
 
 const categoryOptions = [
   { value: "all", label: "Todas" },
-  { value: "seguranca", label: "Segurança" },
-  { value: "pagamento", label: "Pagamento" },
+  { value: "fluxo", label: "Fluxo" },
+  { value: "navegação", label: "Navegação" },
+  { value: "botão", label: "Botão" },
+  { value: "checkout", label: "Checkout" },
   { value: "performance", label: "Performance" },
+  { value: "segurança", label: "Segurança" },
 ];
 
 const severityLabel: Record<string, string> = {
