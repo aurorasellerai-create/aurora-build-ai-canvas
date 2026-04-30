@@ -1,11 +1,22 @@
 import { z } from "zod";
 
+const normalizeSiteUrl = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(trimmed)) return `https://${trimmed}`;
+
+  return trimmed;
+};
+
 const siteUrlSchema = z
   .string()
   .trim()
   .min(1, "Informe a URL do site para continuar.")
   .max(2048, "A URL está muito longa. Use um link mais curto.")
-  .refine((value) => /^https?:\/\//i.test(value), "A URL precisa começar com https:// ou http://")
+  .transform(normalizeSiteUrl)
+  .refine((value) => /^https?:\/\//i.test(value), "Digite uma URL válida, como https://meusite.com")
   .refine((value) => {
     try {
       const url = new URL(value);
@@ -29,7 +40,7 @@ export const validateSiteUrl = (value: string) => {
   return {
     isValid: true,
     message: "",
-    value: result.data,
+    value: new URL(result.data).href,
   };
 };
 
