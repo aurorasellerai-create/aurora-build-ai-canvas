@@ -110,6 +110,7 @@ export default function AuroraValidatorSection() {
           issuesCount: 2,
           warningCount: 1,
           summary: validatorResult.resumo,
+          diagnostic: validatorResult,
         });
         setIsValidating(false);
         setShowResult(true);
