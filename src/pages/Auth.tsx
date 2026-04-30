@@ -90,12 +90,14 @@ const Auth = () => {
             refresh_token: data.session.refresh_token,
           });
           setFailedAttempts(0);
+          analytics.authCompleted("login", source, previewSlug, previewOrigin);
           navigate("/dashboard");
         }
       } else {
         const { error } = await signUp(email, password, displayName, referralCode || undefined);
         if (error) setError(error.message);
         else {
+          analytics.authCompleted("signup", source, previewSlug, previewOrigin);
           setMessage("Conta criada com sucesso! Redirecionando...");
           setTimeout(() => navigate("/dashboard"), 1500);
         }

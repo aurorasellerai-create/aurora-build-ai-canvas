@@ -51,4 +51,6 @@ export const analytics = {
     trackEvent("preview_copy_link_clicked", { preview_slug: slug, preview_name: name, status }),
   authNextStepConfirmed: (mode: "login" | "signup", source?: string | null, previewSlug?: string | null, previewOrigin?: string | null) =>
     trackEvent("auth_next_step_confirmed", { mode, source: source || "direct", preview_slug: previewSlug, preview_origin: previewOrigin }),
+  authCompleted: (mode: "login" | "signup", source?: string | null, previewSlug?: string | null, previewOrigin?: string | null) =>
+    trackEvent("auth_completed", { mode, source: source || "direct", preview_slug: previewSlug, preview_origin: previewOrigin }),
 };
