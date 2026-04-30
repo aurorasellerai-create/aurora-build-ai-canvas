@@ -1,5 +1,5 @@
 const { Worker } = require("bullmq");
-const { buildAAB } = require("./pipeline");
+const { buildAAB, convertAABToUniversalAPK } = require("./pipeline");
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -16,6 +16,15 @@ const STEPS = [
   { progress: 80, label: "Gerando AAB com Gradle..." },
   { progress: 90, label: "Fazendo upload do arquivo..." },
   { progress: 100, label: "Concluído!" },
+];
+
+const AAB_TO_APK_STEPS = [
+  { progress: 10, label: "Recebendo AAB assinado..." },
+  { progress: 25, label: "Validando arquivo Android App Bundle..." },
+  { progress: 45, label: "Executando bundletool oficial do Google..." },
+  { progress: 70, label: "Gerando APK universal para testes..." },
+  { progress: 90, label: "Fazendo upload do APK..." },
+  { progress: 100, label: "APK pronto para teste local!" },
 ];
 
 async function updateJob(jobId, data) {
@@ -36,7 +45,80 @@ async function updateProgress(jobId, stepIndex) {
   });
 }
 
+async function updateAabToApkProgress(jobId, stepIndex) {
+  const step = AAB_TO_APK_STEPS[stepIndex];
+  if (!step) return;
+  await updateJob(jobId, {
+    progress: step.progress,
+    step_label: step.label,
+    status: step.progress >= 100 ? "done" : "processing",
+  });
+}
+
+async function downloadFile(url, targetPath) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Não foi possível baixar o AAB enviado.");
+  const buffer = Buffer.from(await response.arrayBuffer());
+  require("fs").writeFileSync(targetPath, buffer);
+}
+
 function startWorker(redisConnection) {
+  const aabToApkWorker = new Worker(
+    "aab-to-apk",
+    async (job) => {
+      const { job_id, aab_url, user_id } = job.data;
+      const fs = require("fs");
+      const path = require("path");
+      const startTime = Date.now();
+      const workDir = path.join("/tmp", `aurora-aab-input-${job_id}`);
+
+      try {
+        fs.mkdirSync(workDir, { recursive: true });
+        await updateAabToApkProgress(job_id, 0);
+
+        const aabPath = path.join(workDir, "source.aab");
+        await downloadFile(aab_url, aabPath);
+        await updateAabToApkProgress(job_id, 1);
+
+        const result = convertAABToUniversalAPK(aabPath, job_id, async (stepIndex) => {
+          await updateAabToApkProgress(job_id, stepIndex);
+        });
+
+        await updateAabToApkProgress(job_id, 4);
+        const fileBuffer = fs.readFileSync(result.apkPath);
+        const storagePath = `apk/${job_id}/app-universal.apk`;
+        const { error: uploadError } = await supabase.storage
+          .from("aab-files")
+          .upload(storagePath, fileBuffer, { contentType: "application/vnd.android.package-archive", upsert: true });
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+        const { data: urlData } = supabase.storage.from("aab-files").getPublicUrl(storagePath);
+        await updateJob(job_id, {
+          status: "done",
+          progress: 100,
+          step_label: "APK pronto para teste local!",
+          download_url: urlData.publicUrl,
+          processing_time_ms: Date.now() - startTime,
+        });
+
+        await supabase.from("system_logs").insert({
+          user_id,
+          severity: "info",
+          category: "conversion",
+          message: "AAB converted to universal APK with bundletool",
+          details: { job_id, method: "bundletool build-apks --mode=universal", processing_time_ms: Date.now() - startTime },
+        });
+      } catch (err) {
+        console.error(`[WORKER] AAB→APK job ${job_id} failed:`, err.message);
+        await updateJob(job_id, { status: "error", error_message: err.message || "Erro interno ao converter AAB para APK.", processing_time_ms: Date.now() - startTime });
+      } finally {
+        fs.rmSync(workDir, { recursive: true, force: true });
+        if (job_id) fs.rmSync(path.join("/tmp", `aurora-aab-to-apk-${job_id}`), { recursive: true, force: true });
+      }
+    },
+    { connection: redisConnection, concurrency: 1, limiter: { max: 3, duration: 60000 } }
+  );
+
   const worker = new Worker(
     "convert-aab",
     async (job) => {
@@ -131,7 +213,7 @@ function startWorker(redisConnection) {
   });
 
   console.log("[WORKER] Aurora AAB Worker started");
-  return worker;
+  return { worker, aabToApkWorker };
 }
 
 module.exports = { startWorker };
