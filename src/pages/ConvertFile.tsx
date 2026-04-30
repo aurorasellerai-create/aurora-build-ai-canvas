@@ -48,6 +48,11 @@ const ConvertFile = () => {
 
   const handleConvert = async () => {
     if (!file || !conversionType) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "Arquivo muito grande", description: "Envie um AAB de até 20MB.", variant: "destructive" });
+      return;
+    }
+
     setConverting(true);
     try {
       const credited = await consumeCredits("generate_app");
@@ -55,10 +60,11 @@ const ConvertFile = () => {
 
       if (conversionType === "aab-to-apk") {
         const fileBase64 = await fileToBase64(file);
-        await job.submit("aab-upload", {
+        const started = await job.submit("aab-upload", {
           functionName: "convert-aab-to-apk",
           body: { fileName: file.name, fileBase64 },
         });
+        if (started) toast({ title: "Conversão iniciada", description: "Usando bundletool oficial do Google em modo universal." });
         return;
       }
 
@@ -198,10 +204,10 @@ const ConvertFile = () => {
 
               <button
                 onClick={handleConvert}
-                disabled={converting}
+                disabled={converting || isAabToApkRunning}
                 className="w-full py-4 bg-primary text-primary-foreground font-display font-bold text-lg rounded-lg glow-gold glow-gold-hover transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {converting ? (
+                {converting || isAabToApkRunning ? (
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin" /> Convertendo...
                   </>
@@ -209,6 +215,24 @@ const ConvertFile = () => {
                   "Converter agora"
                 )}
               </button>
+
+              {conversionType === "aab-to-apk" && job.status !== "idle" && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{job.stepLabel || "Preparando bundletool..."}</span>
+                    <span className="font-bold text-primary">{Math.round(job.progress)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <motion.div className="h-full bg-primary" animate={{ width: `${Math.min(job.progress, 100)}%` }} transition={{ duration: 0.35 }} />
+                  </div>
+                  {job.status === "success" && job.downloadUrl && (
+                    <a href={job.downloadUrl} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-xs font-bold text-secondary-foreground glow-cyan">
+                      Baixar APK universal
+                    </a>
+                  )}
+                  {(job.status === "error" || job.status === "timeout") && <p className="text-xs font-semibold text-destructive">{job.errorMessage || "Não foi possível concluir a conversão."}</p>}
+                </div>
+              )}
             </motion.div>
           )}
         </motion.div>
@@ -260,8 +284,7 @@ const ConvertFile = () => {
           {/* Advanced tip */}
           <div className="p-3 rounded-xl border border-border bg-muted/10">
             <p className="text-xs text-muted-foreground">
-              🔧 <strong>Alternativa avançada:</strong> Você pode gerar AAB usando o Android Studio (Build → Generate Signed Bundle).
-              Mas no Aurora Build AI você faz tudo automático, sem configurar nada.
+              🔧 <strong>AAB → APK:</strong> a conversão usa bundletool oficial do Google com modo universal para facilitar testes locais. O AAB precisa estar assinado corretamente.
             </p>
           </div>
         </motion.div>
