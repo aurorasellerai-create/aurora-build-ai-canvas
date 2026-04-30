@@ -12,7 +12,7 @@ import GenerationRetryButton from "@/components/GenerationRetryButton";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
-import { clearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
+import { confirmAndClearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -221,7 +221,7 @@ const Generator = () => {
                   <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
                   <button
                     type="button"
-                    onClick={() => setUrlHistory(clearNormalizedSiteUrlHistory())}
+                    onClick={() => setUrlHistory(confirmAndClearNormalizedSiteUrlHistory())}
                     className="text-[11px] font-bold text-muted-foreground transition hover:text-destructive"
                   >
                     Limpar histórico
