@@ -163,7 +163,7 @@ const AppPreview = () => {
 
             <div className="flex flex-col gap-3 md:min-w-[250px]">
               <Link
-                to="/auth"
+                to={`/auth?source=preview&preview=${app.slug}&origin=page`}
                 onClick={() => analytics.previewCreateAppClicked(app.slug, app.name, "page")}
                 className="inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-4 font-display font-bold text-primary-foreground shadow-[0_0_24px_hsl(var(--primary)/0.24)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_38px_hsl(var(--primary)/0.36)]"
               >
