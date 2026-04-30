@@ -248,13 +248,21 @@ const AppExamplesSection = () => {
                 <h3 className="font-display text-lg font-bold text-foreground">{app.name}</h3>
               </div>
               <p className="mt-2 min-h-[40px] text-sm text-muted-foreground">{app.description}</p>
-              <button
-                type="button"
-                onClick={() => setSelectedApp(app)}
-                className="mt-4 rounded-lg border border-primary/35 bg-transparent px-4 py-2 text-xs font-bold text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(var(--primary)/0.16)]"
-              >
-                Ver preview
-              </button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSelectedApp(app)}
+                  className="rounded-lg border border-primary/35 bg-transparent px-4 py-2 text-xs font-bold text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(var(--primary)/0.16)]"
+                >
+                  Ver preview rápido
+                </button>
+                <Link
+                  to={`/preview/${app.slug}`}
+                  className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 text-xs font-bold text-accent transition-all duration-300 hover:border-accent/55 hover:bg-accent/15 hover:shadow-[0_0_20px_hsl(var(--accent)/0.14)]"
+                >
+                  Abrir completo
+                </Link>
+              </div>
             </motion.article>
           ))}
         </div>
