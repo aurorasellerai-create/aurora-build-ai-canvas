@@ -11,7 +11,7 @@ import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
 import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
-import { getSiteUrlPreview, validateSiteUrl } from "@/lib/siteUrlValidation";
+import { getNormalizedSiteUrlHistory, getSiteUrlPreview, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -34,6 +34,7 @@ const Generator = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [siteUrlTouched, setSiteUrlTouched] = useState(false);
+  const [urlHistory, setUrlHistory] = useState<string[]>(() => getNormalizedSiteUrlHistory());
   const [lastFailedSubmission, setLastFailedSubmission] = useState<GenerationFormData | null>(null);
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature, projectCount } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
@@ -138,6 +139,7 @@ const Generator = () => {
       return;
     }
 
+    setUrlHistory(saveNormalizedSiteUrlToHistory(siteUrlValidation.value));
     await submitGeneration({ siteUrl: siteUrlValidation.value, appName, format });
   };
 
@@ -209,6 +211,27 @@ const Generator = () => {
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Domínio</p>
                     <p className="truncate text-sm font-semibold text-foreground">{siteUrlPreview.domain}</p>
                   </div>
+                </div>
+              </div>
+            )}
+            {urlHistory.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
+                <div className="flex flex-wrap gap-2">
+                  {urlHistory.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => {
+                        setSiteUrl(url);
+                        setSiteUrlTouched(true);
+                        setError("");
+                      }}
+                      className="max-w-full truncate rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-secondary"
+                    >
+                      {url}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
