@@ -8,10 +8,11 @@ import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import GenerationRetryButton from "@/components/GenerationRetryButton";
+import UrlHistoryClearButton from "@/components/UrlHistoryClearButton";
 import { useCredits } from "@/hooks/useCredits";
 import { pwaAndroidFlowSteps, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
 import { clearLastGenerationError, getGenerationExceptionMessage, getGenerationFailureMessage, getLastGenerationError, saveLastGenerationError } from "@/lib/generationErrorMessages";
-import { confirmAndClearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
+import { clearNormalizedSiteUrlHistory, getNormalizedSiteUrlHistory, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -221,13 +222,7 @@ const CreateFromScratch = () => {
                   <div className="mt-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
-                      <button
-                        type="button"
-                        onClick={() => setUrlHistory(confirmAndClearNormalizedSiteUrlHistory())}
-                        className="text-[11px] font-bold text-muted-foreground transition hover:text-destructive"
-                      >
-                        Limpar histórico
-                      </button>
+                      <UrlHistoryClearButton onConfirm={() => setUrlHistory(clearNormalizedSiteUrlHistory())} />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {urlHistory.map((url) => (
