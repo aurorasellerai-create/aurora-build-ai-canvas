@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2, Mail, Lock, User, ShieldAlert } from "lucide-react";
 import AuthBackButton from "@/components/AuthBackButton";
 import { supabase } from "@/integrations/supabase/client";
+import { analytics } from "@/lib/analytics";
 
 const MAX_CLIENT_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -24,6 +25,9 @@ const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get("ref");
+  const source = searchParams.get("source");
+  const previewSlug = searchParams.get("preview");
+  const previewOrigin = searchParams.get("origin");
 
   useEffect(() => {
     if (referralCode) setIsLogin(false);
@@ -57,6 +61,7 @@ const Auth = () => {
     }
 
     setLoading(true);
+    analytics.authNextStepConfirmed(isLogin ? "login" : "signup", source, previewSlug, previewOrigin);
 
     try {
       if (isLogin) {

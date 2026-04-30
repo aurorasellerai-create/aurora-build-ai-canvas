@@ -41,8 +41,12 @@ export const analytics = {
   signUp: () => trackEvent("sign_up"),
   login: () => trackEvent("login"),
   pageView: (path: string) => trackEvent("page_view", { page_path: path }),
+  previewModalViewed: (slug: string, name: string) =>
+    trackEvent("preview_modal_viewed", { preview_slug: slug, preview_name: name }),
   previewCreateAppClicked: (slug: string, name: string, location: "modal" | "page") =>
     trackEvent("preview_create_app_clicked", { preview_slug: slug, preview_name: name, location }),
   previewCopyLinkClicked: (slug: string, name: string, status: "clicked" | "success" | "error") =>
     trackEvent("preview_copy_link_clicked", { preview_slug: slug, preview_name: name, status }),
+  authNextStepConfirmed: (mode: "login" | "signup", source?: string | null, previewSlug?: string | null, previewOrigin?: string | null) =>
+    trackEvent("auth_next_step_confirmed", { mode, source: source || "direct", preview_slug: previewSlug, preview_origin: previewOrigin }),
 };

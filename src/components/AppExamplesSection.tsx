@@ -196,7 +196,7 @@ export const AppSimulation = ({ app }: { app: AppExample }) => (
       </div>
       <div className="flex justify-end">
         <Link
-          to="/auth"
+          to={`/auth?source=preview&preview=${app.slug}&origin=modal`}
           onClick={() => analytics.previewCreateAppClicked(app.slug, app.name, "modal")}
           className="inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-display font-bold text-primary-foreground shadow-[0_0_22px_hsl(var(--primary)/0.22)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_34px_hsl(var(--primary)/0.34)]"
         >
@@ -216,6 +216,11 @@ export const AppSimulation = ({ app }: { app: AppExample }) => (
 
 const AppExamplesSection = () => {
   const [selectedApp, setSelectedApp] = useState<AppExample | null>(null);
+
+  const openPreviewModal = (app: AppExample) => {
+    analytics.previewModalViewed(app.slug, app.name);
+    setSelectedApp(app);
+  };
 
   return (
     <section id="exemplos-apps" className="scroll-mt-24 bg-background px-4 py-20" aria-labelledby="exemplos-apps-title">
@@ -253,7 +258,7 @@ const AppExamplesSection = () => {
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
                 <button
                   type="button"
-                  onClick={() => setSelectedApp(app)}
+                  onClick={() => openPreviewModal(app)}
                   className="rounded-lg border border-primary/35 bg-transparent px-4 py-2 text-xs font-bold text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(var(--primary)/0.16)]"
                 >
                   Ver preview rápido
