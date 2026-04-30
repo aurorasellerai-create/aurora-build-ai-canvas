@@ -6,7 +6,7 @@ import { AppSimulation, appExamples } from "@/components/AppExamplesSection";
 
 const AppPreview = () => {
   const { slug } = useParams();
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
 
   const app = useMemo(() => appExamples.find((example) => example.slug === slug), [slug]);
   const currentUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -14,18 +14,28 @@ const AppPreview = () => {
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${currentUrl}`)}`;
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(currentUrl);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setCopyStatus("copied");
+    } catch (error) {
+      console.error("Erro ao copiar link do preview", error);
+      setCopyStatus("error");
+    } finally {
+      window.setTimeout(() => setCopyStatus("idle"), 1800);
+    }
   };
 
   const sharePreview = async () => {
-    if (navigator.share && app) {
-      await navigator.share({ title: app.name, text: shareText, url: currentUrl });
-      return;
-    }
+    try {
+      if (navigator.share && app) {
+        await navigator.share({ title: app.name, text: shareText, url: currentUrl });
+        return;
+      }
 
-    await copyLink();
+      await copyLink();
+    } catch (error) {
+      console.error("Erro ao compartilhar preview", error);
+    }
   };
 
   if (!app) {
@@ -98,7 +108,7 @@ const AppPreview = () => {
                 onClick={copyLink}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/20 px-5 py-3 text-sm font-bold text-foreground transition-all hover:bg-muted/35"
               >
-                <Copy className="h-4 w-4" /> {copied ? "Link copiado" : "Copiar link"}
+                <Copy className="h-4 w-4" /> {copyStatus === "copied" ? "Link copiado" : copyStatus === "error" ? "Tente novamente" : "Copiar link"}
               </button>
             </div>
           </div>
