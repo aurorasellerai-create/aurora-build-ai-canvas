@@ -127,6 +127,17 @@ export default function ValidatorDetail() {
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
+  const validatorResult = useMemo(() => createAuroraValidatorResult(selectedFormat), [selectedFormat]);
+  const summary = useMemo(() => getAuroraValidatorSummary(validatorResult), [validatorResult]);
+  const errors = useMemo(() => validatorResult.problemas.map((problem) => ({
+    severity: problem.tipo === "erro" ? "critical" : "warning",
+    category: problem.area,
+    categoryLabel: problem.area.charAt(0).toUpperCase() + problem.area.slice(1),
+    title: problem.descricao,
+    location: problem.area === "checkout" ? "Finalização de compra" : problem.area === "botão" ? "Fluxo principal" : "Análise automática do app",
+    impact: problem.impact === "alto" ? "Alto impacto: pode impedir publicação ou vendas." : problem.impact === "médio" ? "Impacto médio: pode reduzir confiança e conversão." : "Baixo impacto: ajuste recomendado antes da entrega.",
+    recommendation: problem.acao_recomendada,
+  })), [validatorResult]);
 
   useEffect(() => {
     const format = validation?.appFormat ?? "apk";
@@ -276,7 +287,7 @@ export default function ValidatorDetail() {
               </div>
               <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-3">STATUS DO APP</h2>
               <p className="text-muted-foreground max-w-2xl">
-                {validation?.summary ?? "O Aurora Validator analisou a build simulando navegação, cliques, campos, checkout e pontos críticos antes da publicação."}
+                {validatorResult.resumo}
               </p>
             </div>
 
