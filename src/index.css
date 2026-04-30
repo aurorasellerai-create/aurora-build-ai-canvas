@@ -178,15 +178,28 @@
     font-size: 14px;
     text-align: center;
     white-space: nowrap;
+    border-radius: 10px;
+    padding: 8px 10px;
+    transition: background-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  }
+  .benefit-item:hover {
+    color: hsl(var(--foreground) / 0.95);
+    background: hsl(var(--accent) / 0.06);
+    transform: translateY(-1px);
   }
   .icon {
     color: hsl(var(--accent));
-    text-shadow: 0 0 8px hsl(var(--accent) / 0.6);
+    text-shadow: 0 0 8px hsl(var(--accent) / 0.65), 0 0 16px hsl(var(--accent) / 0.28);
+    transition: text-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .benefit-item:hover .icon {
+    transform: scale(1.08);
+    text-shadow: 0 0 10px hsl(var(--accent) / 0.8), 0 0 22px hsl(var(--accent) / 0.38);
   }
   .divider {
     width: 1px;
     height: 24px;
-    background: hsl(var(--foreground) / 0.15);
+    background: hsl(var(--accent) / 0.16);
   }
 }
 
