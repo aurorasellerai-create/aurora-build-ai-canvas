@@ -89,10 +89,3 @@ export const clearNormalizedSiteUrlHistory = () => {
   window.localStorage.removeItem(NORMALIZED_SITE_URL_HISTORY_KEY);
   return [];
 };
-
-export const confirmAndClearNormalizedSiteUrlHistory = () => {
-  if (typeof window === "undefined") return getNormalizedSiteUrlHistory();
-
-  const confirmed = window.confirm("Tem certeza que deseja limpar o histórico de URLs recentes?");
-  return confirmed ? clearNormalizedSiteUrlHistory() : getNormalizedSiteUrlHistory();
-};
