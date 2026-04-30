@@ -216,11 +216,42 @@ export const AppSimulation = ({ app, trackingPrefix }: { app: AppExample; tracki
 
 const AppExamplesSection = () => {
   const [selectedApp, setSelectedApp] = useState<AppExample | null>(null);
+  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   const openPreviewModal = (app: AppExample) => {
     analytics.previewModalViewed(app.slug, app.name);
     setSelectedApp(app);
   };
+
+  useEffect(() => {
+    if (!selectedApp || !modalContentRef.current) return;
+
+    const viewedSections = new Set<string>();
+    const sectionMap = new Map([
+      ["modal-nome", "nome"],
+      ["modal-simulacao", "simulacao"],
+      ["modal-cta", "cta"],
+    ] as const);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const key = entry.target.getAttribute("data-preview-section");
+          const section = key ? sectionMap.get(key as "modal-nome" | "modal-simulacao" | "modal-cta") : undefined;
+
+          if (!entry.isIntersecting || !section || viewedSections.has(section)) return;
+
+          viewedSections.add(section);
+          analytics.previewModalSectionViewed(selectedApp.slug, selectedApp.name, section);
+        });
+      },
+      { threshold: 0.55 },
+    );
+
+    modalContentRef.current.querySelectorAll("[data-preview-section]").forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [selectedApp]);
 
   return (
     <section id="exemplos-apps" className="scroll-mt-24 bg-background px-4 py-20" aria-labelledby="exemplos-apps-title">
@@ -279,14 +310,14 @@ const AppExamplesSection = () => {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-border bg-background">
           {selectedApp && (
             <>
-              <DialogHeader>
+              <DialogHeader data-preview-section="modal-nome">
                 <DialogTitle className="font-display text-xl text-foreground">
                   Preview — {selectedApp.name}
                 </DialogTitle>
                 <DialogDescription>{selectedApp.description}</DialogDescription>
               </DialogHeader>
-              <div className="rounded-xl border border-accent/20 bg-card/70 p-4 md:p-5">
-                <AppSimulation app={selectedApp} />
+              <div ref={modalContentRef} className="rounded-xl border border-accent/20 bg-card/70 p-4 md:p-5">
+                <AppSimulation app={selectedApp} trackingPrefix="modal" />
               </div>
             </>
           )}
