@@ -3,6 +3,57 @@ const fs = require("fs");
 const path = require("path");
 
 const ANDROID_HOME = process.env.ANDROID_HOME || "/root/android-sdk";
+const BUNDLETOOL_JAR_CANDIDATES = [
+  process.env.BUNDLETOOL_JAR,
+  "/opt/bundletool/bundletool.jar",
+  "/app/bundletool.jar",
+  "/usr/local/bin/bundletool.jar",
+].filter(Boolean);
+
+function getBundletoolCommand() {
+  const jarPath = BUNDLETOOL_JAR_CANDIDATES.find((candidate) => fs.existsSync(candidate));
+  if (!jarPath) {
+    throw new Error("bundletool não encontrado. Configure BUNDLETOOL_JAR com o caminho oficial do bundletool do Google.");
+  }
+  return `java -jar "${jarPath}"`;
+}
+
+async function convertAABToUniversalAPK(aabPath, jobId, onProgress = async () => {}) {
+  if (!fs.existsSync(aabPath)) {
+    throw new Error("Arquivo AAB não encontrado para conversão.");
+  }
+
+  const outputDir = path.join("/tmp", `aurora-aab-to-apk-${jobId}`);
+  const apksPath = path.join(outputDir, "app.apks");
+  const apkPath = path.join(outputDir, "app-universal.apk");
+  const extractDir = path.join(outputDir, "extract");
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(extractDir, { recursive: true });
+
+  const bundletool = getBundletoolCommand();
+  await onProgress(3);
+  execSync(`${bundletool} build-apks --bundle="${aabPath}" --output="${apksPath}" --mode=universal`, {
+    stdio: "pipe",
+    timeout: 180000,
+  });
+
+  await onProgress(4);
+  execSync(`jar xf "${apksPath}" universal.apk`, {
+    cwd: extractDir,
+    stdio: "pipe",
+    timeout: 30000,
+  });
+
+  const extractedApk = path.join(extractDir, "universal.apk");
+  if (!fs.existsSync(extractedApk)) {
+    throw new Error("bundletool gerou o pacote, mas o APK universal não foi encontrado.");
+  }
+
+  fs.copyFileSync(extractedApk, apkPath);
+  const stats = fs.statSync(apkPath);
+  console.log(`[BUNDLETOOL] APK universal generated: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+  return { apkPath, apksPath, size: stats.size, outputDir };
+}
 
 /**
  * Pipeline completo: URL → Projeto Capacitor → Build Android → AAB
@@ -268,4 +319,4 @@ function configureAndroidProject(buildDir, appName) {
   }
 }
 
-module.exports = { buildAAB };
+module.exports = { buildAAB, convertAABToUniversalAPK };

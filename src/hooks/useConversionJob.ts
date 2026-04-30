@@ -25,6 +25,13 @@ interface JobState {
   downloadUrl: string | null;
 }
 
+type SubmitOptions = {
+  functionName?: "convert-app" | "convert-aab-to-apk";
+  body?: Record<string, unknown>;
+  successTitle?: string;
+  successDescription?: string;
+};
+
 const initialState: JobState = {
   jobId: null,
   status: "idle",
@@ -125,7 +132,7 @@ export function useConversionJob() {
           stepLabel: "Concluído!",
           downloadUrl: row.download_url,
         });
-        toast({ title: "App Android gerado! 🚀", description: "Seu arquivo AAB está pronto." });
+        toast({ title: "Arquivo Android gerado! 🚀", description: "Seu download está pronto." });
       } else if (row.status === "error") {
         cleanupAll();
         clearPersistedJob();
@@ -247,7 +254,7 @@ export function useConversionJob() {
 
   // --- Submit conversion ---
   const submit = useCallback(
-    async (url: string): Promise<boolean> => {
+    async (url: string, options?: SubmitOptions): Promise<boolean> => {
       // Double-submit protection
       if (state.status === "submitting" || state.status === "processing") {
         console.warn("[CONVERT] Already submitting/processing, ignoring");
@@ -258,8 +265,8 @@ export function useConversionJob() {
       safeSet({ status: "submitting", errorMessage: null, progress: 0, stepLabel: "Iniciando conversão..." });
 
       try {
-        const { data, error } = await supabase.functions.invoke("convert-app", {
-          body: { url },
+        const { data, error } = await supabase.functions.invoke(options?.functionName ?? "convert-app", {
+          body: options?.body ?? { url },
         });
 
         if (error) throw new Error(error.message || "Erro ao chamar serviço");

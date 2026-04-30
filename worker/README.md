@@ -10,6 +10,7 @@ Worker Node.js que processa jobs de conversão Link → AAB.
 - **Node.js**: 18+
 - **Java**: JDK 17 (para Gradle)
 - **Android SDK**: Command Line Tools + Build Tools 34
+- **bundletool**: ferramenta oficial Google para AAB → APK universal
 
 ## Setup Rápido
 
@@ -17,7 +18,7 @@ Worker Node.js que processa jobs de conversão Link → AAB.
 # 1. Instalar dependências do sistema
 sudo apt update && sudo apt install -y openjdk-17-jdk unzip wget curl
 
-# 2. Instalar Android SDK
+# 2. Instalar Android SDK e bundletool
 export ANDROID_HOME=$HOME/android-sdk
 mkdir -p $ANDROID_HOME/cmdline-tools
 cd /tmp
@@ -25,6 +26,8 @@ wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_la
 unzip commandlinetools-linux-*.zip
 mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+sudo mkdir -p /opt/bundletool
+wget -O /opt/bundletool/bundletool.jar https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
 
 # Aceitar licenças
 yes | sdkmanager --licenses
@@ -57,6 +60,7 @@ SUPABASE_URL=https://awzjahcnjxaehybilcmo.supabase.co
 SUPABASE_SERVICE_KEY=sua_service_role_key
 REDIS_URL=redis://127.0.0.1:6379
 ANDROID_HOME=/root/android-sdk
+BUNDLETOOL_JAR=/opt/bundletool/bundletool.jar
 PORT=3333
 WORKER_SECRET=sua_chave_secreta_para_webhook
 ```
@@ -75,6 +79,12 @@ Edge Function (Supabase)
         5. ./gradlew bundleRelease
         6. Upload AAB para Supabase Storage
         7. Atualizar conversion_jobs (status=done, download_url)
+
+Edge Function convert-aab-to-apk
+  → POST /webhook/aab-to-apk
+    → bundletool build-apks --bundle=app.aab --output=app.apks --mode=universal
+    → extrai universal.apk
+    → Upload APK para Storage
 ```
 
 ## Rodando com PM2 (produção)
