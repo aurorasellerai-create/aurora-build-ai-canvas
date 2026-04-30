@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const NORMALIZED_SITE_URL_HISTORY_KEY = "aurora-normalized-site-url-history";
+const NORMALIZED_SITE_URL_HISTORY_LIMIT = 5;
+
 const normalizeSiteUrl = (value: string) => {
   const trimmed = value.trim();
 
@@ -55,4 +58,27 @@ export const getSiteUrlPreview = (value: string) => {
   } catch {
     return null;
   }
+};
+
+export const getNormalizedSiteUrlHistory = (): string[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(NORMALIZED_SITE_URL_HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveNormalizedSiteUrlToHistory = (value: string) => {
+  if (typeof window === "undefined") return [];
+
+  const validation = validateSiteUrl(value);
+  if (!validation.isValid) return getNormalizedSiteUrlHistory();
+
+  const next = [validation.value, ...getNormalizedSiteUrlHistory().filter((item) => item !== validation.value)].slice(0, NORMALIZED_SITE_URL_HISTORY_LIMIT);
+  window.localStorage.setItem(NORMALIZED_SITE_URL_HISTORY_KEY, JSON.stringify(next));
+  return next;
 };
