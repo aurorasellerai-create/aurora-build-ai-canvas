@@ -7,6 +7,8 @@ type GenerationFailureReason =
   | "session"
   | "unknown";
 
+const LAST_GENERATION_ERROR_KEY = "aurora-last-generation-error";
+
 const cleanDetails = (details?: string) => details?.replace(/\s+/g, " ").trim().slice(0, 180);
 
 export const getGenerationFailureMessage = (reason: GenerationFailureReason, details?: string) => {
@@ -38,4 +40,31 @@ export const getGenerationExceptionMessage = (error: unknown) => {
   }
 
   return getGenerationFailureMessage("unknown", message);
+};
+
+export const getLastGenerationError = () => {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const raw = window.localStorage.getItem(LAST_GENERATION_ERROR_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return typeof parsed?.message === "string" ? parsed.message : "";
+  } catch {
+    return "";
+  }
+};
+
+export const saveLastGenerationError = (message: string) => {
+  if (typeof window === "undefined" || !message.trim()) return;
+
+  window.localStorage.setItem(
+    LAST_GENERATION_ERROR_KEY,
+    JSON.stringify({ message: message.trim(), createdAt: new Date().toISOString() })
+  );
+};
+
+export const clearLastGenerationError = () => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem(LAST_GENERATION_ERROR_KEY);
 };
