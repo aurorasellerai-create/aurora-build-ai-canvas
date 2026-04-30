@@ -80,7 +80,7 @@ function startWorker(redisConnection) {
         await downloadFile(aab_url, aabPath);
         await updateAabToApkProgress(job_id, 1);
 
-        const result = convertAABToUniversalAPK(aabPath, job_id, async (stepIndex) => {
+        const result = await convertAABToUniversalAPK(aabPath, job_id, async (stepIndex) => {
           await updateAabToApkProgress(job_id, stepIndex);
         });
 
