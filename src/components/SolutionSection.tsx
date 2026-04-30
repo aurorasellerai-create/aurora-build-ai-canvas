@@ -167,6 +167,34 @@ const SolutionSection = () => (
         >
           Criar meu app agora <ArrowRight className="w-4 h-4" />
         </Link>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.8, duration: 0.45 }}
+          className="group mx-auto mt-8 max-w-xl rounded-xl border border-primary/15 bg-card/35 px-5 py-4 text-left opacity-80 backdrop-blur-sm transition-all duration-500 hover:scale-[1.02] hover:border-primary/35 hover:bg-card/50 hover:opacity-100 hover:shadow-[0_0_28px_hsl(var(--primary)/0.14),0_0_34px_hsl(var(--accent)/0.08)] motion-safe:hover:animate-pulse"
+        >
+          <h3 className="font-display text-sm font-bold text-foreground mb-3">
+            🧠 É difícil transformar meu site em app?
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Não. Você não precisa saber programar nem mexer com código.
+          </p>
+          <div className="mt-3 space-y-1.5 text-sm text-muted-foreground leading-relaxed">
+            <p><span className="text-primary font-semibold">1.</span> Você cola o link do seu site</p>
+            <p><span className="text-primary font-semibold">2.</span> Clica no botão para criar</p>
+            <p><span className="text-primary font-semibold">3.</span> Baixa o aplicativo pronto</p>
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+            Depois disso, é só abrir no Android Studio e clicar em “Build”. Pronto. Seu aplicativo está criado — mesmo que você nunca tenha feito isso antes.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-3 text-xs text-muted-foreground">
+            <span><span className="text-primary">✔</span> Qualquer pessoa consegue fazer</span>
+            <span><span className="text-primary">✔</span> Não precisa de experiência</span>
+            <span><span className="text-primary">✔</span> Processo rápido e simples</span>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   </section>
