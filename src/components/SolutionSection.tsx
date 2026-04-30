@@ -175,20 +175,22 @@ const SolutionSection = () => (
           transition={{ delay: 0.8, duration: 0.45 }}
           className="aurora-premium-info-card group relative mx-auto mt-8 max-w-xl overflow-hidden rounded-xl px-5 py-4 text-left backdrop-blur-md transition-all duration-700 hover:scale-[1.015]"
         >
-          <h3 className="relative z-10 font-display text-sm font-bold text-foreground mb-3 drop-shadow-[0_0_10px_hsl(var(--primary)/0.18)]">
-            🧠 É difícil transformar meu site em app?
-          </h3>
-          <p className="relative z-10 text-sm text-foreground/78 leading-relaxed">
-            Não. Você não precisa saber programar nem mexer com código.
-          </p>
-          <div className="relative z-10 mt-3 space-y-1.5 text-sm text-foreground/78 leading-relaxed">
-            <p><span className="text-primary font-semibold">1.</span> Você cola o link do seu site</p>
-            <p><span className="text-primary font-semibold">2.</span> Clica no botão para criar</p>
-            <p><span className="text-primary font-semibold">3.</span> Baixa o aplicativo pronto</p>
+          <div className="aurora-premium-copy relative z-10">
+            <h3 className="font-display text-sm font-bold text-foreground mb-3 drop-shadow-[0_0_10px_hsl(var(--primary)/0.18)]">
+              🧠 É difícil transformar meu site em app?
+            </h3>
+            <p className="text-sm text-foreground/78 leading-relaxed">
+              Não. Você não precisa saber programar nem mexer com código.
+            </p>
+            <div className="mt-3 space-y-1.5 text-sm text-foreground/78 leading-relaxed">
+              <p><span className="text-primary font-semibold">1.</span> Você cola o link do seu site</p>
+              <p><span className="text-primary font-semibold">2.</span> Clica no botão para criar</p>
+              <p><span className="text-primary font-semibold">3.</span> Baixa o aplicativo pronto</p>
+            </div>
+            <p className="mt-3 text-sm text-foreground/78 leading-relaxed">
+              Depois disso, é só abrir no Android Studio e clicar em “Build”. Pronto. Seu aplicativo está criado — mesmo que você nunca tenha feito isso antes.
+            </p>
           </div>
-          <p className="relative z-10 mt-3 text-sm text-foreground/78 leading-relaxed">
-            Depois disso, é só abrir no Android Studio e clicar em “Build”. Pronto. Seu aplicativo está criado — mesmo que você nunca tenha feito isso antes.
-          </p>
           <div className="benefits-bar relative z-10">
             <div className="benefit-item">
               <span className="icon">✔</span>
