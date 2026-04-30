@@ -242,7 +242,7 @@ export default function AuroraValidatorSection() {
                       <div className="space-y-2">
                         {reportItems.map((item) => (
                           <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg bg-background/70 border border-border p-3">
-                            <span className="text-sm text-foreground">{item.icon} {item.label}</span>
+                            <span className="text-sm text-foreground">{item.status === "error" ? "🔴" : item.status === "warn" ? "🟡" : "🟢"} {item.label}</span>
                             <span className={`text-xs font-bold ${item.status === "error" ? "text-destructive" : item.status === "warn" ? "text-primary" : "text-secondary"}`}>{item.value}</span>
                           </div>
                         ))}
