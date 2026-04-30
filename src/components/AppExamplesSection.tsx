@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { CalendarDays, CreditCard, PlayCircle, ShoppingBag, Utensils, Wrench } from "lucide-react";
@@ -134,9 +134,9 @@ const PhoneMockup = ({ app, large = false }: { app: AppExample; large?: boolean 
   </div>
 );
 
-export const AppSimulation = ({ app }: { app: AppExample }) => (
+export const AppSimulation = ({ app, trackingPrefix }: { app: AppExample; trackingPrefix?: string }) => (
   <div className="grid gap-5 md:grid-cols-[240px_1fr] md:items-center">
-    <div className="mx-auto w-full max-w-[240px] rounded-[2.4rem] border border-foreground/15 bg-background p-2 shadow-[0_0_38px_hsl(var(--accent)/0.18)]">
+    <div data-preview-section={trackingPrefix ? `${trackingPrefix}-simulacao` : undefined} className="mx-auto w-full max-w-[240px] rounded-[2.4rem] border border-foreground/15 bg-background p-2 shadow-[0_0_38px_hsl(var(--accent)/0.18)]">
       <div className="overflow-hidden rounded-[1.8rem] border border-border bg-card">
         <div className="flex items-center justify-between px-4 py-3 text-[10px] text-muted-foreground">
           <span>9:41</span>
@@ -194,7 +194,7 @@ export const AppSimulation = ({ app }: { app: AppExample }) => (
           Este preview mostra como o cliente veria a experiência principal do app: tela inicial, ação de conversão, destaques e navegação mobile.
         </p>
       </div>
-      <div className="flex justify-end">
+      <div data-preview-section={trackingPrefix ? `${trackingPrefix}-cta` : undefined} className="flex justify-end">
         <Link
           to={`/auth?source=preview&preview=${app.slug}&origin=modal`}
           onClick={() => analytics.previewCreateAppClicked(app.slug, app.name, "modal")}
@@ -216,11 +216,42 @@ export const AppSimulation = ({ app }: { app: AppExample }) => (
 
 const AppExamplesSection = () => {
   const [selectedApp, setSelectedApp] = useState<AppExample | null>(null);
+  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   const openPreviewModal = (app: AppExample) => {
     analytics.previewModalViewed(app.slug, app.name);
     setSelectedApp(app);
   };
+
+  useEffect(() => {
+    if (!selectedApp || !modalContentRef.current) return;
+
+    const viewedSections = new Set<string>();
+    const sectionMap = new Map([
+      ["modal-nome", "nome"],
+      ["modal-simulacao", "simulacao"],
+      ["modal-cta", "cta"],
+    ] as const);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const key = entry.target.getAttribute("data-preview-section");
+          const section = key ? sectionMap.get(key as "modal-nome" | "modal-simulacao" | "modal-cta") : undefined;
+
+          if (!entry.isIntersecting || !section || viewedSections.has(section)) return;
+
+          viewedSections.add(section);
+          analytics.previewModalSectionViewed(selectedApp.slug, selectedApp.name, section);
+        });
+      },
+      { threshold: 0.55 },
+    );
+
+    modalContentRef.current.querySelectorAll("[data-preview-section]").forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [selectedApp]);
 
   return (
     <section id="exemplos-apps" className="scroll-mt-24 bg-background px-4 py-20" aria-labelledby="exemplos-apps-title">
@@ -278,17 +309,17 @@ const AppExamplesSection = () => {
       <Dialog open={!!selectedApp} onOpenChange={(open) => !open && setSelectedApp(null)}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-border bg-background">
           {selectedApp && (
-            <>
-              <DialogHeader>
+            <div ref={modalContentRef} className="contents">
+              <DialogHeader data-preview-section="modal-nome">
                 <DialogTitle className="font-display text-xl text-foreground">
                   Preview — {selectedApp.name}
                 </DialogTitle>
                 <DialogDescription>{selectedApp.description}</DialogDescription>
               </DialogHeader>
               <div className="rounded-xl border border-accent/20 bg-card/70 p-4 md:p-5">
-                <AppSimulation app={selectedApp} />
+                <AppSimulation app={selectedApp} trackingPrefix="modal" />
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
