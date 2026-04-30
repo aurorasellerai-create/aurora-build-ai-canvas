@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Globe, Smartphone, RefreshCw, Sparkles, ArrowRight, Zap, AlertTriangle, Info, HelpCircle, Lightbulb, Store, CheckCircle2, X, Download } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
+import { pwaAndroidImplementations, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
 
 const FLOWS = [
   {
@@ -17,7 +18,7 @@ const FLOWS = [
     id: "convert-site" as const,
     icon: Globe,
     title: "Converter Site em App",
-    desc: "Transforme qualquer site em aplicativo instalável",
+    desc: "URL → base PWA → APK, AAB ou PWA instalável",
     color: "text-secondary",
     link: "/generator/site",
   },
@@ -33,7 +34,7 @@ const FLOWS = [
     id: "convert-aab" as const,
     icon: Download,
     title: "Converter App para Android (AAB)",
-    desc: "Cole o link do app e gere um AAB pronto para a Play Store",
+    desc: "Gere Android a partir de PWA com TWA e WebView fallback",
     color: "text-primary",
     link: "/generator/convert-aab",
   },
