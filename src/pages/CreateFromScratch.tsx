@@ -18,6 +18,11 @@ const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
 };
 
 type Origin = null | "lovable" | "other" | "none";
+type GenerationFormData = {
+  siteUrl: string;
+  appName: string;
+  format: Enums<"app_format">;
+};
 
 const CreateFromScratch = () => {
   const { user } = useAuth();
@@ -28,6 +33,7 @@ const CreateFromScratch = () => {
   const [format, setFormat] = useState<Enums<"app_format">>("apk");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lastFailedSubmission, setLastFailedSubmission] = useState<GenerationFormData | null>(null);
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
 
@@ -35,53 +41,63 @@ const CreateFromScratch = () => {
 
   const currentStep = origin === null ? 1 : (!siteUrl || !appName) ? 2 : 3;
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitGeneration = async (formData: GenerationFormData) => {
     if (!user) return;
     setError("");
+    setLastFailedSubmission(null);
     if (!checkAccess("second_app")) return;
+
+    const failGeneration = (message: string) => {
+      setError(message);
+      setLastFailedSubmission(formData);
+    };
 
     try {
       setLoading(true);
 
-      if (!allowedFormats.includes(format)) {
+      if (!allowedFormats.includes(formData.format)) {
         if (!checkAccess("premium_format")) return;
-        setError(getGenerationFailureMessage("format_unavailable"));
+        failGeneration(getGenerationFailureMessage("format_unavailable"));
         return;
       }
 
       const credited = await consumeCredits("generate_app");
       if (!credited) {
-        setError(getGenerationFailureMessage("credits"));
+        failGeneration(getGenerationFailureMessage("credits"));
         return;
       }
 
       const { data: canBuild, error: buildError } = await supabase.rpc("check_and_increment_build", { p_user_id: user.id });
       if (buildError) {
-        setError(getGenerationFailureMessage("database", buildError.message));
+        failGeneration(getGenerationFailureMessage("database", buildError.message));
         return;
       }
       if (!canBuild) {
-        setError(getGenerationFailureMessage("daily_limit"));
+        failGeneration(getGenerationFailureMessage("daily_limit"));
         return;
       }
 
       const { data, error: insertError } = await supabase
         .from("projects")
-        .insert({ user_id: user.id, site_url: siteUrl, app_name: appName, format, status: "processing", progress: 0 })
+        .insert({ user_id: user.id, site_url: formData.siteUrl, app_name: formData.appName, format: formData.format, status: "processing", progress: 0 })
         .select()
         .single();
 
       if (insertError) {
-        setError(getGenerationFailureMessage("database", insertError.message));
+        failGeneration(getGenerationFailureMessage("database", insertError.message));
         return;
       }
       navigate(`/processing/${data.id}`);
     } catch (err) {
-      setError(getGenerationExceptionMessage(err));
+      failGeneration(getGenerationExceptionMessage(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitGeneration({ siteUrl, appName, format });
   };
 
   return (
@@ -259,9 +275,22 @@ const CreateFromScratch = () => {
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                  <p className="text-destructive text-sm">{error}</p>
+                <div className="flex flex-col gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                    <p className="text-destructive text-sm">{error}</p>
+                  </div>
+                  {lastFailedSubmission && (
+                    <button
+                      type="button"
+                      onClick={() => submitGeneration(lastFailedSubmission)}
+                      disabled={loading}
+                      className="w-full rounded-lg border border-destructive/30 bg-background/40 px-3 py-2 text-sm font-bold text-foreground transition hover:border-destructive/60 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Tentar novamente
+                    </button>
+                  )}
                 </div>
               )}
 
