@@ -8,6 +8,7 @@ import type { Enums } from "@/integrations/supabase/types";
 import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
+import { pwaAndroidFlowSteps, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -139,9 +140,18 @@ const CreateFromScratch = () => {
                 <h2 className="font-display text-xl font-bold text-foreground">
                   {origin === "lovable" ? "Projeto Lovable" : origin === "other" ? "Seu projeto externo" : "Criar a partir de um site"}
                 </h2>
+                <p className="text-sm text-muted-foreground mt-1">A IA organiza a base PWA antes do Android</p>
                 <button type="button" onClick={() => setOrigin(null)} className="text-xs text-primary hover:underline mt-1">
                   ← Mudar origem
                 </button>
+              </div>
+
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+                {pwaAndroidFlowSteps.map((step) => (
+                  <p key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <span className="mt-0.5 text-primary">✓</span> {step}
+                  </p>
+                ))}
               </div>
 
               <div>
@@ -221,6 +231,15 @@ const CreateFromScratch = () => {
                     <AlertTriangle className="w-3 h-3" /> APK não é aceito na Play Store — use AAB para publicar
                   </p>
                 )}
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                {pwaAndroidOutputs.map((output) => (
+                  <div key={output.label} className="rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-bold text-foreground">{output.label}</p>
+                    <p className="text-xs text-muted-foreground">{output.description}</p>
+                  </div>
+                ))}
               </div>
 
               {error && (

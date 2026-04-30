@@ -12,6 +12,7 @@ import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { useConversionJob } from "@/hooks/useConversionJob";
 import { toast } from "@/hooks/use-toast";
+import { pwaAndroidFlowSteps } from "@/lib/pwaAndroidFlow";
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
@@ -222,7 +223,7 @@ const ConvertToAAB = () => {
                   <Smartphone className="w-7 h-7 text-primary" />
                 </div>
                 <h2 className="font-display text-xl font-bold text-foreground">Converter App para Android</h2>
-                <p className="text-sm text-muted-foreground mt-1">Cole o link do seu app e receba um arquivo <strong className="text-primary">AAB</strong> pronto para a Play Store</p>
+                <p className="text-sm text-muted-foreground mt-1">Cole o link, geramos a base <strong className="text-primary">PWA</strong> e exportamos <strong className="text-primary">AAB</strong></p>
               </div>
 
               <div>
@@ -244,7 +245,7 @@ const ConvertToAAB = () => {
 
               <div className="p-4 rounded-lg bg-muted/30 border border-border space-y-2">
                 <p className="text-xs font-semibold text-foreground">O que o sistema fará:</p>
-                {["Validar URL e verificar responsividade", "Criar WebView otimizada para Android", "Configurar fullscreen, splash e navegação", "Gerar APK e converter para AAB", "Disponibilizar download do arquivo final"].map((step, i) => (
+                {pwaAndroidFlowSteps.slice(1, 6).map((step, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                     <span className="text-xs text-muted-foreground">{step}</span>

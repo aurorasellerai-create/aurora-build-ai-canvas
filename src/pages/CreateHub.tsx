@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Globe, Smartphone, RefreshCw, Sparkles, ArrowRight, Zap, AlertTriangle, Info, HelpCircle, Lightbulb, Store, CheckCircle2, X, Download } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
+import { pwaAndroidImplementations, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
 
 const FLOWS = [
   {
@@ -17,7 +18,7 @@ const FLOWS = [
     id: "convert-site" as const,
     icon: Globe,
     title: "Converter Site em App",
-    desc: "Transforme qualquer site em aplicativo instalável",
+    desc: "URL → base PWA → APK, AAB ou PWA instalável",
     color: "text-secondary",
     link: "/generator/site",
   },
@@ -33,7 +34,7 @@ const FLOWS = [
     id: "convert-aab" as const,
     icon: Download,
     title: "Converter App para Android (AAB)",
-    desc: "Cole o link do app e gere um AAB pronto para a Play Store",
+    desc: "Gere Android a partir de PWA com TWA e WebView fallback",
     color: "text-primary",
     link: "/generator/convert-aab",
   },
@@ -225,6 +226,25 @@ export default function CreateHub() {
               <span className="text-border mx-2 hidden sm:inline">|</span>
               <strong>Quer testar?</strong> → Use <span className="font-bold text-foreground">APK</span>
             </p>
+          </div>
+
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            {pwaAndroidOutputs.map((output) => (
+              <div key={output.label} className="rounded-lg border border-secondary/20 bg-secondary/5 p-3">
+                <p className="text-xs font-bold text-secondary">Exporta {output.label}</p>
+                <p className="text-xs text-muted-foreground">{output.description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            {pwaAndroidImplementations.map((item) => (
+              <div key={item.title} className="rounded-lg border border-border bg-background p-3">
+                <p className="mb-1 text-[11px] font-bold uppercase text-primary">{item.badge}</p>
+                <p className="text-xs font-bold text-foreground">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
           </div>
 
           {/* Conversions */}

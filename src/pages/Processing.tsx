@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
 const steps = [
-  { at: 0, text: "Analisando o site..." },
-  { at: 20, text: "Verificando estrutura..." },
-  { at: 40, text: "Construindo o app..." },
-  { at: 60, text: "Compilando arquivos..." },
-  { at: 80, text: "Otimizando performance..." },
+  { at: 0, text: "Analisando URL ou ideia..." },
+  { at: 20, text: "Gerando base PWA..." },
+  { at: 40, text: "Validando estrutura e navegação..." },
+  { at: 60, text: "Preparando Android com TWA/WebView..." },
+  { at: 80, text: "Exportando APK, AAB ou PWA..." },
   { at: 95, text: "Finalizando!" },
 ];
 
