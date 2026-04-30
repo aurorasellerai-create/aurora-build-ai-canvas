@@ -1,18 +1,91 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Check, Copy, Share2, Smartphone, MessageCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { AppSimulation, appExamples } from "@/components/AppExamplesSection";
 import { analytics } from "@/lib/analytics";
 
+const SITE_URL = "https://aurorabuild.com.br";
+const OG_IMAGE_URL = `${SITE_URL}/og-image.png`;
+
+const upsertHeadTag = (selector: string, createElement: () => HTMLMetaElement | HTMLLinkElement, contentKey: "content" | "href", value: string) => {
+  const element = document.querySelector(selector) as HTMLMetaElement | HTMLLinkElement | null;
+  const target = element ?? createElement();
+  const previousValue = target.getAttribute(contentKey);
+
+  if (!element) document.head.appendChild(target);
+  target.setAttribute(contentKey, value);
+
+  return () => {
+    if (!element) {
+      target.remove();
+      return;
+    }
+
+    if (previousValue) target.setAttribute(contentKey, previousValue);
+  };
+};
+
 const AppPreview = () => {
   const { slug } = useParams();
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
 
   const app = useMemo(() => appExamples.find((example) => example.slug === slug), [slug]);
-  const currentUrl = typeof window !== "undefined" ? window.location.href : "";
+  const currentUrl = app ? `${SITE_URL}/preview/${app.slug}` : `${SITE_URL}/preview/${slug ?? ""}`;
   const shareText = app ? `Veja este exemplo de app: ${app.name} — Aurora Build AI` : "Veja este exemplo de app da Aurora Build AI";
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${currentUrl}`)}`;
+
+  useEffect(() => {
+    if (!app) return;
+
+    const title = `${app.name} em app | Aurora Build AI`;
+    const description = `Veja o preview de ${app.name} criado com a Aurora Build AI e transforme seu site em app profissional em minutos.`;
+    const previousTitle = document.title;
+    document.title = title;
+
+    const cleanups = [
+      upsertHeadTag('meta[name="description"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("name", "description");
+        return tag;
+      }, "content", description),
+      upsertHeadTag('link[rel="canonical"]', () => {
+        const tag = document.createElement("link");
+        tag.setAttribute("rel", "canonical");
+        return tag;
+      }, "href", currentUrl),
+      upsertHeadTag('meta[property="og:title"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("property", "og:title");
+        return tag;
+      }, "content", title),
+      upsertHeadTag('meta[property="og:description"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("property", "og:description");
+        return tag;
+      }, "content", description),
+      upsertHeadTag('meta[property="og:url"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("property", "og:url");
+        return tag;
+      }, "content", currentUrl),
+      upsertHeadTag('meta[property="og:type"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("property", "og:type");
+        return tag;
+      }, "content", "website"),
+      upsertHeadTag('meta[property="og:image"]', () => {
+        const tag = document.createElement("meta");
+        tag.setAttribute("property", "og:image");
+        return tag;
+      }, "content", OG_IMAGE_URL),
+    ];
+
+    return () => {
+      document.title = previousTitle;
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [app, currentUrl]);
 
   const copyLink = async () => {
     if (!app) return;
