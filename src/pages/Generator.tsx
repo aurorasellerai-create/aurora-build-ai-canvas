@@ -10,7 +10,7 @@ import { usePaywall } from "@/hooks/usePaywall";
 import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { setSelectedAppFormatPreference } from "@/lib/appFormatPreference";
-import { validateSiteUrl } from "@/lib/siteUrlValidation";
+import { getSiteUrlPreview, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -45,6 +45,7 @@ const Generator = () => {
 
   const allowedFormats = formatLimits[plan as Enums<"user_plan">];
   const siteUrlValidation = validateSiteUrl(siteUrl);
+  const siteUrlPreview = siteUrlValidation.isValid ? getSiteUrlPreview(siteUrlValidation.value) : null;
   const showSiteUrlError = siteUrlTouched && !siteUrlValidation.isValid;
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -170,6 +171,21 @@ const Generator = () => {
               <p id="site-url-error" className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {siteUrlValidation.message}
               </p>
+            )}
+            {siteUrlPreview && (
+              <div className="mt-3 rounded-lg border border-secondary/20 bg-secondary/5 p-3">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Confirmar site detectado</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-md border border-border bg-background/50 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Protocolo</p>
+                    <p className="text-sm font-semibold text-secondary">{siteUrlPreview.protocol}</p>
+                  </div>
+                  <div className="rounded-md border border-border bg-background/50 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Domínio</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{siteUrlPreview.domain}</p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
