@@ -41,4 +41,8 @@ export const analytics = {
   signUp: () => trackEvent("sign_up"),
   login: () => trackEvent("login"),
   pageView: (path: string) => trackEvent("page_view", { page_path: path }),
+  previewCreateAppClicked: (slug: string, name: string, location: "modal" | "page") =>
+    trackEvent("preview_create_app_clicked", { preview_slug: slug, preview_name: name, location }),
+  previewCopyLinkClicked: (slug: string, name: string, status: "clicked" | "success" | "error") =>
+    trackEvent("preview_copy_link_clicked", { preview_slug: slug, preview_name: name, status }),
 };
