@@ -10,6 +10,7 @@ import PaywallModal from "@/components/PaywallModal";
 import { useCredits } from "@/hooks/useCredits";
 import { pwaAndroidFlowSteps, pwaAndroidOutputs } from "@/lib/pwaAndroidFlow";
 import { getGenerationExceptionMessage, getGenerationFailureMessage } from "@/lib/generationErrorMessages";
+import { getNormalizedSiteUrlHistory, saveNormalizedSiteUrlToHistory, validateSiteUrl } from "@/lib/siteUrlValidation";
 
 const formatLimits: Record<Enums<"user_plan">, Enums<"app_format">[]> = {
   free: ["apk"],
@@ -33,6 +34,7 @@ const CreateFromScratch = () => {
   const [format, setFormat] = useState<Enums<"app_format">>("apk");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [urlHistory, setUrlHistory] = useState<string[]>(() => getNormalizedSiteUrlHistory());
   const [lastFailedSubmission, setLastFailedSubmission] = useState<GenerationFormData | null>(null);
   const { plan, checkAccess, paywallOpen, setPaywallOpen, paywallFeature } = usePaywall();
   const { balance, consumeCredits, getCost } = useCredits();
@@ -97,7 +99,16 @@ const CreateFromScratch = () => {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitGeneration({ siteUrl, appName, format });
+    const siteUrlValidation = validateSiteUrl(siteUrl);
+
+    if (!siteUrlValidation.isValid) {
+      setError(siteUrlValidation.message);
+      setLastFailedSubmission(null);
+      return;
+    }
+
+    setUrlHistory(saveNormalizedSiteUrlToHistory(siteUrlValidation.value));
+    await submitGeneration({ siteUrl: siteUrlValidation.value, appName, format });
   };
 
   return (
@@ -202,6 +213,26 @@ const CreateFromScratch = () => {
                     className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
                   />
                 </div>
+                {urlHistory.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">URLs recentes</p>
+                    <div className="flex flex-wrap gap-2">
+                      {urlHistory.map((url) => (
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => {
+                            setSiteUrl(url);
+                            setError("");
+                          }}
+                          className="max-w-full truncate rounded-md border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-secondary"
+                        >
+                          {url}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {origin === "lovable" && (
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <HelpCircle className="w-3 h-3" /> Use o link publicado do seu projeto Lovable
