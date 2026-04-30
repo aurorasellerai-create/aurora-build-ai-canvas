@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type GenerationRetryButtonProps = {
   loading: boolean;
@@ -13,10 +14,23 @@ const getErrorSummary = (message?: string) => {
 };
 
 const GenerationRetryButton = ({ loading, lastError, onRetry }: GenerationRetryButtonProps) => (
-  <div className="space-y-2 rounded-lg border border-destructive/20 bg-background/30 p-3">
+  <div className="space-y-3 rounded-lg border border-destructive/20 bg-background/30 p-3">
     <p className="text-xs text-muted-foreground">
       <span className="font-bold text-foreground">Último erro:</span> {getErrorSummary(lastError)}
     </p>
+    <Accordion type="single" collapsible className="rounded-md border border-border bg-muted/20 px-3">
+      <AccordionItem value="faq-erros" className="border-b-0">
+        <AccordionTrigger className="py-2 text-xs font-bold text-foreground hover:no-underline">
+          FAQ de erros
+        </AccordionTrigger>
+        <AccordionContent className="space-y-2 pb-3 text-xs text-muted-foreground">
+          <p><span className="font-bold text-foreground">Créditos:</span> confira seu saldo ou compre mais créditos antes de reenviar.</p>
+          <p><span className="font-bold text-foreground">URL:</span> confirme se o domínio abre no navegador e usa HTTP ou HTTPS.</p>
+          <p><span className="font-bold text-foreground">Sessão:</span> se continuar falhando, saia e entre novamente na conta.</p>
+          <p><span className="font-bold text-foreground">Conexão:</span> recarregue a página se houver instabilidade ou timeout.</p>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
     <button
       type="button"
       onClick={onRetry}
