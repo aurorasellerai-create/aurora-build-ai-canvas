@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Rocket, Smartphone, Flame, Plug, Send,
+  LayoutDashboard, Rocket, Smartphone,
   Brain, Package, Zap, History, Crown, Settings, ShieldAlert,
 } from "lucide-react";
 import {
