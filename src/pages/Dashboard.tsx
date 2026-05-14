@@ -365,7 +365,7 @@ const Dashboard = () => {
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-display text-xl font-bold text-foreground">Área de Criação</h2>
-                  <Link to="/create" className="text-xs text-secondary hover:underline font-bold">Ver tudo →</Link>
+                  <Link to="/generator" className="text-xs text-secondary hover:underline font-bold">Ver tudo →</Link>
                 </div>
                 <div className="grid md:grid-cols-3 gap-4">
                   <SectionCard
@@ -385,7 +385,7 @@ const Dashboard = () => {
                     description="Transforme qualquer URL em um app Android nativo com PWA otimizada."
                     status="Disponível"
                     accent="secondary"
-                    action={{ label: "Converter agora", to: "/converter" }}
+                    action={{ label: "Converter agora", to: "/generator/site" }}
                     delay={0.1}
                   />
                   <SectionCard
@@ -466,7 +466,7 @@ const Dashboard = () => {
                     description="Worker dedicado converte seu projeto em AAB/APK assinado pronto para Play Store."
                     status="Worker ativo"
                     accent="primary"
-                    action={{ label: "Gerar APK", to: "/converter/aab" }}
+                    action={{ label: "Gerar APK", to: "/generator/convert-aab" }}
                     delay={0.1}
                   />
                 </div>
