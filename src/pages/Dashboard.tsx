@@ -386,48 +386,6 @@ const Dashboard = () => {
                 </div>
               </section>
 
-              {/* Integrações */}
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-bold text-foreground">Integrações</h2>
-                  <span className="text-[10px] uppercase tracking-wider text-secondary font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" /> 3 ativas
-                  </span>
-                </div>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <SectionCard
-                    id="firebase"
-                    icon={Flame}
-                    title="Firebase"
-                    description="Autenticação, banco em tempo real e push notifications nativos."
-                    status="Conectado"
-                    accent="primary"
-                    action={{ label: "Configurar", to: "/tools" }}
-                    delay={0.05}
-                  />
-                  <SectionCard
-                    id="apis"
-                    icon={Plug}
-                    title="APIs Externas"
-                    description="Conecte Stripe, OpenAI, Google e webhooks personalizados ao seu app."
-                    status="Pronto"
-                    accent="secondary"
-                    action={{ label: "Conectar API", to: "/tools" }}
-                    delay={0.1}
-                  />
-                  <SectionCard
-                    id="publicacoes"
-                    icon={Send}
-                    title="Publicações"
-                    description="Publique direto na Play Store, App Store ou link próprio em minutos."
-                    status="Auto-deploy"
-                    accent="primary"
-                    action={{ label: "Publicar", to: "/historico" }}
-                    delay={0.15}
-                  />
-                </div>
-              </section>
-
               {/* IA & APK */}
               <section>
                 <div className="flex items-center justify-between mb-4">
@@ -437,9 +395,9 @@ const Dashboard = () => {
                   <SectionCard
                     id="ia"
                     icon={Brain}
-                    title="IA / OpenAI"
-                    description="Geração de conteúdo, código, copy e validação semântica usando GPT-5 e Gemini Pro."
-                    status="Online"
+                    title="Ferramentas IA"
+                    description="Geração de conteúdo, ícones, descrições e validação semântica para o seu app."
+                    status="Disponível"
                     accent="secondary"
                     action={{ label: "Abrir ferramentas IA", to: "/tools" }}
                     delay={0.05}
@@ -448,8 +406,8 @@ const Dashboard = () => {
                     id="apk"
                     icon={Package}
                     title="Geração APK Android"
-                    description="Worker dedicado converte seu projeto em AAB/APK assinado pronto para Play Store."
-                    status="Worker ativo"
+                    description="Converta seu projeto em AAB/APK assinado pronto para Play Store."
+                    status="Disponível"
                     accent="primary"
                     action={{ label: "Gerar APK", to: "/generator/convert-aab" }}
                     delay={0.1}
