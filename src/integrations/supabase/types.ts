@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_2fa: {
+        Row: {
+          backup_codes: Json
+          created_at: string
+          enabled: boolean
+          last_used_at: string | null
+          secret: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_codes?: Json
+          created_at?: string
+          enabled?: boolean
+          last_used_at?: string | null
+          secret: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backup_codes?: Json
+          created_at?: string
+          enabled?: boolean
+          last_used_at?: string | null
+          secret?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          id: string
+          ip: string | null
+          metadata: Json
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       conversion_jobs: {
         Row: {
           archived: boolean
@@ -166,22 +232,28 @@ export type Database = {
           attempted_at: string
           email: string
           id: string
+          ip: string | null
           ip_hint: string | null
           success: boolean
+          user_agent: string | null
         }
         Insert: {
           attempted_at?: string
           email: string
           id?: string
+          ip?: string | null
           ip_hint?: string | null
           success?: boolean
+          user_agent?: string | null
         }
         Update: {
           attempted_at?: string
           email?: string
           id?: string
+          ip?: string | null
           ip_hint?: string | null
           success?: boolean
+          user_agent?: string | null
         }
         Relationships: []
       }
@@ -356,6 +428,48 @@ export type Database = {
         }
         Relationships: []
       }
+      security_alerts: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          admin_id: string
+          created_at: string
+          details: Json
+          id: string
+          ip: string | null
+          kind: string
+          severity: string
+          user_agent: string | null
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admin_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip?: string | null
+          kind: string
+          severity?: string
+          user_agent?: string | null
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          admin_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          ip?: string | null
+          kind?: string
+          severity?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
           category: string
@@ -439,12 +553,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acknowledge_security_alert: {
+        Args: { p_alert_id: string }
+        Returns: boolean
+      }
       check_and_increment_build: {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      check_ip_rate_limit: { Args: { p_ip: string }; Returns: boolean }
       check_login_rate_limit: { Args: { p_email: string }; Returns: boolean }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
+      cleanup_old_security_data: { Args: never; Returns: undefined }
       consume_credits: {
         Args: { p_action: string; p_amount?: number; p_user_id: string }
         Returns: boolean
@@ -456,6 +576,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_known_admin_ip: {
+        Args: { p_admin_id: string; p_ip: string }
+        Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_action: string
+          p_ip?: string
+          p_metadata?: Json
+          p_target_id?: string
+          p_target_type?: string
+          p_user_agent?: string
+        }
+        Returns: string
       }
       process_referral_rewards: {
         Args: { p_referrer_id: string }
