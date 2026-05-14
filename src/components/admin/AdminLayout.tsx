@@ -80,7 +80,7 @@ const AdminLayout = ({ section, onSectionChange, children }: AdminLayoutProps) =
           </div>
           <div className="border-t border-border pt-3 mt-3">
             <button
-              onClick={() => adminLogout()}
+              onClick={() => signOut()}
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all w-full"
             >
               <LogOut className="w-4 h-4 shrink-0" />
@@ -126,7 +126,7 @@ const AdminLayout = ({ section, onSectionChange, children }: AdminLayoutProps) =
                 ))}
                 <div className="border-t border-border pt-3 mt-3">
                   <button
-                    onClick={() => adminLogout()}
+                    onClick={() => signOut()}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all w-full"
                   >
                     <LogOut className="w-4 h-4 shrink-0" />
