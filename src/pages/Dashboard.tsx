@@ -6,8 +6,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock,
-  LogOut, Sparkles, Trash2, Crown, Zap, TrendingUp, ShieldCheck, RefreshCw,
-  History, ShieldAlert, Bell, Search, Flame, Plug, Send, Brain, Package,
+  LogOut, Sparkles, Trash2, Crown, Zap, ShieldCheck, RefreshCw,
+  ShieldAlert, Brain, Package,
   Rocket, ArrowUpRight, Activity, Smartphone,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
@@ -229,17 +229,7 @@ const Dashboard = () => {
           <header className="sticky top-0 z-30 h-16 px-4 md:px-6 flex items-center gap-4 border-b border-border/60 bg-background/70 backdrop-blur-xl">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/40 border border-border/60 max-w-md flex-1">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar apps, integrações, ferramentas..."
-                className="bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
-              />
-              <kbd className="hidden lg:inline-block text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
-            </div>
-
-            <div className="flex-1 md:hidden" />
+            <div className="flex-1" />
 
             <div className="flex items-center gap-2">
               <Link
@@ -250,11 +240,6 @@ const Dashboard = () => {
                 <Zap className="w-3.5 h-3.5" /> {creditsBalance}
               </Link>
 
-              <button className="relative w-9 h-9 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-muted/40 flex items-center justify-center transition-all text-muted-foreground hover:text-foreground">
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              </button>
-
               {/* Profile */}
               <div className="flex items-center gap-2 pl-2 ml-1 border-l border-border/60">
                 <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary p-[1.5px]">
@@ -264,8 +249,8 @@ const Dashboard = () => {
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-background" />
                 </div>
                 <div className="hidden md:block leading-tight">
-                  <p className="text-xs font-bold text-foreground truncate max-w-[140px]">
-                    {profile?.display_name || "Usuário"}
+                  <p className="text-xs font-bold text-foreground truncate max-w-[180px]">
+                    {profile?.display_name || user?.email?.split("@")[0] || "—"}
                   </p>
                   <p className="text-[10px] text-primary font-bold uppercase tracking-wider">{planLabels[plan]}</p>
                 </div>
@@ -401,48 +386,6 @@ const Dashboard = () => {
                 </div>
               </section>
 
-              {/* Integrações */}
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-bold text-foreground">Integrações</h2>
-                  <span className="text-[10px] uppercase tracking-wider text-secondary font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" /> 3 ativas
-                  </span>
-                </div>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <SectionCard
-                    id="firebase"
-                    icon={Flame}
-                    title="Firebase"
-                    description="Autenticação, banco em tempo real e push notifications nativos."
-                    status="Conectado"
-                    accent="primary"
-                    action={{ label: "Configurar", to: "/tools" }}
-                    delay={0.05}
-                  />
-                  <SectionCard
-                    id="apis"
-                    icon={Plug}
-                    title="APIs Externas"
-                    description="Conecte Stripe, OpenAI, Google e webhooks personalizados ao seu app."
-                    status="Pronto"
-                    accent="secondary"
-                    action={{ label: "Conectar API", to: "/tools" }}
-                    delay={0.1}
-                  />
-                  <SectionCard
-                    id="publicacoes"
-                    icon={Send}
-                    title="Publicações"
-                    description="Publique direto na Play Store, App Store ou link próprio em minutos."
-                    status="Auto-deploy"
-                    accent="primary"
-                    action={{ label: "Publicar", to: "/historico" }}
-                    delay={0.15}
-                  />
-                </div>
-              </section>
-
               {/* IA & APK */}
               <section>
                 <div className="flex items-center justify-between mb-4">
@@ -452,9 +395,9 @@ const Dashboard = () => {
                   <SectionCard
                     id="ia"
                     icon={Brain}
-                    title="IA / OpenAI"
-                    description="Geração de conteúdo, código, copy e validação semântica usando GPT-5 e Gemini Pro."
-                    status="Online"
+                    title="Ferramentas IA"
+                    description="Geração de conteúdo, ícones, descrições e validação semântica para o seu app."
+                    status="Disponível"
                     accent="secondary"
                     action={{ label: "Abrir ferramentas IA", to: "/tools" }}
                     delay={0.05}
@@ -463,8 +406,8 @@ const Dashboard = () => {
                     id="apk"
                     icon={Package}
                     title="Geração APK Android"
-                    description="Worker dedicado converte seu projeto em AAB/APK assinado pronto para Play Store."
-                    status="Worker ativo"
+                    description="Converta seu projeto em AAB/APK assinado pronto para Play Store."
+                    status="Disponível"
                     accent="primary"
                     action={{ label: "Gerar APK", to: "/generator/convert-aab" }}
                     delay={0.1}
@@ -646,9 +589,8 @@ const Dashboard = () => {
 
               {/* Footer trust */}
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground pt-4 pb-8 border-t border-border/40">
-                <span className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3 text-primary" /> +1.247 apps esta semana</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-secondary" /> 100% seguro</span>
-                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-primary" /> IA em tempo real</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-secondary" /> Conexão segura</span>
+                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-primary" /> Powered by Lovable Cloud</span>
               </div>
             </div>
           </main>
