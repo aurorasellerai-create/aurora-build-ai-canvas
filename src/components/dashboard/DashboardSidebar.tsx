@@ -18,14 +18,8 @@ const overview: Item[] = [
   { title: "Meus Apps", url: "/dashboard#apps", icon: Smartphone },
 ];
 
-const integrations: Item[] = [
-  { title: "Firebase", url: "/dashboard#firebase", icon: Flame },
-  { title: "APIs", url: "/dashboard#apis", icon: Plug },
-  { title: "Publicações", url: "/dashboard#publicacoes", icon: Send },
-];
-
 const ai: Item[] = [
-  { title: "IA / OpenAI", url: "/dashboard#ia", icon: Brain },
+  { title: "Ferramentas IA", url: "/dashboard#ia", icon: Brain },
   { title: "Geração APK", url: "/dashboard#apk", icon: Package },
   { title: "Validador", url: "/dashboard#validador", icon: ShieldAlert },
 ];
