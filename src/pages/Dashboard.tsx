@@ -589,9 +589,8 @@ const Dashboard = () => {
 
               {/* Footer trust */}
               <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground pt-4 pb-8 border-t border-border/40">
-                <span className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3 text-primary" /> +1.247 apps esta semana</span>
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-secondary" /> 100% seguro</span>
-                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-primary" /> IA em tempo real</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3 h-3 text-secondary" /> Conexão segura</span>
+                <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-primary" /> Powered by Lovable Cloud</span>
               </div>
             </div>
           </main>
