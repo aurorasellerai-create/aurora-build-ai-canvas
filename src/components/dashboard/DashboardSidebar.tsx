@@ -93,7 +93,6 @@ export const DashboardSidebar = () => {
 
       <SidebarContent className="px-2 py-3">
         <Section label="Principal" items={overview} />
-        <Section label="Integrações" items={integrations} />
         <Section label="IA & Build" items={ai} />
         <Section label="Conta" items={account} />
       </SidebarContent>
