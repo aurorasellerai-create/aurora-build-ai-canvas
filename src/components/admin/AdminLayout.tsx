@@ -4,27 +4,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, Crown, Zap, Bot, Smartphone,
   DollarSign, Wrench, Settings, ArrowLeft, Shield, Menu, X,
-  FileText, Activity, LogOut, Mail,
+  FileText, Activity, LogOut, Mail, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { adminLogout } from "./AdminPinGate";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 export type AdminSection =
-  | "dashboard"
-  | "users"
-  | "plans"
-  | "credits"
-  | "ai_usage"
-  | "apps"
-  | "financial"
-  | "tools"
-  | "logs"
-  | "emails"
-  | "settings"
-  | "system";
+  | "dashboard" | "users" | "plans" | "credits" | "ai_usage" | "apps"
+  | "financial" | "tools" | "logs" | "emails" | "settings" | "system" | "security";
 
 const NAV_ITEMS: { id: AdminSection; label: string; icon: any }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "security", label: "Segurança", icon: ShieldCheck },
   { id: "users", label: "Usuários", icon: Users },
   { id: "plans", label: "Planos", icon: Crown },
   { id: "credits", label: "Créditos", icon: Zap },
