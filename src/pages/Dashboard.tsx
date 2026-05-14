@@ -6,8 +6,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Plus, Download, Eye, Loader2, CheckCircle2, AlertCircle, Clock,
-  LogOut, Sparkles, Trash2, Crown, Zap, TrendingUp, ShieldCheck, RefreshCw,
-  History, ShieldAlert, Bell, Search, Flame, Plug, Send, Brain, Package,
+  LogOut, Sparkles, Trash2, Crown, Zap, ShieldCheck, RefreshCw,
+  ShieldAlert, Brain, Package,
   Rocket, ArrowUpRight, Activity, Smartphone,
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
