@@ -229,17 +229,7 @@ const Dashboard = () => {
           <header className="sticky top-0 z-30 h-16 px-4 md:px-6 flex items-center gap-4 border-b border-border/60 bg-background/70 backdrop-blur-xl">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/40 border border-border/60 max-w-md flex-1">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar apps, integrações, ferramentas..."
-                className="bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1"
-              />
-              <kbd className="hidden lg:inline-block text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
-            </div>
-
-            <div className="flex-1 md:hidden" />
+            <div className="flex-1" />
 
             <div className="flex items-center gap-2">
               <Link
@@ -250,11 +240,6 @@ const Dashboard = () => {
                 <Zap className="w-3.5 h-3.5" /> {creditsBalance}
               </Link>
 
-              <button className="relative w-9 h-9 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-muted/40 flex items-center justify-center transition-all text-muted-foreground hover:text-foreground">
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              </button>
-
               {/* Profile */}
               <div className="flex items-center gap-2 pl-2 ml-1 border-l border-border/60">
                 <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary p-[1.5px]">
@@ -264,8 +249,8 @@ const Dashboard = () => {
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-background" />
                 </div>
                 <div className="hidden md:block leading-tight">
-                  <p className="text-xs font-bold text-foreground truncate max-w-[140px]">
-                    {profile?.display_name || "Usuário"}
+                  <p className="text-xs font-bold text-foreground truncate max-w-[180px]">
+                    {profile?.display_name || user?.email?.split("@")[0] || "—"}
                   </p>
                   <p className="text-[10px] text-primary font-bold uppercase tracking-wider">{planLabels[plan]}</p>
                 </div>
