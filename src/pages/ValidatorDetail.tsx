@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, Download, ExternalLink, FileCode2, FileWarning, Gauge, KeyRound, Lock, RefreshCw, Rocket, ScanLine, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, Download, ExternalLink, FileCode2, FileWarning, Gauge, KeyRound, Lock, RefreshCw, Rocket, ScanLine, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Wrench, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
@@ -695,13 +695,247 @@ function AndroidDeepAnalysis({ format, appName }: { format: AuroraAppFormat; app
         </div>
       </div>
 
+      <RecommendationsPanel
+        items={[
+          ...manifest.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Manifest" as const,
+            sev: i.sev,
+            title: i.label,
+            detail: String(i.value),
+            ...getFixGuidance("manifest", i.label),
+          })),
+          ...permissions.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Permissão" as const,
+            sev: i.sev,
+            title: i.name,
+            detail: i.desc,
+            ...getFixGuidance("permission", i.name),
+          })),
+          ...scan.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Scan" as const,
+            sev: i.sev,
+            title: i.area,
+            detail: i.result,
+            ...getFixGuidance("scan", i.area),
+          })),
+        ]}
+      />
+
       <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
           Análise gerada a partir do arquivo {format.toUpperCase()} enviado. Para publicar na Play Store, corrija itens marcados como <span className="text-destructive font-bold">críticos</span> e revise as <span className="text-primary font-bold">permissões sensíveis</span> com justificativa no formulário de envio.
         </p>
       </div>
+
     </motion.section>
+  );
+}
+
+type FixGuidance = { impact: string; steps: string[]; reference?: { label: string; url: string } };
+
+function getFixGuidance(kind: "manifest" | "permission" | "scan", key: string): FixGuidance {
+  const map: Record<string, FixGuidance> = {
+    // Manifest
+    "targetSdkVersion": {
+      impact: "A Play Store exige targetSdkVersion atualizado para novos envios e atualizações.",
+      steps: [
+        "Abra build.gradle (Module: app) e ajuste targetSdkVersion para 34.",
+        "Atualize compileSdkVersion para 34 e revise APIs descontinuadas.",
+        "Teste o app em Android 14 antes de gerar um novo bundle.",
+      ],
+      reference: { label: "Play Console · Requisitos de targetSdk", url: "https://developer.android.com/google/play/requirements/target-sdk" },
+    },
+    "allowBackup": {
+      impact: "Backups automáticos podem expor dados sensíveis do usuário.",
+      steps: [
+        "No AndroidManifest.xml, defina android:allowBackup=\"false\" se o app armazena dados sensíveis.",
+        "Caso precise de backup, configure android:fullBackupContent com regras explícitas.",
+        "Documente a decisão para o time de segurança.",
+      ],
+    },
+    "Assinatura digital": {
+      impact: "APKs com debug keystore não podem ser publicados na Play Store.",
+      steps: [
+        "Gere uma keystore de release com keytool e armazene em local seguro.",
+        "Configure signingConfigs.release no build.gradle com a nova keystore.",
+        "Habilite o Play App Signing no Play Console e envie um AAB assinado.",
+      ],
+      reference: { label: "Play App Signing", url: "https://developer.android.com/studio/publish/app-signing" },
+    },
+    // Permissions
+    "WRITE_EXTERNAL_STORAGE": {
+      impact: "Permissão obsoleta a partir do Android 10 — pode ser rejeitada na revisão.",
+      steps: [
+        "Migre para o Storage Access Framework ou MediaStore.",
+        "Remova a declaração se não for mais necessária no Android 10+.",
+        "Para versões antigas, restrinja com android:maxSdkVersion=\"28\".",
+      ],
+    },
+    "READ_MEDIA_IMAGES": {
+      impact: "Permissão sensível — exige justificativa clara para o usuário.",
+      steps: [
+        "Solicite a permissão apenas quando o usuário acionar a funcionalidade.",
+        "Exiba um diálogo explicando o motivo antes do prompt do sistema.",
+        "Considere o Photo Picker (Android 13+) para evitar a permissão completa.",
+      ],
+    },
+    "REQUEST_INSTALL_PACKAGES": {
+      impact: "Proibida pela Play Store sem justificativa formal — risco de remoção.",
+      steps: [
+        "Remova a permissão se o app não instala APKs externos.",
+        "Se for essencial, declare a categoria \"File manager\" no Play Console.",
+        "Implemente o fluxo PackageInstaller respeitando as políticas.",
+      ],
+      reference: { label: "Política Play Store · Instalação de pacotes", url: "https://support.google.com/googleplay/android-developer/answer/12085295" },
+    },
+    // Scan
+    "Assinatura APK": {
+      impact: "Assinaturas v1 não são aceitas em novos uploads na Play Store.",
+      steps: [
+        "Habilite v2SigningEnabled true e v3SigningEnabled true no signingConfig.",
+        "Gere o bundle novamente e valide com apksigner verify --print-certs.",
+        "Reenvie o AAB assinado para o Play Console.",
+      ],
+    },
+    "Política Play Store": {
+      impact: "Permissões sensíveis sem justificativa podem causar suspensão do app.",
+      steps: [
+        "Liste todas as permissões sensíveis declaradas no manifest.",
+        "Preencha o formulário de declaração no Play Console com o caso de uso.",
+        "Anexe um vídeo demonstrando o uso real da permissão.",
+      ],
+    },
+    "Tamanho do bundle": {
+      impact: "APK universal aumenta o tempo de download e a taxa de desinstalação.",
+      steps: [
+        "Migre para Android App Bundle (.aab) e habilite splits por ABI/densidade.",
+        "Comprima recursos com WebP e remova assets não usados.",
+        "Ative R8 com shrinkResources true para minimizar o tamanho.",
+      ],
+    },
+  };
+  return map[key] || {
+    impact: "Item sinalizado para revisão antes da publicação.",
+    steps: [
+      "Reveja a configuração atual no projeto Android.",
+      "Compare com as boas práticas mais recentes do Google.",
+      "Reenvie para validação após o ajuste.",
+    ],
+  };
+}
+
+type RecommendationItem = {
+  source: "Manifest" | "Permissão" | "Scan";
+  sev: Severity;
+  title: string;
+  detail: string;
+  impact: string;
+  steps: string[];
+  reference?: { label: string; url: string };
+};
+
+function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-5 flex items-start gap-3">
+        <CheckCircle2 className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
+        <div>
+          <h3 className="font-display font-bold text-foreground text-sm">Nenhuma correção necessária</h3>
+          <p className="text-xs text-muted-foreground mt-1">Manifest, permissões e scan estão dentro das políticas da Play Store.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const critical = items.filter((i) => i.sev === "danger").length;
+  const warnings = items.filter((i) => i.sev === "warn").length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+      className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-5 md:p-6 space-y-4"
+    >
+      <header className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/40 text-primary flex items-center justify-center glow-gold">
+            <Wrench className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-bold">Recomendações</p>
+            <h3 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Passos de correção sugeridos</h3>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {critical > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive">
+              <XCircle className="w-3.5 h-3.5" /> {critical} crítico{critical > 1 ? "s" : ""}
+            </span>
+          )}
+          {warnings > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              <AlertTriangle className="w-3.5 h-3.5" /> {warnings} atenção
+            </span>
+          )}
+        </div>
+      </header>
+
+      <div className="grid md:grid-cols-2 gap-3">
+        {items.map((item, idx) => {
+          const Icon = sevIcon[item.sev];
+          return (
+            <motion.article
+              key={`${item.source}-${item.title}-${idx}`}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }}
+              className={`rounded-xl border p-4 space-y-3 ${sevClasses[item.sev]}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-background/70 border border-border text-muted-foreground">
+                      {item.source}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+                      <Icon className="w-3 h-3" /> {sevLabel[item.sev]}
+                    </span>
+                  </div>
+                  <h4 className="font-display font-bold text-foreground text-sm leading-tight truncate">{item.title}</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{item.detail}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Impacto</p>
+                <p className="text-xs text-foreground/90 leading-snug">{item.impact}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-secondary mb-2">Como corrigir</p>
+                <ol className="space-y-1.5">
+                  {item.steps.map((step, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground/90 leading-snug">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-primary/15 border border-primary/40 text-primary text-[10px] font-bold flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {item.reference && (
+                <a
+                  href={item.reference.url} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" /> {item.reference.label}
+                </a>
+              )}
+            </motion.article>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 }
 
