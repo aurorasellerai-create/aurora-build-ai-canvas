@@ -285,6 +285,7 @@ export default function ValidatorDetail() {
         status: statusLabel,
         createdAt: validation?.createdAt,
         result: validatorResult,
+        validationId: id,
       });
       toast.success("Relatório PDF gerado com sucesso.");
     } catch {
