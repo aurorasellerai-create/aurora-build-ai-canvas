@@ -489,7 +489,10 @@ export default function ValidatorDetail() {
               <h2 className="font-display font-bold text-foreground mb-2">Próximo passo</h2>
               <p className="text-sm text-muted-foreground mb-5">{validatorResult.sugestao}</p>
               <div className="space-y-3">
-                <Link to="/#aurora-validator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-3 font-display font-bold glow-gold glow-gold-hover transition-all hover:scale-[1.02]">
+                <button type="button" onClick={handleDownloadPdf} className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary to-secondary text-background px-5 py-3 font-display font-bold glow-gold transition-all hover:scale-[1.02]">
+                  <Download className="w-4 h-4" /> Baixar relatório PDF
+                </button>
+                <Link to="/#aurora-validator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-primary/30 text-primary px-5 py-3 font-display font-bold hover:bg-primary/10 transition-all">
                   <RefreshCw className="w-4 h-4" /> Rodar novamente
                 </Link>
                 <Link to="/generator" className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-secondary/30 text-secondary px-5 py-3 font-display font-bold hover:bg-secondary/10 transition-all">
