@@ -676,3 +676,5 @@ function AndroidDeepAnalysis({ format, appName }: { format: AuroraAppFormat; app
       </div>
     </motion.section>
   );
+}
+
