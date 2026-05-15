@@ -837,9 +837,23 @@ type RecommendationItem = {
 
 function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
   const sevRank: Record<Severity, number> = { danger: 0, warn: 1, ok: 2 };
+  const [recSearchTerm, setRecSearchTerm] = useState("");
+
+  const filteredItems = useMemo(() => {
+    const term = recSearchTerm.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(term) ||
+        i.detail.toLowerCase().includes(term) ||
+        i.impact.toLowerCase().includes(term) ||
+        i.steps.some((s) => s.toLowerCase().includes(term)),
+    );
+  }, [items, recSearchTerm]);
+
   const sortedItems = useMemo(
-    () => [...items].sort((a, b) => sevRank[a.sev] - sevRank[b.sev]),
-    [items],
+    () => [...filteredItems].sort((a, b) => sevRank[a.sev] - sevRank[b.sev]),
+    [filteredItems],
   );
 
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
@@ -864,7 +878,7 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
     }
   };
 
-  if (sortedItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-5 flex items-start gap-3">
         <CheckCircle2 className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
@@ -910,35 +924,66 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
         </div>
       </header>
 
-      {/* Navegação entre correções */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 p-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Correção</span>
-          <span className="font-mono text-sm font-bold text-foreground">
-            {activeIdx + 1}<span className="text-muted-foreground">/{sortedItems.length}</span>
-          </span>
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${sevClasses[current.sev]}`}>
-            {sevLabel[current.sev]}
-          </span>
-          <span className="text-xs font-semibold text-foreground truncate">· {current.title}</span>
+      {/* Busca de correções */}
+      <div className="rounded-xl border border-border bg-background/60 p-3 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={recSearchTerm}
+            onChange={(e) => setRecSearchTerm(e.target.value)}
+            placeholder="Buscar correção por título, descrição ou passo..."
+            className="w-full rounded-lg border border-border bg-background/70 py-3 pl-10 pr-10 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+          />
+          {recSearchTerm && (
+            <button
+              type="button"
+              onClick={() => setRecSearchTerm("")}
+              className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Limpar busca"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button" onClick={() => goTo(activeIdx - 1)}
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground hover:border-primary/50 hover:text-primary transition-colors"
-            aria-label="Correção anterior"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" /> Anterior
-          </button>
-          <button
-            type="button" onClick={() => goTo(activeIdx + 1)}
-            className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors glow-gold"
-            aria-label="Próxima correção"
-          >
-            Próxima <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {recSearchTerm && (
+          <p className="text-[11px] text-muted-foreground">
+            {sortedItems.length} resultado{sortedItems.length !== 1 ? "s" : ""} para "<span className="text-foreground font-semibold">{recSearchTerm}</span>"
+            {sortedItems.length === 0 && " — tente outro termo."}
+          </p>
+        )}
       </div>
+
+      {/* Navegação entre correções */}
+      {sortedItems.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 p-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Correção</span>
+            <span className="font-mono text-sm font-bold text-foreground">
+              {activeIdx + 1}<span className="text-muted-foreground">/{sortedItems.length}</span>
+            </span>
+            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${sevClasses[current.sev]}`}>
+              {sevLabel[current.sev]}
+            </span>
+            <span className="text-xs font-semibold text-foreground truncate">· {current.title}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button" onClick={() => goTo(activeIdx - 1)}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+              aria-label="Correção anterior"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" /> Anterior
+            </button>
+            <button
+              type="button" onClick={() => goTo(activeIdx + 1)}
+              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors glow-gold"
+              aria-label="Próxima correção"
+            >
+              Próxima <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-3">
         {sortedItems.map((item, idx) => {
@@ -1004,6 +1049,19 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
           );
         })}
       </div>
+
+      {sortedItems.length === 0 && items.length > 0 && (
+        <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground">
+          Nenhuma correção encontrada para "<span className="text-foreground font-semibold">{recSearchTerm}</span>".
+          <button
+            type="button"
+            onClick={() => setRecSearchTerm("")}
+            className="ml-2 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold text-primary hover:border-primary/40 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" /> Limpar busca
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
