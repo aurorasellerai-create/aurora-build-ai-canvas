@@ -33,6 +33,7 @@ const Credits = lazy(() => import(/* webpackChunkName: "credits" */ "./pages/Cre
 const VideoGenerator = lazy(() => import(/* webpackChunkName: "video" */ "./pages/VideoGenerator"));
 const CarouselGenerator = lazy(() => import(/* webpackChunkName: "carousel" */ "./pages/CarouselGenerator"));
 const ValidatorDetail = lazy(() => import(/* webpackChunkName: "validator" */ "./pages/ValidatorDetail"));
+const ValidatorUpload = lazy(() => import(/* webpackChunkName: "validator" */ "./pages/ValidatorUpload"));
 const ConversionHistory = lazy(() => import(/* webpackChunkName: "history" */ "./pages/ConversionHistory"));
 const NotFound = lazy(() => import(/* webpackChunkName: "notfound" */ "./pages/NotFound"));
 
@@ -92,6 +93,8 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
+              <Route path="/validator" element={<ProtectedRoute><ValidatorUpload /></ProtectedRoute>} />
+              <Route path="/validator/upload" element={<ProtectedRoute><ValidatorUpload /></ProtectedRoute>} />
               <Route path="/validator/:id" element={<ProtectedRoute><ValidatorDetail /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
               <Route path="/historico" element={<ProtectedRoute><ConversionHistory /></ProtectedRoute>} />

@@ -480,10 +480,10 @@ const Dashboard = () => {
 
                     <div className="flex flex-wrap gap-3">
                       <Link
-                        to="/#aurora-validator"
+                        to="/validator/upload"
                         className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-secondary text-secondary-foreground font-display font-bold text-sm glow-cyan hover:scale-[1.03] transition-all"
                       >
-                        <ShieldAlert className="w-4 h-4" /> Abrir Validator
+                        <ShieldAlert className="w-4 h-4" /> Enviar APK / AAB
                       </Link>
                       <Link
                         to="/historico"
