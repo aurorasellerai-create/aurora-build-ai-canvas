@@ -269,6 +269,21 @@ export default function ValidatorDetail() {
     }, {});
   }, [filteredErrors]);
 
+  const handleDownloadPdf = () => {
+    try {
+      generateValidatorPdf({
+        appName: buildLabel,
+        format: selectedFormat,
+        status: statusLabel,
+        createdAt: validation?.createdAt,
+        result: validatorResult,
+      });
+      toast.success("Relatório PDF gerado com sucesso.");
+    } catch {
+      toast.error("Não foi possível gerar o PDF agora.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-4 py-4">
@@ -276,10 +291,17 @@ export default function ValidatorDetail() {
           <Link to="/#aurora-validator" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Voltar para Aurora Validator">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-display font-bold text-lg text-gradient-gold">Detalhes da validação</h1>
-            <p className="text-xs text-muted-foreground">{buildLabel} · {statusLabel}</p>
+            <p className="text-xs text-muted-foreground truncate">{buildLabel} · {statusLabel}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-xs font-bold glow-gold hover:scale-[1.03] transition-all shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" /> Baixar PDF
+          </button>
         </div>
       </header>
 
