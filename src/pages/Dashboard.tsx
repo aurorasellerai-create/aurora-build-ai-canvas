@@ -415,6 +415,126 @@ const Dashboard = () => {
                 </div>
               </section>
 
+              {/* Aurora Validator — Módulo Premium */}
+              <motion.section
+                id="validator-module"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
+                className="relative overflow-hidden rounded-3xl border border-secondary/30 bg-gradient-to-br from-card via-card/80 to-background p-6 md:p-8 scroll-mt-20"
+              >
+                {/* Ambient glows */}
+                <div className="pointer-events-none absolute inset-0 opacity-60">
+                  <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-secondary/15 blur-3xl" />
+                  <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-primary/15 blur-3xl" />
+                </div>
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-secondary/60 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+
+                <div className="relative grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-stretch">
+                  {/* Left: pitch */}
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-4">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary/40 bg-secondary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary">
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                        Módulo Ativo
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                        <Crown className="w-3 h-3" /> Premium
+                      </span>
+                    </div>
+
+                    <h2 className="font-display text-2xl md:text-3xl font-bold leading-tight mb-2">
+                      <span className="text-gradient-cyan">Aurora</span>{" "}
+                      <span className="text-gradient-gold">Validator</span>
+                    </h2>
+                    <p className="text-sm md:text-base text-muted-foreground mb-5 max-w-xl">
+                      Análise técnica completa de APK/AAB com checagem de manifest, permissões Android e conformidade com as políticas da Google Play Store — antes da publicação.
+                    </p>
+
+                    <div className="grid sm:grid-cols-2 gap-2.5 mb-6">
+                      {[
+                        { icon: Package, label: "Análise APK / AAB", accent: "primary" as const },
+                        { icon: ShieldCheck, label: "Validação Google Play", accent: "secondary" as const },
+                        { icon: Lock, label: "Permissões Android", accent: "secondary" as const },
+                        { icon: FileSearch, label: "Inspeção de Manifest", accent: "primary" as const },
+                        { icon: FileCheck2, label: "Políticas Play Store", accent: "primary" as const },
+                        { icon: ScanLine, label: "Scan de segurança", accent: "secondary" as const },
+                      ].map((item) => {
+                        const isPrimary = item.accent === "primary";
+                        return (
+                          <div
+                            key={item.label}
+                            className={`flex items-center gap-2.5 rounded-xl border p-2.5 bg-background/40 backdrop-blur-sm transition-colors ${
+                              isPrimary ? "border-primary/25 hover:border-primary/50" : "border-secondary/25 hover:border-secondary/50"
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isPrimary ? "bg-primary/10 text-primary" : "bg-secondary/10 text-secondary"}`}>
+                              <item.icon className="w-4 h-4" />
+                            </div>
+                            <span className="text-xs font-semibold text-foreground">{item.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        to="/#aurora-validator"
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-secondary text-secondary-foreground font-display font-bold text-sm glow-cyan hover:scale-[1.03] transition-all"
+                      >
+                        <ShieldAlert className="w-4 h-4" /> Abrir Validator
+                      </Link>
+                      <Link
+                        to="/historico"
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-primary/40 text-primary font-display font-bold text-sm hover:bg-primary/10 transition-all"
+                      >
+                        <Eye className="w-4 h-4" /> Ver histórico
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right: status panel */}
+                  <div className="rounded-2xl border border-border/60 bg-background/60 backdrop-blur-sm p-5 flex flex-col justify-between gap-5">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-bold">Status do Módulo</p>
+                          <p className="font-display text-lg font-bold text-foreground">Pronto para validar</p>
+                        </div>
+                        <div className="w-11 h-11 rounded-xl bg-secondary/10 border border-secondary/30 text-secondary flex items-center justify-center glow-cyan">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {[
+                          { label: "Engine de validação", value: "Online", ok: true },
+                          { label: "Verificador de manifest", value: "Ativo", ok: true },
+                          { label: "Política Play Store", value: "Atualizada", ok: true },
+                          { label: "Validações realizadas", value: String(validatorHistory.length), ok: true },
+                        ].map((row) => (
+                          <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/40 px-3 py-2.5">
+                            <span className="text-xs text-muted-foreground">{row.label}</span>
+                            <span className="text-xs font-bold text-secondary inline-flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                              {row.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 flex items-start gap-2.5">
+                      <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Rode o Validator antes de enviar à Play Store e evite reprovações por permissões, manifest ou políticas.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+
               {/* Validador */}
               <motion.section
                 id="validador"
