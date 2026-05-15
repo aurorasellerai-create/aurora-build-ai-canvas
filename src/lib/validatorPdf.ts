@@ -51,8 +51,18 @@ async function loadLogoDataUrl(): Promise<string | null> {
   }
 }
 
-export async function generateValidatorPdf({ appName, format, status, createdAt, result }: Args) {
+export async function generateValidatorPdf({ appName, format, status, createdAt, result, validationId }: Args) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const reportId = (validationId ?? `AURORA-${Date.now().toString(36).toUpperCase()}`).slice(0, 28);
+  let qrDataUrl: string | null = null;
+  try {
+    qrDataUrl = await QRCode.toDataURL(
+      `https://aurorabuild.com.br/validator/${reportId}`,
+      { margin: 0, width: 220, color: { dark: "#0B0F1A", light: "#FFFFFF" } },
+    );
+  } catch {
+    qrDataUrl = null;
+  }
   const logo = await loadLogoDataUrl();
   let y = 0;
 
