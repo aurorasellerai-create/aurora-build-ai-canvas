@@ -260,6 +260,68 @@ export async function generateValidatorPdf({ appName, format, status, createdAt,
   const sugLines = doc.splitTextToSize(result.sugestao, CONTENT_W - 10);
   doc.text(sugLines.slice(0, 3), MARGIN + 5, y + 13);
 
+  y += 30;
+
+  // ===== Selo "VALIDADO PELO AURORA AI" + QR + ID =====
+  y = ensureSpace(doc, y, 50);
+  doc.setFillColor(...BG_DARK);
+  doc.roundedRect(MARGIN, y, CONTENT_W, 44, 3, 3, "F");
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(MARGIN, y, CONTENT_W, 44, 3, 3, "S");
+  doc.setLineWidth(0.2);
+
+  // Seal circle
+  const sealCx = MARGIN + 26;
+  const sealCy = y + 22;
+  doc.setFillColor(...GOLD);
+  doc.circle(sealCx, sealCy, 14, "F");
+  doc.setFillColor(...BG_DARK);
+  doc.circle(sealCx, sealCy, 11.5, "F");
+  doc.setDrawColor(...CYAN);
+  doc.setLineWidth(0.4);
+  doc.circle(sealCx, sealCy, 13, "S");
+  doc.setLineWidth(0.2);
+  doc.setTextColor(...GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.5);
+  doc.text("VALIDADO PELO", sealCx, sealCy - 2, { align: "center" });
+  doc.setFontSize(8);
+  doc.setTextColor(...CYAN);
+  doc.text("AURORA AI", sealCx, sealCy + 3, { align: "center" });
+
+  // Text block
+  doc.setTextColor(...GOLD);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Relatório executivo Aurora Validator", MARGIN + 46, y + 12);
+  doc.setTextColor(200, 206, 220);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text("Auditoria técnica assinada digitalmente pelo Aurora AI.", MARGIN + 46, y + 18);
+  doc.setTextColor(...CYAN);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.text(`ID: ${reportId}`, MARGIN + 46, y + 26);
+  doc.setTextColor(200, 206, 220);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Emitido em ${new Date(createdAt ?? Date.now()).toLocaleString("pt-BR")}`, MARGIN + 46, y + 32);
+  doc.setTextColor(...GOLD);
+  doc.text("aurorabuild.com.br/validator", MARGIN + 46, y + 38);
+
+  // QR
+  if (qrDataUrl) {
+    try {
+      doc.addImage(qrDataUrl, "PNG", PAGE_W - MARGIN - 32, y + 6, 28, 28);
+      doc.setFontSize(6.5);
+      doc.setTextColor(...CYAN);
+      doc.setFont("helvetica", "bold");
+      doc.text("Escaneie para verificar", PAGE_W - MARGIN - 18, y + 39, { align: "center" });
+    } catch {
+      // ignore
+    }
+  }
+
   // ===== Footer em todas páginas =====
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
