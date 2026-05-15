@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, ExternalLink, FileCode2, FileWarning, Gauge, KeyRound, Lock, RefreshCw, Rocket, ScanLine, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, CreditCard, Download, ExternalLink, FileCode2, FileWarning, Gauge, KeyRound, Lock, RefreshCw, Rocket, ScanLine, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatusLabel } from "@/lib/validatorHistory";
 import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
 import { createAuroraValidatorResult, getAuroraValidatorChecks, getAuroraValidatorSummary } from "@/lib/auroraValidator";
+import { generateValidatorPdf } from "@/lib/validatorPdf";
 
 const summaryIcons = {
   Fluxo: CheckCircle2,
