@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import type { AuroraValidatorResult } from "@/lib/auroraValidator";
 import type { AuroraAppFormat } from "@/lib/appFormatPreference";
 import auroraLogoUrl from "@/assets/aurora-symbol.png";
@@ -9,6 +10,7 @@ type Args = {
   status: string;
   createdAt?: string;
   result: AuroraValidatorResult;
+  validationId?: string;
 };
 
 const GOLD: [number, number, number] = [255, 215, 0];
