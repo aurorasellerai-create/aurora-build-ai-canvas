@@ -93,6 +93,8 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
+              <Route path="/validator" element={<ProtectedRoute><ValidatorUpload /></ProtectedRoute>} />
+              <Route path="/validator/upload" element={<ProtectedRoute><ValidatorUpload /></ProtectedRoute>} />
               <Route path="/validator/:id" element={<ProtectedRoute><ValidatorDetail /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
               <Route path="/historico" element={<ProtectedRoute><ConversionHistory /></ProtectedRoute>} />
