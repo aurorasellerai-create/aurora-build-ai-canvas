@@ -314,63 +314,57 @@ export default function ValidatorDetail() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-10 space-y-6">
-        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="card-aurora p-6 md:p-8 overflow-hidden relative">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent" />
-          <div className="grid lg:grid-cols-[1fr_0.72fr] gap-8 items-start">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-destructive/25 bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive mb-5">
-                <ShieldAlert className="w-3.5 h-3.5" /> Publicação não recomendada até correção
-              </div>
-              <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-3">STATUS DO APP</h2>
-              <p className="text-muted-foreground max-w-2xl">
-                {validatorResult.resumo}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold">
-                <span className="rounded-full border border-border bg-muted/30 px-3 py-1 text-muted-foreground">Status: {validatorResult.status.toUpperCase()}</span>
-                <span className={`rounded-full border px-3 py-1 ${validatorResult.pronto_para_publicacao ? "border-secondary/30 bg-secondary/10 text-secondary" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
-                  {validatorResult.pronto_para_publicacao ? "Pronto para publicação" : "Publicação não recomendada"}
-                </span>
-              </div>
-            </div>
+        {(() => {
+          const counts = {
+            ok: 6,
+            warn: errors.filter((e) => e.severity === "warning").length,
+            danger: errors.filter((e) => e.severity === "critical").length,
+          };
+          const scores = deriveValidatorScores({ errors, counts, ready: validatorResult.pronto_para_publicacao });
+          return (
+            <>
+              <PremiumScoreHero
+                scores={scores}
+                ready={validatorResult.pronto_para_publicacao}
+                validationId={id}
+                appName={buildLabel}
+                format={selectedFormat}
+              />
 
-            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
-              <div className="space-y-3 rounded-lg border border-primary/20 bg-background/50 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4 text-primary" /> Formato da validação</span>
-                  <strong className="text-foreground">{selectedFormat.toUpperCase()}</strong>
+              <div className="rounded-xl border border-border bg-card/60 backdrop-blur p-4 flex flex-wrap items-center gap-3 justify-between">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-bold text-primary">
+                    <RefreshCw className="w-3.5 h-3.5" /> Formato: {selectedFormat.toUpperCase()}
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {appFormatOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setSelectedFormat(option.value)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${selectedFormat === option.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background/60 text-muted-foreground hover:text-foreground"}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {appFormatOptions.map((option) => (
-                    <button key={option.value} type="button" onClick={() => setSelectedFormat(option.value)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${selectedFormat === option.value ? "border-primary bg-primary text-primary-foreground shadow-[0_0_18px_hsl(var(--primary)/0.25)]" : "border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" onClick={handleReexecuteWithFormat} className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/15">
+                <button
+                  type="button"
+                  onClick={handleReexecuteWithFormat}
+                  className="inline-flex items-center gap-2 rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary/15 transition-all"
+                >
                   <RefreshCw className="w-3.5 h-3.5" /> Reexecutar com {selectedFormat.toUpperCase()}
                 </button>
               </div>
-              {validation?.baseValidationId && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Base reutilizada</span>
-                  <strong className="text-foreground">Revalidação</strong>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Duração</span>
-                <strong className="text-foreground">4,2 segundos</strong>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2"><FileWarning className="w-4 h-4 text-primary" /> Falhas encontradas</span>
-                <strong className="text-destructive">{validation ? validation.issuesCount + validation.warningCount : 3}</strong>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> Itens aprovados</span>
-                <strong className="text-secondary">6</strong>
-              </div>
-            </div>
-          </div>
-        </motion.section>
+
+              <ProcessingTimeline />
+              <AIFixerPanel initialScore={scores.overall} />
+              <AutoDetectionsGrid />
+              <BeforeAfterCompare />
+            </>
+          );
+        })()}
 
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {summary.map((item, index) => {
