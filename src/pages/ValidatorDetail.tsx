@@ -695,12 +695,39 @@ function AndroidDeepAnalysis({ format, appName }: { format: AuroraAppFormat; app
         </div>
       </div>
 
+      <RecommendationsPanel
+        items={[
+          ...manifest.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Manifest" as const,
+            sev: i.sev,
+            title: i.label,
+            detail: String(i.value),
+            ...getFixGuidance("manifest", i.label),
+          })),
+          ...permissions.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Permissão" as const,
+            sev: i.sev,
+            title: i.name,
+            detail: i.desc,
+            ...getFixGuidance("permission", i.name),
+          })),
+          ...scan.filter((i) => i.sev !== "ok").map((i) => ({
+            source: "Scan" as const,
+            sev: i.sev,
+            title: i.area,
+            detail: i.result,
+            ...getFixGuidance("scan", i.area),
+          })),
+        ]}
+      />
+
       <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
           Análise gerada a partir do arquivo {format.toUpperCase()} enviado. Para publicar na Play Store, corrija itens marcados como <span className="text-destructive font-bold">críticos</span> e revise as <span className="text-primary font-bold">permissões sensíveis</span> com justificativa no formulário de envio.
         </p>
       </div>
+
     </motion.section>
   );
 }
