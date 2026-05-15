@@ -7,6 +7,14 @@ import { getValidatorHistoryItem, reexecuteValidatorHistoryItem, validatorStatus
 import { setSelectedAppFormatPreference, type AuroraAppFormat } from "@/lib/appFormatPreference";
 import { createAuroraValidatorResult, getAuroraValidatorChecks, getAuroraValidatorSummary } from "@/lib/auroraValidator";
 import { generateValidatorPdf } from "@/lib/validatorPdf";
+import {
+  AIFixerPanel,
+  AutoDetectionsGrid,
+  BeforeAfterCompare,
+  PremiumScoreHero,
+  ProcessingTimeline,
+  deriveValidatorScores,
+} from "@/components/validator/ValidatorPremium";
 
 const summaryIcons = {
   Fluxo: CheckCircle2,
