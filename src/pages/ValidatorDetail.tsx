@@ -269,9 +269,9 @@ export default function ValidatorDetail() {
     }, {});
   }, [filteredErrors]);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     try {
-      generateValidatorPdf({
+      await generateValidatorPdf({
         appName: buildLabel,
         format: selectedFormat,
         status: statusLabel,
