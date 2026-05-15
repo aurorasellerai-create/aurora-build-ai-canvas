@@ -836,7 +836,35 @@ type RecommendationItem = {
 };
 
 function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
-  if (items.length === 0) {
+  const sevRank: Record<Severity, number> = { danger: 0, warn: 1, ok: 2 };
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => sevRank[a.sev] - sevRank[b.sev]),
+    [items],
+  );
+
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    setActiveIdx(0);
+    itemRefs.current = itemRefs.current.slice(0, sortedItems.length);
+  }, [sortedItems.length]);
+
+  const goTo = (idx: number) => {
+    if (sortedItems.length === 0) return;
+    const next = (idx + sortedItems.length) % sortedItems.length;
+    setActiveIdx(next);
+    const el = itemRefs.current[next];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+      window.setTimeout(() => {
+        el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+      }, 1600);
+    }
+  };
+
+  if (sortedItems.length === 0) {
     return (
       <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-5 flex items-start gap-3">
         <CheckCircle2 className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
@@ -848,8 +876,9 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
     );
   }
 
-  const critical = items.filter((i) => i.sev === "danger").length;
-  const warnings = items.filter((i) => i.sev === "warn").length;
+  const critical = sortedItems.filter((i) => i.sev === "danger").length;
+  const warnings = sortedItems.filter((i) => i.sev === "warn").length;
+  const current = sortedItems[activeIdx];
 
   return (
     <motion.div
@@ -864,6 +893,7 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-bold">Recomendações</p>
             <h3 className="font-display text-lg md:text-xl font-bold text-gradient-gold">Passos de correção sugeridos</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Ordenadas por severidade — críticos primeiro, depois atenções.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -880,20 +910,52 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
         </div>
       </header>
 
+      {/* Navegação entre correções */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/60 p-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Correção</span>
+          <span className="font-mono text-sm font-bold text-foreground">
+            {activeIdx + 1}<span className="text-muted-foreground">/{sortedItems.length}</span>
+          </span>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${sevClasses[current.sev]}`}>
+            {sevLabel[current.sev]}
+          </span>
+          <span className="text-xs font-semibold text-foreground truncate">· {current.title}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button" onClick={() => goTo(activeIdx - 1)}
+            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+            aria-label="Correção anterior"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" /> Anterior
+          </button>
+          <button
+            type="button" onClick={() => goTo(activeIdx + 1)}
+            className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors glow-gold"
+            aria-label="Próxima correção"
+          >
+            Próxima <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-3">
-        {items.map((item, idx) => {
+        {sortedItems.map((item, idx) => {
           const Icon = sevIcon[item.sev];
+          const isActive = idx === activeIdx;
           return (
             <motion.article
               key={`${item.source}-${item.title}-${idx}`}
+              ref={(el) => { itemRefs.current[idx] = el; }}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }}
-              className={`rounded-xl border p-4 space-y-3 ${sevClasses[item.sev]}`}
+              className={`scroll-mt-24 rounded-xl border p-4 space-y-3 transition-all ${sevClasses[item.sev]} ${isActive ? "shadow-[0_0_24px_hsl(var(--primary)/0.25)] border-primary/60" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-background/70 border border-border text-muted-foreground">
-                      {item.source}
+                      #{idx + 1} · {item.source}
                     </span>
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
                       <Icon className="w-3 h-3" /> {sevLabel[item.sev]}
@@ -902,6 +964,13 @@ function RecommendationsPanel({ items }: { items: RecommendationItem[] }) {
                   <h4 className="font-display font-bold text-foreground text-sm leading-tight truncate">{item.title}</h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{item.detail}</p>
                 </div>
+                <button
+                  type="button" onClick={() => goTo(idx)}
+                  className="shrink-0 rounded-md border border-border bg-background/70 p-1 text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                  aria-label={`Ir para correção ${idx + 1}`}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               <div className="rounded-lg border border-border/60 bg-background/40 p-3">
