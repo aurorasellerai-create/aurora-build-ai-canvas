@@ -533,22 +533,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Rate limit
-    const now = Date.now();
-    const lastSeen = recentRequests.get(transactionId);
-    if (lastSeen && now - lastSeen < RATE_LIMIT_MS) {
+    const adminClient = getAdminClient();
+    const status = classifyStatus(orderStatus);
+
+    // Durable, cross-isolate deduplication (race-condition safe)
+    const webhookHash = await crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(rawBody))
+      .then((buf) =>
+        Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join(""),
+      )
+      .catch(() => undefined);
+
+    const reserved = await reserveWebhookDedupe(adminClient, "kiwify", transactionId, webhookHash);
+    if (!reserved) {
+      await adminClient.from("system_logs").insert({
+        severity: "info",
+        category: "webhook",
+        message: `Duplicate Kiwify webhook ignored: ${transactionId}`,
+        details: { transactionId, orderStatus, productName },
+      }).catch(() => {});
       return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    recentRequests.set(transactionId, now);
-    for (const [key, ts] of recentRequests) {
-      if (now - ts > 60000) recentRequests.delete(key);
-    }
-
-    const adminClient = getAdminClient();
-    const status = classifyStatus(orderStatus);
 
     // Find or auto-create user
     const user = await findOrCreateUser(adminClient, customerEmail, customerName);
