@@ -349,103 +349,115 @@ export function ProcessingTimeline() {
 }
 
 /* ============================================================
-   AI Fixer Panel — simulated terminal logs
+   AI Fixer Panel — REAL async execution (no fake terminal)
 ============================================================ */
-const AI_LOG_LINES = [
-  "[init] inicializando engine Aurora AI v3.2...",
-  "[parse] lendo AndroidManifest.xml...",
-  "[scan] inspecionando 142 chamadas de API...",
-  "[fix]  removendo permissão insegura REQUEST_INSTALL_PACKAGES",
-  "[fix]  ajustando android:allowBackup=\"false\"",
-  "[fix]  elevando targetSdkVersion para 34",
-  "[opt]  habilitando R8 + shrinkResources",
-  "[opt]  comprimindo assets para WebP (-38%)",
-  "[sec]  validando Play App Signing v2 + v3",
-  "[sec]  bloqueando cleartext traffic global",
-  "[net]  rodando lint contra políticas Play Store...",
-  "[net]  verificando endpoints HTTPS (12/12 OK)",
-  "[done] build otimizado · score recalculado · pronto para publicação",
-];
+export type FixerStatus = "idle" | "running" | "success" | "error";
+
+type FixStepState = {
+  key: string;
+  label: string;
+  status: "pending" | "running" | "done" | "error";
+  message?: string;
+};
 
 export function AIFixerPanel({
   initialScore,
   targetScore,
   pendingFixCount = 0,
   pendingFixLabels = [],
+  pendingFixKeys = [],
+  appliedFixCount = 0,
   onApply,
+  onComplete,
 }: {
   initialScore: number;
   targetScore?: number;
   pendingFixCount?: number;
   pendingFixLabels?: string[];
-  onApply?: () => void;
+  pendingFixKeys?: string[];
+  appliedFixCount?: number;
+  onApply?: (key: string) => Promise<void> | void;
+  onComplete?: () => void;
 }) {
-  const [running, setRunning] = useState(false);
-  const [done, setDone] = useState(false);
-  const [lines, setLines] = useState<string[]>([]);
-  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<FixerStatus>("idle");
+  const [steps, setSteps] = useState<FixStepState[]>([]);
   const [score, setScore] = useState(initialScore);
-  const appliedRef = useRef(false);
-
-  // Build dynamic log lines: header + one [fix] line per pending fix + footer.
-  const logLines = useMemo(() => {
-    if (pendingFixCount === 0) return AI_LOG_LINES;
-    const head = [
-      "[init] inicializando engine Aurora AI v3.2...",
-      "[parse] lendo AndroidManifest.xml...",
-      `[scan] ${pendingFixCount} correção(ões) segura(s) identificada(s)...`,
-    ];
-    const fixes = pendingFixLabels.map((label) => `[fix]  aplicando: ${label}`);
-    const tail = [
-      "[sec]  validando políticas Play Store...",
-      "[net]  verificando endpoints HTTPS (12/12 OK)",
-      "[done] correções aplicadas · score recalculado",
-    ];
-    return [...head, ...fixes, ...tail];
-  }, [pendingFixCount, pendingFixLabels]);
-
-  const target = targetScore ?? Math.min(99, initialScore + pendingFixCount * 4 + 6);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const runningRef = useRef(false);
   const logRef = useRef<HTMLDivElement>(null);
 
-  // Keep displayed score in sync with prop when fixes are applied externally
-  useEffect(() => {
-    if (!running) setScore(initialScore);
-  }, [initialScore, running]);
+  const target = targetScore ?? Math.min(99, initialScore + pendingFixCount * 4 + 6);
 
+  // Sync displayed score with prop whenever we're not actively running.
   useEffect(() => {
-    if (!running) return;
-    if (lines.length >= logLines.length) {
-      setDone(true);
-      setRunning(false);
-      if (!appliedRef.current && pendingFixCount > 0) {
-        appliedRef.current = true;
-        onApply?.();
-      }
-      return;
-    }
-    const t = setTimeout(() => {
-      setLines((prev) => [...prev, logLines[prev.length]]);
-      setProgress(Math.round(((lines.length + 1) / logLines.length) * 100));
-      setScore(Math.round(initialScore + ((target - initialScore) * (lines.length + 1)) / logLines.length));
-    }, 320);
-    return () => clearTimeout(t);
-  }, [running, lines, initialScore, target, logLines, onApply, pendingFixCount]);
+    if (status !== "running") setScore(initialScore);
+  }, [initialScore, status]);
+
+  // Rebuild visible step list when pending keys change (only while idle).
+  useEffect(() => {
+    if (status === "running") return;
+    setSteps(
+      pendingFixKeys.map((key, i) => ({
+        key,
+        label: pendingFixLabels[i] ?? key,
+        status: "pending",
+      })),
+    );
+  }, [pendingFixKeys, pendingFixLabels, status]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [lines]);
+  }, [steps]);
 
-  const start = () => {
+  const start = async () => {
+    if (runningRef.current) return; // dedup
     if (pendingFixCount === 0) return;
-    appliedRef.current = false;
-    setLines([]);
-    setProgress(0);
+    runningRef.current = true;
+    setStatus("running");
+    setErrorMsg(null);
     setScore(initialScore);
-    setDone(false);
-    setRunning(true);
+
+    const initialSteps: FixStepState[] = pendingFixKeys.map((key, i) => ({
+      key,
+      label: pendingFixLabels[i] ?? key,
+      status: "pending",
+    }));
+    setSteps(initialSteps);
+
+    try {
+      for (let i = 0; i < initialSteps.length; i += 1) {
+        const step = initialSteps[i];
+        setSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, status: "running" } : s)));
+        await Promise.resolve(onApply?.(step.key));
+        await new Promise((r) => setTimeout(r, 220));
+        setSteps((prev) =>
+          prev.map((s, idx) => (idx === i ? { ...s, status: "done", message: "aplicado" } : s)),
+        );
+        setScore(Math.round(initialScore + ((target - initialScore) * (i + 1)) / initialSteps.length));
+      }
+      setStatus("success");
+      onComplete?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao aplicar correções";
+      setErrorMsg(message);
+      setSteps((prev) =>
+        prev.map((s) => (s.status === "running" ? { ...s, status: "error", message } : s)),
+      );
+      setStatus("error");
+    } finally {
+      runningRef.current = false;
+    }
   };
 
   const nothingToFix = pendingFixCount === 0;
+  const running = status === "running";
+  const buttonLabel = (() => {
+    if (running) return "Aplicando correções...";
+    if (nothingToFix) return appliedFixCount > 0 ? "Tudo corrigido" : "Nada a corrigir";
+    if (status === "success") return `Corrigir restantes (${pendingFixCount})`;
+    if (status === "error") return "Tentar novamente";
+    return `Corrigir com IA (${pendingFixCount})`;
+  })();
 
   return (
     <motion.section
@@ -455,25 +467,25 @@ export function AIFixerPanel({
     >
       <div className="pointer-events-none absolute -top-16 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl" />
       <div className="relative grid md:grid-cols-[1fr_1.2fr] gap-5 items-start">
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="flex items-center gap-3">
             <span className="w-10 h-10 rounded-xl border border-primary/40 bg-primary/10 text-primary flex items-center justify-center glow-gold">
               <Bot className="w-5 h-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">Aurora AI · Auto-Fix</p>
-              <h3 className="font-display text-xl font-bold text-gradient-gold">Corrigir automaticamente</h3>
+              <h3 className="font-display text-xl font-bold text-gradient-gold truncate">Corrigir automaticamente</h3>
             </div>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {nothingToFix
-              ? "Nenhuma correção automática disponível no momento — manifest e permissões já estão dentro das políticas."
-              : `A IA vai aplicar ${pendingFixCount} correção(ões) segura(s) em manifest, permissões e políticas Play Store, e recalcular o score do app em tempo real.`}
+              ? "Nenhuma correção automática pendente — manifest e permissões já estão dentro das políticas Play Store."
+              : `A IA vai aplicar ${pendingFixCount} correção(ões) segura(s) em manifest, permissões e políticas, recalculando o score em tempo real e persistindo o resultado.`}
           </p>
 
           <div className="rounded-xl border border-border bg-background/60 p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-bold uppercase tracking-wider">Score estimado</span>
+              <span className="text-muted-foreground font-bold uppercase tracking-wider">Score atual</span>
               <span className={`font-mono font-bold ${scoreTone(score).color}`}>{score}/100</span>
             </div>
             <div className="relative h-2 rounded-full bg-muted/40 overflow-hidden">
@@ -485,16 +497,12 @@ export function AIFixerPanel({
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-bold uppercase tracking-wider">Correções pendentes</span>
-              <span className="font-mono font-bold text-primary">{pendingFixCount}</span>
-            </div>
-            <div className="relative h-1.5 rounded-full bg-muted/40 overflow-hidden">
-              <motion.div
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                style={{ boxShadow: "0 0 10px hsl(var(--primary))" }}
-              />
+              <span className="text-muted-foreground font-bold uppercase tracking-wider">Pendentes / Aplicadas</span>
+              <span className="font-mono font-bold">
+                <span className="text-primary">{pendingFixCount}</span>
+                <span className="text-muted-foreground"> / </span>
+                <span className="text-secondary">{appliedFixCount}</span>
+              </span>
             </div>
           </div>
 
@@ -502,48 +510,90 @@ export function AIFixerPanel({
             type="button"
             onClick={start}
             disabled={running || nothingToFix}
+            aria-busy={running}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-background px-5 py-3 font-display font-bold glow-gold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed"
           >
-            {running ? <><Zap className="w-4 h-4 animate-pulse" /> IA processando...</> : nothingToFix ? <><CheckCircle2 className="w-4 h-4" /> Tudo corrigido</> : done ? <><CheckCircle2 className="w-4 h-4" /> Corrigir novamente</> : <><Play className="w-4 h-4" /> Corrigir com IA{pendingFixCount > 0 ? ` (${pendingFixCount})` : ""}</>}
+            {running ? (
+              <><Zap className="w-4 h-4 animate-pulse" /> {buttonLabel}</>
+            ) : status === "error" ? (
+              <><AlertTriangle className="w-4 h-4" /> {buttonLabel}</>
+            ) : nothingToFix ? (
+              <><CheckCircle2 className="w-4 h-4" /> {buttonLabel}</>
+            ) : (
+              <><Play className="w-4 h-4" /> {buttonLabel}</>
+            )}
           </button>
+
+          {status === "success" && (
+            <p className="flex items-start gap-2 text-xs text-secondary">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              Correções aplicadas · score recalculado · resultado salvo no histórico.
+            </p>
+          )}
+          {status === "error" && errorMsg && (
+            <p className="flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {errorMsg}
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-border bg-aurora-deep/60 overflow-hidden">
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-background/40">
             <div className="flex items-center gap-2">
               <Terminal className="w-3.5 h-3.5 text-secondary" />
-              <span className="text-[11px] font-mono text-muted-foreground">aurora-ai · auto-fix</span>
+              <span className="text-[11px] font-mono text-muted-foreground">aurora-ai · execução real</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-destructive/70" />
-              <span className="w-2 h-2 rounded-full bg-primary/70" />
-              <span className="w-2 h-2 rounded-full bg-secondary/70" />
-            </div>
+            <span
+              className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                status === "running"
+                  ? "bg-primary/15 text-primary"
+                  : status === "success"
+                    ? "bg-secondary/15 text-secondary"
+                    : status === "error"
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-muted/30 text-muted-foreground"
+              }`}
+            >
+              {status}
+            </span>
           </div>
-          <div ref={logRef} className="font-mono text-[11px] leading-relaxed p-3 h-56 overflow-y-auto space-y-0.5 text-secondary">
-            {lines.length === 0 ? (
-              <p className="text-muted-foreground">$ aguardando início do auto-fix...</p>
+          <div ref={logRef} className="font-mono text-[11px] leading-relaxed p-3 h-56 overflow-y-auto space-y-1">
+            {steps.length === 0 ? (
+              <p className="text-muted-foreground">$ nenhuma correção segura pendente no momento.</p>
             ) : (
-              lines.map((line, i) => (
-                <motion.p
-                  key={i}
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={
-                    line.includes("[fix]")
+              steps.map((s) => {
+                const icon =
+                  s.status === "done" ? (
+                    <CheckCircle2 className="w-3 h-3 text-secondary shrink-0 mt-0.5" />
+                  ) : s.status === "running" ? (
+                    <Zap className="w-3 h-3 text-primary shrink-0 mt-0.5 animate-pulse" />
+                  ) : s.status === "error" ? (
+                    <XCircle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                  ) : (
+                    <span className="w-3 h-3 mt-1 rounded-full border border-muted-foreground/40 shrink-0" />
+                  );
+                const color =
+                  s.status === "done"
+                    ? "text-secondary"
+                    : s.status === "running"
                       ? "text-primary"
-                      : line.includes("[done]")
-                        ? "text-secondary font-bold"
-                        : line.includes("[sec]")
-                          ? "text-destructive/90"
-                          : "text-foreground/80"
-                  }
-                >
-                  <span className="text-muted-foreground">› </span>
-                  {line}
-                  {i === lines.length - 1 && running && <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.7, repeat: Infinity }}>▌</motion.span>}
-                </motion.p>
-              ))
+                      : s.status === "error"
+                        ? "text-destructive"
+                        : "text-muted-foreground";
+                return (
+                  <div key={s.key} className="flex items-start gap-2">
+                    {icon}
+                    <p className={`${color} truncate`}>
+                      <span className="text-muted-foreground">[fix] </span>
+                      {s.label}
+                      {s.status === "done" && <span className="text-muted-foreground"> · ok</span>}
+                      {s.status === "error" && s.message && (
+                        <span className="text-destructive/80"> · {s.message}</span>
+                      )}
+                    </p>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -570,22 +620,42 @@ const AFTER = [
   "Correções sugeridas automaticamente",
 ];
 
-export function BeforeAfterCompare() {
+export function BeforeAfterCompare({
+  appliedFixCount = 0,
+  pendingFixCount = 0,
+  scoreBefore,
+  scoreAfter,
+}: {
+  appliedFixCount?: number;
+  pendingFixCount?: number;
+  scoreBefore?: number;
+  scoreAfter?: number;
+}) {
+  const hasFixes = appliedFixCount > 0;
   return (
     <motion.section
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5 md:p-6"
     >
-      <header className="mb-5">
-        <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">Antes vs Depois</p>
-        <h3 className="font-display text-xl md:text-2xl font-bold text-gradient-gold">O impacto do Aurora Validator AI</h3>
+      <header className="mb-5 flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">Antes vs Depois</p>
+          <h3 className="font-display text-xl md:text-2xl font-bold text-gradient-gold">O impacto do Aurora Validator AI</h3>
+        </div>
+        {(scoreBefore != null && scoreAfter != null) && (
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="px-2 py-1 rounded border border-destructive/30 bg-destructive/5 text-destructive">{scoreBefore}</span>
+            <span className="text-muted-foreground">→</span>
+            <span className="px-2 py-1 rounded border border-secondary/30 bg-secondary/5 text-secondary">{scoreAfter}</span>
+          </div>
+        )}
       </header>
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <XCircle className="w-4 h-4 text-destructive" />
-            <p className="font-bold text-destructive uppercase tracking-wider text-xs">Sem o Validator</p>
+            <p className="font-bold text-destructive uppercase tracking-wider text-xs">Antes da IA</p>
           </div>
           <ul className="space-y-2.5">
             {BEFORE.map((b) => (
@@ -594,11 +664,14 @@ export function BeforeAfterCompare() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-[11px] font-mono text-destructive/80">
+            {appliedFixCount + pendingFixCount} risco(s) detectado(s)
+          </p>
         </div>
-        <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-5 glow-cyan">
+        <div className={`rounded-xl border p-5 transition-all ${hasFixes ? "border-secondary/40 bg-secondary/10 glow-cyan" : "border-secondary/30 bg-secondary/5"}`}>
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle2 className="w-4 h-4 text-secondary" />
-            <p className="font-bold text-secondary uppercase tracking-wider text-xs">Com o Aurora AI</p>
+            <p className="font-bold text-secondary uppercase tracking-wider text-xs">Depois da IA</p>
           </div>
           <ul className="space-y-2.5">
             {AFTER.map((a) => (
@@ -607,6 +680,9 @@ export function BeforeAfterCompare() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-[11px] font-mono text-secondary">
+            {appliedFixCount} correção(ões) aplicada(s) · {pendingFixCount} pendente(s)
+          </p>
         </div>
       </div>
     </motion.section>
