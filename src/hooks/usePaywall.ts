@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
+import { useRole } from "@/hooks/useRole";
 
 export type PaywallFeature =
   | "second_app"
@@ -53,18 +54,8 @@ export function usePaywall() {
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature>("second_app");
 
-  const { data: isAdmin = false } = useQuery({
-    queryKey: ["is-admin", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user!.id,
-        _role: "admin",
-      });
-      return !!data;
-    },
-    enabled: !!user,
-    staleTime: 1000 * 60 * 10,
-  });
+  // Founder / super_admin / admin all bypass paywall gates
+  const { isPrivileged: isAdmin } = useRole();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],

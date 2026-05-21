@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useRole } from "@/hooks/useRole";
 
 const ACTION_COSTS: Record<string, number> = {
   generate_app: 3,
@@ -25,19 +26,8 @@ const ACTION_COSTS: Record<string, number> = {
 export function useCredits() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
-  const { data: isAdmin = false } = useQuery({
-    queryKey: ["is-admin", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user!.id,
-        _role: "admin",
-      });
-      return !!data;
-    },
-    enabled: !!user,
-    staleTime: 1000 * 60 * 10,
-  });
+  // Founder / super_admin / admin all bypass credit consumption (mirrors DB-level bypass in consume_credits)
+  const { isPrivileged: isAdmin } = useRole();
 
   const { data: balance = 0 } = useQuery({
     queryKey: ["credits-balance", user?.id],

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useMonitoring } from "@/hooks/useMonitoring";
 import { initAnalytics } from "@/lib/analytics";
@@ -90,7 +91,7 @@ const App = () => (
               <Route path="/preview/:slug" element={<AppPreview />} />
               <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
               <Route path="/business" element={<ProtectedRoute><BusinessGenerator /></ProtectedRoute>} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
               <Route path="/video" element={<ProtectedRoute><VideoGenerator /></ProtectedRoute>} />
               <Route path="/carousel" element={<ProtectedRoute><CarouselGenerator /></ProtectedRoute>} />
               <Route path="/validator" element={<ProtectedRoute><ValidatorUpload /></ProtectedRoute>} />
