@@ -531,7 +531,6 @@ export default function ValidatorDetail() {
                 scoreAfter={scores.overall}
               />
             </>
-            </>
           );
         })()}
 
