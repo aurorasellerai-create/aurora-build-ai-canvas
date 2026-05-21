@@ -122,6 +122,20 @@ const getStoredUndoExpiresAt = (id: string): number | null => {
   }
 };
 
+const getAppliedFixesStorageKey = (id: string) => `aurora-validator-applied-fixes-${id}`;
+
+const loadStoredAppliedFixes = (id: string): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(getAppliedFixesStorageKey(id));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function ValidatorDetail() {
   const { id = "build-demo" } = useParams();
   const navigate = useNavigate();
@@ -135,7 +149,8 @@ export default function ValidatorDetail() {
   const undoIntervalRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
-  const [appliedFixes, setAppliedFixes] = useState<Set<string>>(new Set());
+  const [appliedFixes, setAppliedFixes] = useState<Set<string>>(() => new Set(loadStoredAppliedFixes(id)));
+  const isApplyingRef = useRef(false);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
   const validatorResult = useMemo(
@@ -175,10 +190,24 @@ export default function ValidatorDetail() {
     setSelectedAppFormatPreference(format);
   }, [validation?.appFormat]);
 
-  // Reset applied fixes whenever the analyzed app or format changes
+  // Hydrate applied fixes whenever the validation id changes
+  useEffect(() => {
+    setAppliedFixes(new Set(loadStoredAppliedFixes(id)));
+  }, [id]);
+
+  // Reset applied fixes when format changes (different analysis universe)
   useEffect(() => {
     setAppliedFixes(new Set());
-  }, [id, selectedFormat]);
+  }, [selectedFormat]);
+
+  // Persist applied fixes whenever they change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      getAppliedFixesStorageKey(id),
+      JSON.stringify(Array.from(appliedFixes)),
+    );
+  }, [id, appliedFixes]);
 
   useEffect(() => {
     const storedFilters = getStoredFilters(id);
