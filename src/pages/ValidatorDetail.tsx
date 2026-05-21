@@ -339,17 +339,52 @@ export default function ValidatorDetail() {
 
       <main className="max-w-6xl mx-auto px-4 py-10 space-y-6">
         {(() => {
+          // Merge Aurora-level errors with unresolved Android findings so scoring,
+          // counts and the hero score reflect what the IA has actually fixed.
+          const remainingAndroidFindings = [
+            ...effectiveAndroidAnalysis.manifest,
+            ...effectiveAndroidAnalysis.permissions,
+            ...effectiveAndroidAnalysis.scan,
+          ].filter((row) => row.sev !== "ok");
+
+          const combinedErrors = [
+            ...errors,
+            ...remainingAndroidFindings.map((row) => ({
+              severity: row.sev === "danger" ? "critical" : "warning",
+              category:
+                ("label" in row && row.label) ||
+                ("name" in row && row.name) ||
+                ("area" in row && row.area) ||
+                "android",
+            })),
+          ];
+
           const counts = {
-            ok: 6,
-            warn: errors.filter((e) => e.severity === "warning").length,
-            danger: errors.filter((e) => e.severity === "critical").length,
+            ok: 6 + appliedFixes.size,
+            warn: combinedErrors.filter((e) => e.severity === "warning").length,
+            danger: combinedErrors.filter((e) => e.severity === "critical").length,
           };
-          const scores = deriveValidatorScores({ errors, counts, ready: validatorResult.pronto_para_publicacao });
+          const ready =
+            validatorResult.pronto_para_publicacao &&
+            counts.danger === 0 &&
+            counts.warn === 0;
+          const scores = deriveValidatorScores({ errors: combinedErrors, counts, ready });
+
+          const handleApplyAutoFixes = () => {
+            if (pendingFixKeys.length === 0) return;
+            setAppliedFixes((prev) => {
+              const next = new Set(prev);
+              pendingFixKeys.forEach((k) => next.add(k));
+              return next;
+            });
+            toast.success(`${pendingFixKeys.length} correção(ões) aplicada(s) pela IA.`);
+          };
+
           return (
             <>
               <PremiumScoreHero
                 scores={scores}
-                ready={validatorResult.pronto_para_publicacao}
+                ready={ready}
                 validationId={id}
                 appName={buildLabel}
                 format={selectedFormat}
@@ -372,23 +407,48 @@ export default function ValidatorDetail() {
                       </button>
                     ))}
                   </div>
+                  {appliedFixes.size > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-secondary/40 bg-secondary/10 px-3 py-1 text-[11px] font-bold text-secondary">
+                      <CheckCircle2 className="w-3 h-3" /> {appliedFixes.size} correção(ões) IA ativa(s)
+                    </span>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleReexecuteWithFormat}
-                  className="inline-flex items-center gap-2 rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary/15 transition-all"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Reexecutar com {selectedFormat.toUpperCase()}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {appliedFixes.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAppliedFixes(new Set());
+                        toast.message("Correções da IA revertidas.");
+                      }}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Reverter correções
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleReexecuteWithFormat}
+                    className="inline-flex items-center gap-2 rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-2 text-xs font-bold text-secondary hover:bg-secondary/15 transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Reexecutar com {selectedFormat.toUpperCase()}
+                  </button>
+                </div>
               </div>
 
               <ProcessingTimeline />
-              <AIFixerPanel initialScore={scores.overall} />
+              <AIFixerPanel
+                initialScore={scores.overall}
+                pendingFixCount={pendingFixKeys.length}
+                pendingFixLabels={pendingFixLabels}
+                onApply={handleApplyAutoFixes}
+              />
               <AutoDetectionsGrid />
               <BeforeAfterCompare />
             </>
           );
         })()}
+
 
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {summary.map((item, index) => {
