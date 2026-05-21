@@ -50,14 +50,14 @@ function extractDomain(url: string) {
 
 function isValidDownloadUrl(url: string | null): boolean {
   if (!url) return false;
-  // Only trust real Supabase storage URLs
-  return url.includes("supabase.co/storage/") || url.includes("supabase.co/storage/v1/");
+  return url.includes("supabase.co/storage/");
 }
 
 const ConversionHistory = () => {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<ConversionJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signingId, setSigningId] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     if (!user) return;
@@ -68,6 +68,24 @@ const ConversionHistory = () => {
       .order("created_at", { ascending: false });
     setJobs((data as ConversionJob[]) ?? []);
     setLoading(false);
+  };
+
+  const handleDownload = async (jobId: string) => {
+    setSigningId(jobId);
+    try {
+      const { data, error } = await supabase.functions.invoke("sign-aab-download", {
+        body: { job_id: jobId },
+      });
+      if (error || !data?.url) {
+        alert(data?.error || "Não foi possível gerar o link de download.");
+        return;
+      }
+      window.open(data.url as string, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Erro ao gerar link de download. Tente novamente.");
+    } finally {
+      setSigningId(null);
+    }
   };
 
   useEffect(() => {
@@ -173,15 +191,19 @@ const ConversionHistory = () => {
                   {/* Actions */}
                   <div className="shrink-0 flex items-center gap-2">
                     {job.status === "done" && isValidDownloadUrl(job.download_url) ? (
-                      <a
-                        href={job.download_url!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-download-3d !py-2.5 !px-4 !text-sm !rounded-lg flex items-center gap-2"
+                      <button
+                        type="button"
+                        onClick={() => handleDownload(job.id)}
+                        disabled={signingId === job.id}
+                        className="btn-download-3d !py-2.5 !px-4 !text-sm !rounded-lg flex items-center gap-2 disabled:opacity-60"
                       >
-                        <Download className="w-4 h-4" />
+                        {signingId === job.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
                         <span className="hidden sm:inline">Baixar</span>
-                      </a>
+                      </button>
                     ) : job.status === "done" ? (
                       <span className="text-xs text-muted-foreground italic px-2">Arquivo indisponível</span>
                     ) : null}
