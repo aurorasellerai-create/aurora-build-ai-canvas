@@ -157,7 +157,7 @@ export default function ValidatorDetail() {
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const [appliedFixes, setAppliedFixes] = useState<Set<string>>(() => new Set(loadStoredAppliedFixes(id)));
   const [remoteRefreshToken, setRemoteRefreshToken] = useState(0);
-  const [isSyncingRemote, setIsSyncingRemote] = useState(false);
+  const [, setIsSyncingRemote] = useState(false);
   const lastSyncedKeyRef = useRef<string | null>(null);
   const isApplyingRef = useRef(false);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
