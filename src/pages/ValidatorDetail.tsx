@@ -15,6 +15,12 @@ import {
   ProcessingTimeline,
   deriveValidatorScores,
 } from "@/components/validator/ValidatorPremium";
+import { ValidatorAuditTimeline } from "@/components/validator/ValidatorAuditTimeline";
+import {
+  flushPendingValidatorCorrections,
+  saveValidatorCorrection,
+  type ValidatorCorrectionFix,
+} from "@/lib/validatorRemoteHistory";
 
 const summaryIcons = {
   Fluxo: CheckCircle2,
