@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
     // --- generate file & upload to storage ---
     currentStep = "file_upload";
     console.log(`[PROCESS] Generating and uploading AAB for job ${jobId}`);
-    const downloadUrl = await generateAndUploadAAB(supabase, jobId, url, supabaseUrl);
+    const downloadUrl = await generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl);
 
     // --- finalize job ---
     currentStep = "finalization";
