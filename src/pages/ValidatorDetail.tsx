@@ -135,6 +135,7 @@ export default function ValidatorDetail() {
   const undoIntervalRef = useRef<number | null>(null);
   const validation = getValidatorHistoryItem(id);
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
+  const [appliedFixes, setAppliedFixes] = useState<Set<string>>(new Set());
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
   const validatorResult = useMemo(
@@ -152,11 +153,32 @@ export default function ValidatorDetail() {
     recommendation: problem.acao_recomendada,
   })), [validatorResult]);
 
+  // Effective Android analysis (after IA auto-fix)
+  const rawAndroidAnalysis = useMemo(() => buildAndroidAnalysis(selectedFormat, buildLabel), [selectedFormat, buildLabel]);
+  const effectiveAndroidAnalysis = useMemo(
+    () => applyFixesToAnalysis(rawAndroidAnalysis, appliedFixes),
+    [rawAndroidAnalysis, appliedFixes],
+  );
+  const autoFixableKeys = useMemo(() => getAutoFixableKeys(rawAndroidAnalysis), [rawAndroidAnalysis]);
+  const pendingFixKeys = useMemo(
+    () => autoFixableKeys.filter((k) => !appliedFixes.has(k)),
+    [autoFixableKeys, appliedFixes],
+  );
+  const pendingFixLabels = useMemo(
+    () => getFixLabels(rawAndroidAnalysis, pendingFixKeys),
+    [rawAndroidAnalysis, pendingFixKeys],
+  );
+
   useEffect(() => {
     const format = validation?.appFormat ?? "apk";
     setSelectedFormat(format);
     setSelectedAppFormatPreference(format);
   }, [validation?.appFormat]);
+
+  // Reset applied fixes whenever the analyzed app or format changes
+  useEffect(() => {
+    setAppliedFixes(new Set());
+  }, [id, selectedFormat]);
 
   useEffect(() => {
     const storedFilters = getStoredFilters(id);
@@ -168,6 +190,7 @@ export default function ValidatorDetail() {
     setUndoFilters(storedUndo);
     setUndoSecondsLeft(storedUndoExpiresAt ? Math.ceil((storedUndoExpiresAt - Date.now()) / 1000) : 0);
   }, [id]);
+
 
   useEffect(() => {
     return () => {
