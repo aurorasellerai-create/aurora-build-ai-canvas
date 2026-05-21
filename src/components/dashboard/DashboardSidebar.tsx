@@ -9,6 +9,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import AuroraLogo from "@/components/AuroraLogo";
+import RoleBadge from "@/components/RoleBadge";
+import { useRole } from "@/hooks/useRole";
 
 type Item = { title: string; url: string; icon: any; hash?: string };
 
@@ -77,6 +79,7 @@ const Section = ({ label, items }: { label: string; items: Item[] }) => {
 export const DashboardSidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { isPrivileged } = useRole();
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/60">
@@ -97,8 +100,13 @@ export const DashboardSidebar = () => {
         <Section label="Conta" items={account} />
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border/60 p-3">
+      <SidebarFooter className="border-t border-border/60 p-3 space-y-2">
         {!collapsed && (
+          <div className="flex items-center justify-center">
+            <RoleBadge />
+          </div>
+        )}
+        {!collapsed && !isPrivileged && (
           <div className="rounded-lg p-3 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 border border-primary/20">
             <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-1">PRO</p>
             <p className="text-xs text-foreground/80 leading-snug">Mais builds, IA ilimitada e publicação automática.</p>
