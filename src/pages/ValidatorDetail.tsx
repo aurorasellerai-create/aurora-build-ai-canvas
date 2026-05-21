@@ -465,7 +465,7 @@ export default function ValidatorDetail() {
         </section>
 
         {/* ===== Análise Técnica Android ===== */}
-        <AndroidDeepAnalysis format={selectedFormat} appName={buildLabel} />
+        <AndroidDeepAnalysis format={selectedFormat} appName={buildLabel} appliedFixes={appliedFixes} />
 
         <div className="grid lg:grid-cols-[1fr_0.45fr] gap-6 items-start">
           <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="card-aurora p-6 space-y-4">
