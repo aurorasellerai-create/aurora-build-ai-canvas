@@ -15,6 +15,12 @@ import {
   ProcessingTimeline,
   deriveValidatorScores,
 } from "@/components/validator/ValidatorPremium";
+import { ValidatorAuditTimeline } from "@/components/validator/ValidatorAuditTimeline";
+import {
+  flushPendingValidatorCorrections,
+  saveValidatorCorrection,
+  type ValidatorCorrectionFix,
+} from "@/lib/validatorRemoteHistory";
 
 const summaryIcons = {
   Fluxo: CheckCircle2,
@@ -150,6 +156,9 @@ export default function ValidatorDetail() {
   const validation = getValidatorHistoryItem(id);
   const [selectedFormat, setSelectedFormat] = useState<AuroraAppFormat>(validation?.appFormat ?? "apk");
   const [appliedFixes, setAppliedFixes] = useState<Set<string>>(() => new Set(loadStoredAppliedFixes(id)));
+  const [remoteRefreshToken, setRemoteRefreshToken] = useState(0);
+  const [, setIsSyncingRemote] = useState(false);
+  const lastSyncedKeyRef = useRef<string | null>(null);
   const isApplyingRef = useRef(false);
   const buildLabel = validation?.appName ?? (id === "latest" ? "Última validação" : id);
   const statusLabel = validation ? validatorStatusLabel[validation.status] : "Correção necessária";
@@ -208,6 +217,12 @@ export default function ValidatorDetail() {
       JSON.stringify(Array.from(appliedFixes)),
     );
   }, [id, appliedFixes]);
+
+  // Flush any pending offline corrections once on mount
+  useEffect(() => {
+    flushPendingValidatorCorrections().catch(() => {});
+  }, []);
+
 
   useEffect(() => {
     const storedFilters = getStoredFilters(id);
@@ -434,26 +449,127 @@ export default function ValidatorDetail() {
             });
           };
 
-          const handleAllFixesDone = () => {
+          const handleAllFixesDone = async () => {
             if (isApplyingRef.current) return;
             isApplyingRef.current = true;
+            const status: "approved" | "warning" | "blocked" =
+              counts.danger === 0 && counts.warn === 0
+                ? "approved"
+                : counts.danger === 0
+                ? "warning"
+                : "blocked";
+            const fixedCount = pendingFixKeys.length + appliedFixes.size;
+            const allFixKeys = Array.from(
+              new Set([...Array.from(appliedFixes), ...pendingFixKeys]),
+            );
+
+            // 1) Local history (existing flow, unchanged)
             try {
-              // Persist updated validation snapshot in history (sync corrected data)
               if (validation) {
-                const fixedCount = pendingFixKeys.length + appliedFixes.size;
                 saveValidatorHistoryItem({
                   ...validation,
-                  status: counts.danger === 0 && counts.warn === 0 ? "approved" : counts.danger === 0 ? "warning" : "blocked",
+                  status,
                   issuesCount: counts.danger,
                   warningCount: counts.warn,
                   summary: `${validation.summary} · ${fixedCount} correção(ões) IA aplicada(s)`,
                 });
               }
+            } catch {
+              /* localStorage failures must never block remote sync */
+            }
+
+            // 2) Remote audit (Supabase) — retry-safe, idempotency-keyed
+            const idempotencyKey = `${id}:${selectedFormat}:${allFixKeys.sort().join(",")}`;
+            if (lastSyncedKeyRef.current === idempotencyKey) {
               toast.success("Correções aplicadas e salvas no histórico.");
+              isApplyingRef.current = false;
+              return;
+            }
+
+            const labelMap = new Map(
+              [...pendingFixLabels, ...getFixLabels(rawAndroidAnalysis, Array.from(appliedFixes))].map(
+                (l, i) => [allFixKeys[i] ?? l, l],
+              ),
+            );
+            const fixesApplied: ValidatorCorrectionFix[] = allFixKeys.map((key) => ({
+              key,
+              label: labelMap.get(key) ?? key,
+              category: key.startsWith("perm:")
+                ? "permission"
+                : key.startsWith("manifest:")
+                ? "manifest"
+                : "other",
+            }));
+            const permissionsRemoved = allFixKeys
+              .filter((k) => k.startsWith("perm:"))
+              .map((k) => k.replace(/^perm:/, ""));
+            const manifestChanges = Object.fromEntries(
+              allFixKeys
+                .filter((k) => k.startsWith("manifest:"))
+                .map((k) => [k.replace(/^manifest:/, ""), "fixed-by-ai"]),
+            );
+
+            setIsSyncingRemote(true);
+            try {
+              const res = await saveValidatorCorrection({
+                appId: id,
+                appName: buildLabel,
+                originalScore: baselineScores.overall,
+                correctedScore: scores.overall,
+                fixesApplied,
+                manifestChanges,
+                permissionsRemoved,
+                permissionsAdded: [],
+                beforeSnapshot: {
+                  score: baselineScores.overall,
+                  security: baselineScores.security,
+                  playstore: baselineScores.playstore,
+                  performance: baselineScores.performance,
+                  navigation: baselineScores.navigation,
+                  checkout: baselineScores.checkout,
+                  warningCount: baselineCounts.warn,
+                  dangerCount: baselineCounts.danger,
+                  okCount: baselineCounts.ok,
+                },
+                afterSnapshot: {
+                  score: scores.overall,
+                  security: scores.security,
+                  playstore: scores.playstore,
+                  performance: scores.performance,
+                  navigation: scores.navigation,
+                  checkout: scores.checkout,
+                  warningCount: counts.warn,
+                  dangerCount: counts.danger,
+                  okCount: counts.ok,
+                },
+                validationResult: {
+                  status,
+                  ready,
+                  format: selectedFormat,
+                  summary: validation?.summary ?? "",
+                },
+                idempotencyKey,
+              });
+
+              if (res.error && !res.record) {
+                toast.error("Histórico remoto indisponível — salvo localmente.");
+              } else if (res.cached) {
+                toast.success("Correções salvas (offline). Sincronizando quando voltar online.");
+              } else {
+                toast.success("Correções aplicadas e auditadas em nuvem.");
+              }
+              lastSyncedKeyRef.current = idempotencyKey;
+              setRemoteRefreshToken((v) => v + 1);
+            } catch {
+              toast.error("Falha ao sincronizar correção remotamente.");
             } finally {
-              setTimeout(() => { isApplyingRef.current = false; }, 100);
+              setIsSyncingRemote(false);
+              setTimeout(() => {
+                isApplyingRef.current = false;
+              }, 100);
             }
           };
+
 
 
           return (
@@ -551,6 +667,8 @@ export default function ValidatorDetail() {
 
         {/* ===== Análise Técnica Android ===== */}
         <AndroidDeepAnalysis format={selectedFormat} appName={buildLabel} appliedFixes={appliedFixes} />
+
+        <ValidatorAuditTimeline appId={id} refreshToken={remoteRefreshToken} />
 
         <div className="grid lg:grid-cols-[1fr_0.45fr] gap-6 items-start">
           <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="card-aurora p-6 space-y-4">

@@ -131,6 +131,63 @@ export type Database = {
         }
         Relationships: []
       }
+      correcoes_do_validador: {
+        Row: {
+          after_snapshot: Json
+          app_id: string
+          app_name: string
+          before_snapshot: Json
+          corrected_score: number
+          created_at: string
+          fixes_applied: Json
+          id: string
+          idempotency_key: string | null
+          manifest_changes: Json
+          original_score: number
+          permissions_added: Json
+          permissions_removed: Json
+          updated_at: string
+          user_id: string
+          validation_result: Json
+        }
+        Insert: {
+          after_snapshot?: Json
+          app_id: string
+          app_name: string
+          before_snapshot?: Json
+          corrected_score?: number
+          created_at?: string
+          fixes_applied?: Json
+          id?: string
+          idempotency_key?: string | null
+          manifest_changes?: Json
+          original_score?: number
+          permissions_added?: Json
+          permissions_removed?: Json
+          updated_at?: string
+          user_id: string
+          validation_result?: Json
+        }
+        Update: {
+          after_snapshot?: Json
+          app_id?: string
+          app_name?: string
+          before_snapshot?: Json
+          corrected_score?: number
+          created_at?: string
+          fixes_applied?: Json
+          id?: string
+          idempotency_key?: string | null
+          manifest_changes?: Json
+          original_score?: number
+          permissions_added?: Json
+          permissions_removed?: Json
+          updated_at?: string
+          user_id?: string
+          validation_result?: Json
+        }
+        Relationships: []
+      }
       credit_purchases: {
         Row: {
           amount: number
