@@ -108,9 +108,27 @@ const PLAN_CREDITS: Record<string, number> = {
   premium: 500,
 };
 
-// Simple in-memory rate limiter (per isolate lifetime)
-const recentRequests = new Map<string, number>();
-const RATE_LIMIT_MS = 5000;
+// Durable webhook deduplication via public.webhook_dedupe
+// Returns true when the txn was reserved successfully (first time),
+// false when it was already processed (duplicate / concurrent retry).
+async function reserveWebhookDedupe(
+  adminClient: any,
+  provider: string,
+  transactionId: string,
+  webhookHash?: string,
+): Promise<boolean> {
+  const { error } = await adminClient.from("webhook_dedupe").insert({
+    provider,
+    provider_transaction_id: transactionId,
+    webhook_hash: webhookHash ?? null,
+  });
+  if (!error) return true;
+  // 23505 = unique_violation → already processed
+  if ((error as any).code === "23505") return false;
+  // Unknown error: fail-open (let processing continue, downstream dedup on credit_purchases/payments still protects)
+  console.error("⚠️ webhook_dedupe insert error (fail-open):", error);
+  return true;
+}
 
 function getAdminClient() {
   return createClient(
