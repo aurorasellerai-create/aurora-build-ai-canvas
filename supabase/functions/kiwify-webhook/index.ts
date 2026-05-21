@@ -1,12 +1,58 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Hardened currency parser ──
+// Accepts: "39,90", "59.90", "1.234,56", "2,499.99", "1234", numbers
+// Returns cents (integer). Returns null for invalid / negative / NaN.
+export function parseCurrencyToCents(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || raw < 0) return null;
+    return Math.round(raw * 100);
+  }
+  if (typeof raw !== "string") return null;
+  let s = raw.trim();
+  if (!s) return null;
+  s = s.replace(/[^\d.,\-]/g, "");
+  if (!s || s.startsWith("-")) return null;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+  let normalized: string;
+
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      // pt-BR: "1.234,56"
+      normalized = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // en-US: "2,499.99"
+      normalized = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    const parts = s.split(",");
+    if (parts.length === 2 && parts[1].length === 2) {
+      normalized = parts[0].replace(/\./g, "") + "." + parts[1];
+    } else {
+      normalized = s.replace(/,/g, "");
+    }
+  } else {
+    normalized = s;
+  }
+
+  const num = Number(normalized);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.round(num * 100);
+}
+
 // Helper to send transactional emails via send-email edge function
+// Logs failures to system_logs (non-blocking)
 async function sendTransactionalEmail(
+  adminClient: any,
   supabaseUrl: string,
   supabaseAnonKey: string,
   templateName: string,
   recipientEmail: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
+  userId?: string,
 ) {
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
@@ -20,11 +66,25 @@ async function sendTransactionalEmail(
     if (!response.ok) {
       const err = await response.text();
       console.error(`⚠️ Email "${templateName}" failed for ${recipientEmail}: ${err}`);
+      await adminClient.from("system_logs").insert({
+        user_id: userId ?? null,
+        severity: "warning",
+        category: "system",
+        message: `Email "${templateName}" failed for ${recipientEmail}`,
+        details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: err, status: response.status },
+      } as any).then(() => {}, () => {});
     } else {
       console.log(`📧 Email "${templateName}" queued for ${recipientEmail}`);
     }
   } catch (e) {
     console.error(`⚠️ Email send error:`, e);
+    await adminClient.from("system_logs").insert({
+      user_id: userId ?? null,
+      severity: "error",
+      category: "system",
+      message: `Email "${templateName}" exception for ${recipientEmail}`,
+      details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: String(e) },
+    } as any).then(() => {}, () => {});
   }
 }
 
@@ -48,9 +108,27 @@ const PLAN_CREDITS: Record<string, number> = {
   premium: 500,
 };
 
-// Simple in-memory rate limiter (per isolate lifetime)
-const recentRequests = new Map<string, number>();
-const RATE_LIMIT_MS = 5000;
+// Durable webhook deduplication via public.webhook_dedupe
+// Returns true when the txn was reserved successfully (first time),
+// false when it was already processed (duplicate / concurrent retry).
+async function reserveWebhookDedupe(
+  adminClient: any,
+  provider: string,
+  transactionId: string,
+  webhookHash?: string,
+): Promise<boolean> {
+  const { error } = await adminClient.from("webhook_dedupe").insert({
+    provider,
+    provider_transaction_id: transactionId,
+    webhook_hash: webhookHash ?? null,
+  });
+  if (!error) return true;
+  // 23505 = unique_violation → already processed
+  if ((error as any).code === "23505") return false;
+  // Unknown error: fail-open (let processing continue, downstream dedup on credit_purchases/payments still protects)
+  console.error("⚠️ webhook_dedupe insert error (fail-open):", error);
+  return true;
+}
 
 function getAdminClient() {
   return createClient(
@@ -98,7 +176,7 @@ function parseWebhookBody(body: any) {
   const transactionId = body?.order_id || body?.transaction_id || body?.id;
   const amountRaw = body?.Commissions?.charge_amount || body?.commissions?.charge_amount ||
     body?.product?.price || body?.amount || "0";
-  const amount = Math.round(parseFloat(String(amountRaw).replace(",", ".")) * 100);
+  const amount = parseCurrencyToCents(amountRaw) ?? 0;
   const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
 
   return { orderStatus, customerEmail, customerName, transactionId, amount, productName };
@@ -164,6 +242,7 @@ async function findOrCreateUser(adminClient: any, email: string, name: string) {
 
     // Send welcome email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "welcome",
@@ -220,6 +299,7 @@ async function handleCreditPurchase(
 
     // Send credit purchase confirmation email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "credit-purchase",
@@ -274,11 +354,13 @@ async function handlePlanChange(
 
       // Send renewal email
       await sendTransactionalEmail(
+        adminClient,
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
         "plan-renewal",
         customerEmail,
-        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) }
+        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) },
+        user.id,
       );
 
       console.log(`🔄 Renewal processed for ${customerEmail}`);
@@ -322,6 +404,7 @@ async function handlePlanChange(
 
     // Send plan confirmation email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-confirmation",
@@ -336,6 +419,7 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-cancelled",
@@ -351,6 +435,7 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-cancelled",
@@ -448,22 +533,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Rate limit
-    const now = Date.now();
-    const lastSeen = recentRequests.get(transactionId);
-    if (lastSeen && now - lastSeen < RATE_LIMIT_MS) {
+    const adminClient = getAdminClient();
+    const status = classifyStatus(orderStatus);
+
+    // Durable, cross-isolate deduplication (race-condition safe)
+    const webhookHash = await crypto.subtle
+      .digest("SHA-256", new TextEncoder().encode(rawBody))
+      .then((buf) =>
+        Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join(""),
+      )
+      .catch(() => undefined);
+
+    const reserved = await reserveWebhookDedupe(adminClient, "kiwify", transactionId, webhookHash);
+    if (!reserved) {
+      await adminClient.from("system_logs").insert({
+        severity: "info",
+        category: "webhook",
+        message: `Duplicate Kiwify webhook ignored: ${transactionId}`,
+        details: { transactionId, orderStatus, productName },
+      } as any).then(() => {}, () => {});
       return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    recentRequests.set(transactionId, now);
-    for (const [key, ts] of recentRequests) {
-      if (now - ts > 60000) recentRequests.delete(key);
-    }
-
-    const adminClient = getAdminClient();
-    const status = classifyStatus(orderStatus);
 
     // Find or auto-create user
     const user = await findOrCreateUser(adminClient, customerEmail, customerName);
@@ -491,7 +584,7 @@ Deno.serve(async (req) => {
         status: status.paymentStatus,
         credits_added: isCreditProduct(productName) ? detectCreditPackage(productName).creditsAmount : (PLAN_CREDITS[detectPlan(productName)] || 0),
       },
-    }).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     return new Response(JSON.stringify({ success: true, status: status.paymentStatus }), {
       status: 200,
