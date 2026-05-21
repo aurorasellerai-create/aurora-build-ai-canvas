@@ -436,6 +436,7 @@ export function AIFixerPanel({
         setScore(Math.round(initialScore + ((target - initialScore) * (i + 1)) / initialSteps.length));
       }
       setStatus("success");
+      onComplete?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Falha ao aplicar correções";
       setErrorMsg(message);
