@@ -62,6 +62,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Wipe cached role/subscription so the next user never sees stale privileges.
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("aurora:roles:") || k.startsWith("aurora:subscription:"))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch { /* ignore */ }
     await supabase.auth.signOut();
   };
 
