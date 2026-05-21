@@ -72,7 +72,7 @@ async function sendTransactionalEmail(
         category: "system",
         message: `Email "${templateName}" failed for ${recipientEmail}`,
         details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: err, status: response.status },
-      }).catch(() => {});
+      } as any).then(() => {}, () => {});
     } else {
       console.log(`📧 Email "${templateName}" queued for ${recipientEmail}`);
     }
@@ -84,7 +84,7 @@ async function sendTransactionalEmail(
       category: "system",
       message: `Email "${templateName}" exception for ${recipientEmail}`,
       details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: String(e) },
-    }).catch(() => {});
+    } as any).then(() => {}, () => {});
   }
 }
 
@@ -551,7 +551,7 @@ Deno.serve(async (req) => {
         category: "webhook",
         message: `Duplicate Kiwify webhook ignored: ${transactionId}`,
         details: { transactionId, orderStatus, productName },
-      }).catch(() => {});
+      } as any).then(() => {}, () => {});
       return new Response(JSON.stringify({ success: true, message: "Already processed" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -584,7 +584,7 @@ Deno.serve(async (req) => {
         status: status.paymentStatus,
         credits_added: isCreditProduct(productName) ? detectCreditPackage(productName).creditsAmount : (PLAN_CREDITS[detectPlan(productName)] || 0),
       },
-    }).catch(() => {});
+    } as any).then(() => {}, () => {});
 
     return new Response(JSON.stringify({ success: true, status: status.paymentStatus }), {
       status: 200,
