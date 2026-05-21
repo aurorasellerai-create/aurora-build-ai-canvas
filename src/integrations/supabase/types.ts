@@ -605,6 +605,33 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_dedupe: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          provider: string
+          provider_transaction_id: string
+          webhook_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          provider_transaction_id: string
+          webhook_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          provider_transaction_id?: string
+          webhook_hash?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -622,6 +649,7 @@ export type Database = {
       check_login_rate_limit: { Args: { p_email: string }; Returns: boolean }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
       cleanup_old_security_data: { Args: never; Returns: undefined }
+      cleanup_webhook_dedupe: { Args: never; Returns: undefined }
       consume_credits: {
         Args: { p_action: string; p_amount?: number; p_user_id: string }
         Returns: boolean
