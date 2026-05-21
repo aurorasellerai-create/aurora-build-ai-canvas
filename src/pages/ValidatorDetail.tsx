@@ -514,13 +514,23 @@ export default function ValidatorDetail() {
 
               <ProcessingTimeline />
               <AIFixerPanel
-                initialScore={scores.overall}
+                initialScore={baselineScores.overall}
+                targetScore={scores.overall + Math.min(8, pendingFixKeys.length * 4)}
                 pendingFixCount={pendingFixKeys.length}
+                pendingFixKeys={pendingFixKeys}
                 pendingFixLabels={pendingFixLabels}
-                onApply={handleApplyAutoFixes}
+                appliedFixCount={appliedFixes.size}
+                onApply={handleApplySingleFix}
+                onComplete={handleAllFixesDone}
               />
               <AutoDetectionsGrid />
-              <BeforeAfterCompare />
+              <BeforeAfterCompare
+                appliedFixCount={appliedFixes.size}
+                pendingFixCount={pendingFixKeys.length}
+                scoreBefore={baselineScores.overall}
+                scoreAfter={scores.overall}
+              />
+            </>
             </>
           );
         })()}
