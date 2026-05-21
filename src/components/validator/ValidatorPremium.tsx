@@ -368,6 +368,7 @@ export function AIFixerPanel({
   pendingFixKeys = [],
   appliedFixCount = 0,
   onApply,
+  onComplete,
 }: {
   initialScore: number;
   targetScore?: number;
@@ -376,6 +377,7 @@ export function AIFixerPanel({
   pendingFixKeys?: string[];
   appliedFixCount?: number;
   onApply?: (key: string) => Promise<void> | void;
+  onComplete?: () => void;
 }) {
   const [status, setStatus] = useState<FixerStatus>("idle");
   const [steps, setSteps] = useState<FixStepState[]>([]);
