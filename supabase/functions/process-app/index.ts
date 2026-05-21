@@ -142,11 +142,10 @@ const validateUrlReachability = async (url: string) => {
 const generateAndUploadAAB = async (
   supabase: ReturnType<typeof createClient>,
   jobId: string,
+  userId: string,
   sourceUrl: string,
-  supabaseUrl: string,
+  _supabaseUrl: string,
 ): Promise<string> => {
-  // Create a minimal placeholder file content
-  // In production this would be a real AAB compiled from the source URL
   const encoder = new TextEncoder();
   const manifest = JSON.stringify({
     format: "android-app-bundle",
@@ -158,9 +157,10 @@ const generateAndUploadAAB = async (
   }, null, 2);
 
   const fileContent = encoder.encode(manifest);
-  const filePath = `${jobId}/app-release.aab`;
+  // User-isolated path required by aab-files RLS policy
+  const filePath = `${userId}/${jobId}/app-release.aab`;
 
-  console.log(`[PROCESS] Uploading AAB to storage: aab-files/${filePath}`);
+  console.log(`[PROCESS] Uploading AAB to private storage: aab-files/${filePath}`);
 
   const { error: uploadError } = await supabase.storage
     .from("aab-files")
@@ -173,17 +173,17 @@ const generateAndUploadAAB = async (
     throw new Error(`Falha no upload do arquivo: ${uploadError.message}`);
   }
 
-  // Build the public URL
-  const { data: publicUrlData } = supabase.storage
+  // Private bucket: signed URL (45 min). UI re-signs via sign-aab-download on demand.
+  const { data: signed, error: signErr } = await supabase.storage
     .from("aab-files")
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 45 * 60);
 
-  if (!publicUrlData?.publicUrl) {
-    throw new Error("Não foi possível gerar a URL de download.");
+  if (signErr || !signed?.signedUrl) {
+    throw new Error("Não foi possível gerar a URL assinada de download.");
   }
 
-  console.log(`[PROCESS] AAB uploaded successfully: ${publicUrlData.publicUrl}`);
-  return publicUrlData.publicUrl;
+  console.log(`[PROCESS] AAB uploaded successfully (signed URL issued)`);
+  return signed.signedUrl;
 };
 
 // ---------- main handler ----------
