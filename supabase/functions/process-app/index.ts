@@ -237,13 +237,14 @@ Deno.serve(async (req) => {
     currentStep = "job_lookup";
     const { data: existingJob, error: lookupError } = await supabase
       .from("conversion_jobs")
-      .select("id")
+      .select("id, user_id")
       .eq("id", jobId)
       .maybeSingle();
 
     if (lookupError || !existingJob) {
       return respond({ success: false, error: "Job não encontrado.", step: currentStep, job_id: jobId });
     }
+    const ownerUserId = existingJob.user_id as string;
 
     // --- mark as processing ---
     currentStep = "job_update_start";
