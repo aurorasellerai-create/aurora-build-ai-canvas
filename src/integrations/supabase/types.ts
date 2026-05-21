@@ -638,6 +638,7 @@ export type Database = {
         Args: { p_admin_id: string; p_ip: string }
         Returns: boolean
       }
+      is_privileged: { Args: { _user_id: string }; Returns: boolean }
       log_admin_action: {
         Args: {
           p_action: string
