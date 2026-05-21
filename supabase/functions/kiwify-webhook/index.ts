@@ -158,7 +158,7 @@ function parseWebhookBody(body: any) {
   const transactionId = body?.order_id || body?.transaction_id || body?.id;
   const amountRaw = body?.Commissions?.charge_amount || body?.commissions?.charge_amount ||
     body?.product?.price || body?.amount || "0";
-  const amount = Math.round(parseFloat(String(amountRaw).replace(",", ".")) * 100);
+  const amount = parseCurrencyToCents(amountRaw) ?? 0;
   const productName = (body?.Product?.name || body?.product?.name || "").toLowerCase();
 
   return { orderStatus, customerEmail, customerName, transactionId, amount, productName };
