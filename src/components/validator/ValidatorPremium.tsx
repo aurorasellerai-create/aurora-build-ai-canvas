@@ -617,22 +617,42 @@ const AFTER = [
   "Correções sugeridas automaticamente",
 ];
 
-export function BeforeAfterCompare() {
+export function BeforeAfterCompare({
+  appliedFixCount = 0,
+  pendingFixCount = 0,
+  scoreBefore,
+  scoreAfter,
+}: {
+  appliedFixCount?: number;
+  pendingFixCount?: number;
+  scoreBefore?: number;
+  scoreAfter?: number;
+}) {
+  const hasFixes = appliedFixCount > 0;
   return (
     <motion.section
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-border bg-card/60 backdrop-blur p-5 md:p-6"
     >
-      <header className="mb-5">
-        <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">Antes vs Depois</p>
-        <h3 className="font-display text-xl md:text-2xl font-bold text-gradient-gold">O impacto do Aurora Validator AI</h3>
+      <header className="mb-5 flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-muted-foreground">Antes vs Depois</p>
+          <h3 className="font-display text-xl md:text-2xl font-bold text-gradient-gold">O impacto do Aurora Validator AI</h3>
+        </div>
+        {(scoreBefore != null && scoreAfter != null) && (
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="px-2 py-1 rounded border border-destructive/30 bg-destructive/5 text-destructive">{scoreBefore}</span>
+            <span className="text-muted-foreground">→</span>
+            <span className="px-2 py-1 rounded border border-secondary/30 bg-secondary/5 text-secondary">{scoreAfter}</span>
+          </div>
+        )}
       </header>
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <XCircle className="w-4 h-4 text-destructive" />
-            <p className="font-bold text-destructive uppercase tracking-wider text-xs">Sem o Validator</p>
+            <p className="font-bold text-destructive uppercase tracking-wider text-xs">Antes da IA</p>
           </div>
           <ul className="space-y-2.5">
             {BEFORE.map((b) => (
@@ -641,11 +661,14 @@ export function BeforeAfterCompare() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-[11px] font-mono text-destructive/80">
+            {appliedFixCount + pendingFixCount} risco(s) detectado(s)
+          </p>
         </div>
-        <div className="rounded-xl border border-secondary/30 bg-secondary/5 p-5 glow-cyan">
+        <div className={`rounded-xl border p-5 transition-all ${hasFixes ? "border-secondary/40 bg-secondary/10 glow-cyan" : "border-secondary/30 bg-secondary/5"}`}>
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle2 className="w-4 h-4 text-secondary" />
-            <p className="font-bold text-secondary uppercase tracking-wider text-xs">Com o Aurora AI</p>
+            <p className="font-bold text-secondary uppercase tracking-wider text-xs">Depois da IA</p>
           </div>
           <ul className="space-y-2.5">
             {AFTER.map((a) => (
@@ -654,6 +677,9 @@ export function BeforeAfterCompare() {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-[11px] font-mono text-secondary">
+            {appliedFixCount} correção(ões) aplicada(s) · {pendingFixCount} pendente(s)
+          </p>
         </div>
       </div>
     </motion.section>
