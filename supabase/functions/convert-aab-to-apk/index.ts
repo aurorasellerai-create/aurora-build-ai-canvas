@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
     const cleanBase64 = fileBase64.includes(",") ? fileBase64.split(",").pop()! : fileBase64;
     const binary = Uint8Array.from(atob(cleanBase64), (char) => char.charCodeAt(0));
     if (binary.byteLength > 20 * 1024 * 1024) return respond({ success: false, error: "Arquivo acima do limite de 20MB." });
+    if (binary.byteLength < 256) return respond({ success: false, error: "Arquivo muito pequeno para ser um AAB válido." });
+    // Magic bytes: AAB is a ZIP container -> PK\x03\x04
+    if (!(binary[0] === 0x50 && binary[1] === 0x4b && binary[2] === 0x03 && binary[3] === 0x04)) {
+      return respond({ success: false, error: "Arquivo inválido: não é um AAB/ZIP." });
+    }
 
     const { data: job, error: insertErr } = await supabase.from("conversion_jobs").insert({
       user_id: user.id,
@@ -54,15 +59,22 @@ Deno.serve(async (req) => {
     }).select().single();
     if (insertErr || !job) return respond({ success: false, error: "Falha ao criar conversão." });
 
-    const inputPath = `aab-input/${job.id}/${fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+    const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const inputPath = `${user.id}/${job.id}/${safeName}`;
     const { error: uploadError } = await supabase.storage.from("aab-files").upload(inputPath, binary, { contentType: "application/octet-stream", upsert: true });
     if (uploadError) return respond({ success: false, error: `Falha ao enviar AAB: ${uploadError.message}` });
 
-    const { data: publicUrl } = supabase.storage.from("aab-files").getPublicUrl(inputPath);
+    // Private bucket -> signed URL with 60-min TTL for worker download
+    const { data: signed, error: signErr } = await supabase.storage.from("aab-files").createSignedUrl(inputPath, 60 * 60);
+    if (signErr || !signed?.signedUrl) {
+      await supabase.from("conversion_jobs").update({ status: "error", step_label: "Erro na conversão", error_message: "Falha ao assinar URL de entrada." }).eq("id", job.id);
+      return respond({ success: false, error: "Falha ao preparar arquivo para conversão." });
+    }
+
     fetch(`${workerUrl.replace(/\/$/, "")}/webhook/aab-to-apk`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-worker-secret": workerSecret },
-      body: JSON.stringify({ job_id: job.id, aab_url: publicUrl.publicUrl, user_id: user.id }),
+      body: JSON.stringify({ job_id: job.id, aab_url: signed.signedUrl, user_id: user.id }),
     }).catch(async () => {
       await supabase.from("conversion_jobs").update({ status: "error", step_label: "Erro na conversão", error_message: "Falha ao iniciar bundletool." }).eq("id", job.id);
     });
