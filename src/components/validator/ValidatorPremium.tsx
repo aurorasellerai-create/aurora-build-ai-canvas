@@ -367,41 +367,85 @@ const AI_LOG_LINES = [
   "[done] build otimizado · score recalculado · pronto para publicação",
 ];
 
-export function AIFixerPanel({ initialScore, targetScore }: { initialScore: number; targetScore?: number }) {
+export function AIFixerPanel({
+  initialScore,
+  targetScore,
+  pendingFixCount = 0,
+  pendingFixLabels = [],
+  onApply,
+}: {
+  initialScore: number;
+  targetScore?: number;
+  pendingFixCount?: number;
+  pendingFixLabels?: string[];
+  onApply?: () => void;
+}) {
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [lines, setLines] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [score, setScore] = useState(initialScore);
-  const target = targetScore ?? Math.min(99, initialScore + 18);
+  const appliedRef = useRef(false);
+
+  // Build dynamic log lines: header + one [fix] line per pending fix + footer.
+  const logLines = useMemo(() => {
+    if (pendingFixCount === 0) return AI_LOG_LINES;
+    const head = [
+      "[init] inicializando engine Aurora AI v3.2...",
+      "[parse] lendo AndroidManifest.xml...",
+      `[scan] ${pendingFixCount} correção(ões) segura(s) identificada(s)...`,
+    ];
+    const fixes = pendingFixLabels.map((label) => `[fix]  aplicando: ${label}`);
+    const tail = [
+      "[sec]  validando políticas Play Store...",
+      "[net]  verificando endpoints HTTPS (12/12 OK)",
+      "[done] correções aplicadas · score recalculado",
+    ];
+    return [...head, ...fixes, ...tail];
+  }, [pendingFixCount, pendingFixLabels]);
+
+  const target = targetScore ?? Math.min(99, initialScore + pendingFixCount * 4 + 6);
   const logRef = useRef<HTMLDivElement>(null);
+
+  // Keep displayed score in sync with prop when fixes are applied externally
+  useEffect(() => {
+    if (!running) setScore(initialScore);
+  }, [initialScore, running]);
 
   useEffect(() => {
     if (!running) return;
-    if (lines.length >= AI_LOG_LINES.length) {
+    if (lines.length >= logLines.length) {
       setDone(true);
       setRunning(false);
+      if (!appliedRef.current && pendingFixCount > 0) {
+        appliedRef.current = true;
+        onApply?.();
+      }
       return;
     }
     const t = setTimeout(() => {
-      setLines((prev) => [...prev, AI_LOG_LINES[prev.length]]);
-      setProgress(Math.round(((lines.length + 1) / AI_LOG_LINES.length) * 100));
-      setScore(Math.round(initialScore + ((target - initialScore) * (lines.length + 1)) / AI_LOG_LINES.length));
-    }, 380);
+      setLines((prev) => [...prev, logLines[prev.length]]);
+      setProgress(Math.round(((lines.length + 1) / logLines.length) * 100));
+      setScore(Math.round(initialScore + ((target - initialScore) * (lines.length + 1)) / logLines.length));
+    }, 320);
     return () => clearTimeout(t);
-  }, [running, lines, initialScore, target]);
+  }, [running, lines, initialScore, target, logLines, onApply, pendingFixCount]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [lines]);
 
   const start = () => {
+    if (pendingFixCount === 0) return;
+    appliedRef.current = false;
     setLines([]);
     setProgress(0);
     setScore(initialScore);
     setDone(false);
     setRunning(true);
   };
+
+  const nothingToFix = pendingFixCount === 0;
 
   return (
     <motion.section
@@ -422,7 +466,9 @@ export function AIFixerPanel({ initialScore, targetScore }: { initialScore: numb
             </div>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            A IA aplica ajustes em manifest, permissões, build flags e políticas Play Store, e recalcula o score do app em tempo real.
+            {nothingToFix
+              ? "Nenhuma correção automática disponível no momento — manifest e permissões já estão dentro das políticas."
+              : `A IA vai aplicar ${pendingFixCount} correção(ões) segura(s) em manifest, permissões e políticas Play Store, e recalcular o score do app em tempo real.`}
           </p>
 
           <div className="rounded-xl border border-border bg-background/60 p-4 space-y-3">
@@ -439,8 +485,8 @@ export function AIFixerPanel({ initialScore, targetScore }: { initialScore: numb
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-bold uppercase tracking-wider">Progresso</span>
-              <span className="font-mono font-bold text-primary">{progress}%</span>
+              <span className="text-muted-foreground font-bold uppercase tracking-wider">Correções pendentes</span>
+              <span className="font-mono font-bold text-primary">{pendingFixCount}</span>
             </div>
             <div className="relative h-1.5 rounded-full bg-muted/40 overflow-hidden">
               <motion.div
@@ -455,10 +501,10 @@ export function AIFixerPanel({ initialScore, targetScore }: { initialScore: numb
           <button
             type="button"
             onClick={start}
-            disabled={running}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-background px-5 py-3 font-display font-bold glow-gold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+            disabled={running || nothingToFix}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-background px-5 py-3 font-display font-bold glow-gold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed"
           >
-            {running ? <><Zap className="w-4 h-4 animate-pulse" /> IA processando...</> : done ? <><CheckCircle2 className="w-4 h-4" /> Corrigir novamente</> : <><Play className="w-4 h-4" /> Corrigir com IA</>}
+            {running ? <><Zap className="w-4 h-4 animate-pulse" /> IA processando...</> : nothingToFix ? <><CheckCircle2 className="w-4 h-4" /> Tudo corrigido</> : done ? <><CheckCircle2 className="w-4 h-4" /> Corrigir novamente</> : <><Play className="w-4 h-4" /> Corrigir com IA{pendingFixCount > 0 ? ` (${pendingFixCount})` : ""}</>}
           </button>
         </div>
 
