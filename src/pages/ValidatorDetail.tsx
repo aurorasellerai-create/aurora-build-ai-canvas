@@ -449,26 +449,127 @@ export default function ValidatorDetail() {
             });
           };
 
-          const handleAllFixesDone = () => {
+          const handleAllFixesDone = async () => {
             if (isApplyingRef.current) return;
             isApplyingRef.current = true;
+            const status: "approved" | "warning" | "blocked" =
+              counts.danger === 0 && counts.warn === 0
+                ? "approved"
+                : counts.danger === 0
+                ? "warning"
+                : "blocked";
+            const fixedCount = pendingFixKeys.length + appliedFixes.size;
+            const allFixKeys = Array.from(
+              new Set([...Array.from(appliedFixes), ...pendingFixKeys]),
+            );
+
+            // 1) Local history (existing flow, unchanged)
             try {
-              // Persist updated validation snapshot in history (sync corrected data)
               if (validation) {
-                const fixedCount = pendingFixKeys.length + appliedFixes.size;
                 saveValidatorHistoryItem({
                   ...validation,
-                  status: counts.danger === 0 && counts.warn === 0 ? "approved" : counts.danger === 0 ? "warning" : "blocked",
+                  status,
                   issuesCount: counts.danger,
                   warningCount: counts.warn,
                   summary: `${validation.summary} · ${fixedCount} correção(ões) IA aplicada(s)`,
                 });
               }
+            } catch {
+              /* localStorage failures must never block remote sync */
+            }
+
+            // 2) Remote audit (Supabase) — retry-safe, idempotency-keyed
+            const idempotencyKey = `${id}:${selectedFormat}:${allFixKeys.sort().join(",")}`;
+            if (lastSyncedKeyRef.current === idempotencyKey) {
               toast.success("Correções aplicadas e salvas no histórico.");
+              isApplyingRef.current = false;
+              return;
+            }
+
+            const labelMap = new Map(
+              [...pendingFixLabels, ...getFixLabels(rawAndroidAnalysis, Array.from(appliedFixes))].map(
+                (l, i) => [allFixKeys[i] ?? l, l],
+              ),
+            );
+            const fixesApplied: ValidatorCorrectionFix[] = allFixKeys.map((key) => ({
+              key,
+              label: labelMap.get(key) ?? key,
+              category: key.startsWith("perm:")
+                ? "permission"
+                : key.startsWith("manifest:")
+                ? "manifest"
+                : "other",
+            }));
+            const permissionsRemoved = allFixKeys
+              .filter((k) => k.startsWith("perm:"))
+              .map((k) => k.replace(/^perm:/, ""));
+            const manifestChanges = Object.fromEntries(
+              allFixKeys
+                .filter((k) => k.startsWith("manifest:"))
+                .map((k) => [k.replace(/^manifest:/, ""), "fixed-by-ai"]),
+            );
+
+            setIsSyncingRemote(true);
+            try {
+              const res = await saveValidatorCorrection({
+                appId: id,
+                appName: buildLabel,
+                originalScore: baselineScores.overall,
+                correctedScore: scores.overall,
+                fixesApplied,
+                manifestChanges,
+                permissionsRemoved,
+                permissionsAdded: [],
+                beforeSnapshot: {
+                  score: baselineScores.overall,
+                  security: baselineScores.security,
+                  playstore: baselineScores.playstore,
+                  performance: baselineScores.performance,
+                  navigation: baselineScores.navigation,
+                  checkout: baselineScores.checkout,
+                  warningCount: baselineCounts.warn,
+                  dangerCount: baselineCounts.danger,
+                  okCount: baselineCounts.ok,
+                },
+                afterSnapshot: {
+                  score: scores.overall,
+                  security: scores.security,
+                  playstore: scores.playstore,
+                  performance: scores.performance,
+                  navigation: scores.navigation,
+                  checkout: scores.checkout,
+                  warningCount: counts.warn,
+                  dangerCount: counts.danger,
+                  okCount: counts.ok,
+                },
+                validationResult: {
+                  status,
+                  ready,
+                  format: selectedFormat,
+                  summary: validation?.summary ?? "",
+                },
+                idempotencyKey,
+              });
+
+              if (res.error && !res.record) {
+                toast.error("Histórico remoto indisponível — salvo localmente.");
+              } else if (res.cached) {
+                toast.success("Correções salvas (offline). Sincronizando quando voltar online.");
+              } else {
+                toast.success("Correções aplicadas e auditadas em nuvem.");
+              }
+              lastSyncedKeyRef.current = idempotencyKey;
+              setRemoteRefreshToken((v) => v + 1);
+            } catch {
+              toast.error("Falha ao sincronizar correção remotamente.");
             } finally {
-              setTimeout(() => { isApplyingRef.current = false; }, 100);
+              setIsSyncingRemote(false);
+              setTimeout(() => {
+                isApplyingRef.current = false;
+              }, 100);
             }
           };
+
 
 
           return (
