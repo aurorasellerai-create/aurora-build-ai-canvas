@@ -399,15 +399,62 @@ export default function ValidatorDetail() {
             counts.warn === 0;
           const scores = deriveValidatorScores({ errors: combinedErrors, counts, ready });
 
-          const handleApplyAutoFixes = () => {
-            if (pendingFixKeys.length === 0) return;
+          // Compute the "before" score (no fixes applied) for the Antes vs Depois block
+          const rawFindings = [
+            ...rawAndroidAnalysis.manifest,
+            ...rawAndroidAnalysis.permissions,
+            ...rawAndroidAnalysis.scan,
+          ].filter((row) => row.sev !== "ok");
+          const baselineErrors = [
+            ...errors,
+            ...rawFindings.map((row) => ({
+              severity: row.sev === "danger" ? "critical" : "warning",
+              category: "android",
+            })),
+          ];
+          const baselineCounts = {
+            ok: 6,
+            warn: baselineErrors.filter((e) => e.severity === "warning").length,
+            danger: baselineErrors.filter((e) => e.severity === "critical").length,
+          };
+          const baselineScores = deriveValidatorScores({
+            errors: baselineErrors,
+            counts: baselineCounts,
+            ready: false,
+          });
+
+          const handleApplySingleFix = async (key: string) => {
+            // Apply one fix at a time so the panel can show real per-step progress.
+            // Dedup at the page level — ignore if already applied.
             setAppliedFixes((prev) => {
+              if (prev.has(key)) return prev;
               const next = new Set(prev);
-              pendingFixKeys.forEach((k) => next.add(k));
+              next.add(key);
               return next;
             });
-            toast.success(`${pendingFixKeys.length} correção(ões) aplicada(s) pela IA.`);
           };
+
+          const handleAllFixesDone = () => {
+            if (isApplyingRef.current) return;
+            isApplyingRef.current = true;
+            try {
+              // Persist updated validation snapshot in history (sync corrected data)
+              if (validation) {
+                const fixedCount = pendingFixKeys.length + appliedFixes.size;
+                saveValidatorHistoryItem({
+                  ...validation,
+                  status: counts.danger === 0 && counts.warn === 0 ? "approved" : counts.danger === 0 ? "warning" : "blocked",
+                  issuesCount: counts.danger,
+                  warningCount: counts.warn,
+                  summary: `${validation.summary} · ${fixedCount} correção(ões) IA aplicada(s)`,
+                });
+              }
+              toast.success("Correções aplicadas e salvas no histórico.");
+            } finally {
+              setTimeout(() => { isApplyingRef.current = false; }, 100);
+            }
+          };
+
 
           return (
             <>
