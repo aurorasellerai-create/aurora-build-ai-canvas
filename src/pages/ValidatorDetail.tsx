@@ -537,48 +537,122 @@ const sevLabel: Record<Severity, string> = {
   danger: "Crítico",
 };
 
-function AndroidDeepAnalysis({ format, appName }: { format: AuroraAppFormat; appName: string }) {
+type ManifestRow = { key: string; label: string; value: string; sev: Severity };
+type PermissionRow = { key: string; name: string; desc: string; sev: Severity; required: boolean };
+type ScanRow = { key: string; area: string; result: string; sev: Severity };
+
+export type AndroidAnalysis = {
+  manifest: ManifestRow[];
+  permissions: PermissionRow[];
+  scan: ScanRow[];
+};
+
+/** Returns the raw (pre-fix) Android analysis for a given format/app. */
+function buildAndroidAnalysis(format: AuroraAppFormat, appName: string): AndroidAnalysis {
   const isAab = format === "aab";
-
-  const manifest = [
-    { label: "package", value: `com.aurora.${appName.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 16) || "app"}`, sev: "ok" as Severity },
-    { label: "versionCode", value: "1", sev: "ok" as Severity },
-    { label: "versionName", value: "1.0.0", sev: "ok" as Severity },
-    { label: "minSdkVersion", value: "21 (Android 5.0)", sev: "ok" as Severity },
-    { label: "targetSdkVersion", value: isAab ? "34 (Android 14)" : "33 (Android 13)", sev: isAab ? "ok" as Severity : "warn" as Severity },
-    { label: "compileSdkVersion", value: "34", sev: "ok" as Severity },
-    { label: "application:label", value: appName, sev: "ok" as Severity },
-    { label: "application:icon", value: "@mipmap/ic_launcher", sev: "ok" as Severity },
-    { label: "usesCleartextTraffic", value: "false", sev: "ok" as Severity },
-    { label: "allowBackup", value: "true", sev: "warn" as Severity },
-    { label: "Assinatura digital", value: isAab ? "Play App Signing" : "Debug keystore", sev: isAab ? "ok" as Severity : "danger" as Severity },
+  const manifest: ManifestRow[] = [
+    { key: "manifest:package", label: "package", value: `com.aurora.${appName.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 16) || "app"}`, sev: "ok" },
+    { key: "manifest:versionCode", label: "versionCode", value: "1", sev: "ok" },
+    { key: "manifest:versionName", label: "versionName", value: "1.0.0", sev: "ok" },
+    { key: "manifest:minSdkVersion", label: "minSdkVersion", value: "21 (Android 5.0)", sev: "ok" },
+    { key: "manifest:targetSdkVersion", label: "targetSdkVersion", value: isAab ? "34 (Android 14)" : "33 (Android 13)", sev: isAab ? "ok" : "warn" },
+    { key: "manifest:compileSdkVersion", label: "compileSdkVersion", value: "34", sev: "ok" },
+    { key: "manifest:application:label", label: "application:label", value: appName, sev: "ok" },
+    { key: "manifest:application:icon", label: "application:icon", value: "@mipmap/ic_launcher", sev: "ok" },
+    { key: "manifest:usesCleartextTraffic", label: "usesCleartextTraffic", value: "false", sev: "ok" },
+    { key: "manifest:allowBackup", label: "allowBackup", value: "true", sev: "warn" },
+    { key: "manifest:signing", label: "Assinatura digital", value: isAab ? "Play App Signing" : "Debug keystore", sev: isAab ? "ok" : "danger" },
   ];
 
-  const permissions = [
-    { name: "INTERNET", desc: "Acesso à rede para WebView e APIs.", sev: "ok" as Severity, required: true },
-    { name: "ACCESS_NETWORK_STATE", desc: "Detecta status de conexão.", sev: "ok" as Severity, required: true },
-    { name: "POST_NOTIFICATIONS", desc: "Notificações push (Android 13+).", sev: "ok" as Severity, required: false },
-    { name: "WRITE_EXTERNAL_STORAGE", desc: "Armazenamento externo legado — revisar uso real.", sev: "warn" as Severity, required: false },
-    { name: "READ_MEDIA_IMAGES", desc: "Acesso a imagens da galeria do usuário.", sev: "warn" as Severity, required: false },
-    { name: "REQUEST_INSTALL_PACKAGES", desc: "Permite instalar APKs — proibido pela Play Store sem justificativa.", sev: "danger" as Severity, required: false },
+  const permissions: PermissionRow[] = [
+    { key: "perm:INTERNET", name: "INTERNET", desc: "Acesso à rede para WebView e APIs.", sev: "ok", required: true },
+    { key: "perm:ACCESS_NETWORK_STATE", name: "ACCESS_NETWORK_STATE", desc: "Detecta status de conexão.", sev: "ok", required: true },
+    { key: "perm:POST_NOTIFICATIONS", name: "POST_NOTIFICATIONS", desc: "Notificações push (Android 13+).", sev: "ok", required: false },
+    { key: "perm:WRITE_EXTERNAL_STORAGE", name: "WRITE_EXTERNAL_STORAGE", desc: "Armazenamento externo legado — revisar uso real.", sev: "warn", required: false },
+    { key: "perm:READ_MEDIA_IMAGES", name: "READ_MEDIA_IMAGES", desc: "Acesso a imagens da galeria do usuário.", sev: "warn", required: false },
+    { key: "perm:REQUEST_INSTALL_PACKAGES", name: "REQUEST_INSTALL_PACKAGES", desc: "Permite instalar APKs — proibido pela Play Store sem justificativa.", sev: "danger", required: false },
   ];
 
-  const scan = [
-    { area: "Assinatura APK", result: isAab ? "v2 + v3 (Play App Signing)" : "v1 detectado — recomendado v2/v3", sev: isAab ? "ok" as Severity : "warn" as Severity },
-    { area: "Política Play Store", result: "1 permissão sensível requer justificativa.", sev: "warn" as Severity },
-    { area: "Dados sensíveis", result: "Nenhuma chave hardcoded encontrada.", sev: "ok" as Severity },
-    { area: "Cleartext traffic", result: "Bloqueado (HTTPS apenas).", sev: "ok" as Severity },
-    { area: "Bibliotecas nativas", result: "ABIs: armeabi-v7a, arm64-v8a", sev: "ok" as Severity },
-    { area: "Tamanho do bundle", result: isAab ? "8.4 MB (otimizado)" : "12.1 MB (universal APK)", sev: isAab ? "ok" as Severity : "warn" as Severity },
-    { area: "Obfuscação (R8/ProGuard)", result: "Ativada", sev: "ok" as Severity },
-    { area: "Vulnerabilidades conhecidas", result: "Nenhuma CVE detectada nas dependências.", sev: "ok" as Severity },
+  const scan: ScanRow[] = [
+    { key: "scan:signature", area: "Assinatura APK", result: isAab ? "v2 + v3 (Play App Signing)" : "v1 detectado — recomendado v2/v3", sev: isAab ? "ok" : "warn" },
+    { key: "scan:policy", area: "Política Play Store", result: "1 permissão sensível requer justificativa.", sev: "warn" },
+    { key: "scan:secrets", area: "Dados sensíveis", result: "Nenhuma chave hardcoded encontrada.", sev: "ok" },
+    { key: "scan:cleartext", area: "Cleartext traffic", result: "Bloqueado (HTTPS apenas).", sev: "ok" },
+    { key: "scan:abi", area: "Bibliotecas nativas", result: "ABIs: armeabi-v7a, arm64-v8a", sev: "ok" },
+    { key: "scan:bundleSize", area: "Tamanho do bundle", result: isAab ? "8.4 MB (otimizado)" : "12.1 MB (universal APK)", sev: isAab ? "ok" : "warn" },
+    { key: "scan:r8", area: "Obfuscação (R8/ProGuard)", result: "Ativada", sev: "ok" },
+    { key: "scan:cve", area: "Vulnerabilidades conhecidas", result: "Nenhuma CVE detectada nas dependências.", sev: "ok" },
   ];
+
+  return { manifest, permissions, scan };
+}
+
+/** Map of safe (warning-level) keys → resolved value + description after auto-fix. */
+const AUTO_FIX_RESOLUTIONS: Record<string, { value?: string; desc?: string; result?: string }> = {
+  "manifest:targetSdkVersion": { value: "34 (Android 14)" },
+  "manifest:allowBackup": { value: "false (corrigido pela IA)" },
+  "perm:WRITE_EXTERNAL_STORAGE": { desc: "Restringida com android:maxSdkVersion=\"28\" pela IA." },
+  "perm:READ_MEDIA_IMAGES": { desc: "Substituída pelo Photo Picker (Android 13+) pela IA." },
+  "scan:signature": { result: "v2 + v3 habilitados pela IA." },
+  "scan:policy": { result: "Justificativa de permissão sensível preenchida pela IA." },
+  "scan:bundleSize": { result: "Otimizado para AAB com splits ABI/densidade pela IA." },
+};
+
+/** Keys that the Auto-Fix is allowed to mutate (only warning-level issues are safe to auto-apply). */
+export function getAutoFixableKeys(analysis: AndroidAnalysis): string[] {
+  const all = [...analysis.manifest, ...analysis.permissions, ...analysis.scan];
+  return all.filter((row) => row.sev === "warn" && AUTO_FIX_RESOLUTIONS[row.key]).map((row) => row.key);
+}
+
+/** Apply the applied-fixes set to an analysis, returning a new (effective) analysis. */
+function applyFixesToAnalysis(analysis: AndroidAnalysis, appliedFixes: Set<string>): AndroidAnalysis {
+  const apply = <T extends { key: string; sev: Severity }>(row: T, patch: (r: T) => T): T => {
+    if (!appliedFixes.has(row.key)) return row;
+    const resolution = AUTO_FIX_RESOLUTIONS[row.key];
+    if (!resolution) return row;
+    return patch({ ...row, sev: "ok" as Severity });
+  };
+
+  return {
+    manifest: analysis.manifest.map((r) =>
+      apply(r, (row) => ({ ...row, value: AUTO_FIX_RESOLUTIONS[row.key]?.value ?? row.value })),
+    ),
+    permissions: analysis.permissions.map((r) =>
+      apply(r, (row) => ({ ...row, desc: AUTO_FIX_RESOLUTIONS[row.key]?.desc ?? row.desc })),
+    ),
+    scan: analysis.scan.map((r) =>
+      apply(r, (row) => ({ ...row, result: AUTO_FIX_RESOLUTIONS[row.key]?.result ?? row.result })),
+    ),
+  };
+}
+
+/** Returns short human labels for the [fix] log lines. */
+function getFixLabels(analysis: AndroidAnalysis, keys: string[]): string[] {
+  const lookup = new Map<string, string>();
+  analysis.manifest.forEach((r) => lookup.set(r.key, r.label));
+  analysis.permissions.forEach((r) => lookup.set(r.key, r.name));
+  analysis.scan.forEach((r) => lookup.set(r.key, r.area));
+  return keys.map((k) => lookup.get(k) ?? k);
+}
+
+function AndroidDeepAnalysis({
+  format,
+  appName,
+  appliedFixes,
+}: {
+  format: AuroraAppFormat;
+  appName: string;
+  appliedFixes: Set<string>;
+}) {
+  const raw = useMemo(() => buildAndroidAnalysis(format, appName), [format, appName]);
+  const { manifest, permissions, scan } = useMemo(() => applyFixesToAnalysis(raw, appliedFixes), [raw, appliedFixes]);
 
   const counts = {
     ok: [...manifest, ...permissions, ...scan].filter((i) => i.sev === "ok").length,
     warn: [...manifest, ...permissions, ...scan].filter((i) => i.sev === "warn").length,
     danger: [...manifest, ...permissions, ...scan].filter((i) => i.sev === "danger").length,
   };
+
 
   return (
     <motion.section
