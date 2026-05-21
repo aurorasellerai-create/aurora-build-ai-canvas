@@ -1,12 +1,58 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Hardened currency parser ──
+// Accepts: "39,90", "59.90", "1.234,56", "2,499.99", "1234", numbers
+// Returns cents (integer). Returns null for invalid / negative / NaN.
+export function parseCurrencyToCents(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || raw < 0) return null;
+    return Math.round(raw * 100);
+  }
+  if (typeof raw !== "string") return null;
+  let s = raw.trim();
+  if (!s) return null;
+  s = s.replace(/[^\d.,\-]/g, "");
+  if (!s || s.startsWith("-")) return null;
+
+  const hasComma = s.includes(",");
+  const hasDot = s.includes(".");
+  let normalized: string;
+
+  if (hasComma && hasDot) {
+    if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+      // pt-BR: "1.234,56"
+      normalized = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // en-US: "2,499.99"
+      normalized = s.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    const parts = s.split(",");
+    if (parts.length === 2 && parts[1].length === 2) {
+      normalized = parts[0].replace(/\./g, "") + "." + parts[1];
+    } else {
+      normalized = s.replace(/,/g, "");
+    }
+  } else {
+    normalized = s;
+  }
+
+  const num = Number(normalized);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return Math.round(num * 100);
+}
+
 // Helper to send transactional emails via send-email edge function
+// Logs failures to system_logs (non-blocking)
 async function sendTransactionalEmail(
+  adminClient: any,
   supabaseUrl: string,
   supabaseAnonKey: string,
   templateName: string,
   recipientEmail: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
+  userId?: string,
 ) {
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
@@ -20,11 +66,25 @@ async function sendTransactionalEmail(
     if (!response.ok) {
       const err = await response.text();
       console.error(`⚠️ Email "${templateName}" failed for ${recipientEmail}: ${err}`);
+      await adminClient.from("system_logs").insert({
+        user_id: userId ?? null,
+        severity: "warning",
+        category: "system",
+        message: `Email "${templateName}" failed for ${recipientEmail}`,
+        details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: err, status: response.status },
+      }).catch(() => {});
     } else {
       console.log(`📧 Email "${templateName}" queued for ${recipientEmail}`);
     }
   } catch (e) {
     console.error(`⚠️ Email send error:`, e);
+    await adminClient.from("system_logs").insert({
+      user_id: userId ?? null,
+      severity: "error",
+      category: "system",
+      message: `Email "${templateName}" exception for ${recipientEmail}`,
+      details: { provider: "resend", template: templateName, recipient: recipientEmail, reason: String(e) },
+    }).catch(() => {});
   }
 }
 
