@@ -224,6 +224,7 @@ async function findOrCreateUser(adminClient: any, email: string, name: string) {
 
     // Send welcome email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "welcome",
@@ -280,6 +281,7 @@ async function handleCreditPurchase(
 
     // Send credit purchase confirmation email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "credit-purchase",
@@ -382,6 +384,7 @@ async function handlePlanChange(
 
     // Send plan confirmation email
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-confirmation",
@@ -396,6 +399,7 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-cancelled",
@@ -411,6 +415,7 @@ async function handlePlanChange(
     }).eq("user_id", user.id);
 
     await sendTransactionalEmail(
+      adminClient,
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       "plan-cancelled",
