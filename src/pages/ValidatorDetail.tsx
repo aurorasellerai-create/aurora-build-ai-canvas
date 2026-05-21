@@ -218,6 +218,12 @@ export default function ValidatorDetail() {
     );
   }, [id, appliedFixes]);
 
+  // Flush any pending offline corrections once on mount
+  useEffect(() => {
+    flushPendingValidatorCorrections().catch(() => {});
+  }, []);
+
+
   useEffect(() => {
     const storedFilters = getStoredFilters(id);
     setSearchTerm(storedFilters.searchTerm);
