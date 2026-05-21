@@ -336,11 +336,13 @@ async function handlePlanChange(
 
       // Send renewal email
       await sendTransactionalEmail(
+        adminClient,
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
         "plan-renewal",
         customerEmail,
-        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) }
+        { name: user.user_metadata?.display_name || customerEmail.split("@")[0], plan: detectPlan(productName) },
+        user.id,
       );
 
       console.log(`🔄 Renewal processed for ${customerEmail}`);
