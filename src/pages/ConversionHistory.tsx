@@ -50,14 +50,14 @@ function extractDomain(url: string) {
 
 function isValidDownloadUrl(url: string | null): boolean {
   if (!url) return false;
-  // Only trust real Supabase storage URLs
-  return url.includes("supabase.co/storage/") || url.includes("supabase.co/storage/v1/");
+  return url.includes("supabase.co/storage/");
 }
 
 const ConversionHistory = () => {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<ConversionJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signingId, setSigningId] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     if (!user) return;
@@ -68,6 +68,24 @@ const ConversionHistory = () => {
       .order("created_at", { ascending: false });
     setJobs((data as ConversionJob[]) ?? []);
     setLoading(false);
+  };
+
+  const handleDownload = async (jobId: string) => {
+    setSigningId(jobId);
+    try {
+      const { data, error } = await supabase.functions.invoke("sign-aab-download", {
+        body: { job_id: jobId },
+      });
+      if (error || !data?.url) {
+        alert(data?.error || "Não foi possível gerar o link de download.");
+        return;
+      }
+      window.open(data.url as string, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Erro ao gerar link de download. Tente novamente.");
+    } finally {
+      setSigningId(null);
+    }
   };
 
   useEffect(() => {
