@@ -13,8 +13,8 @@ import { useCredits } from "@/hooks/useCredits";
 import { useConversionJob } from "@/hooks/useConversionJob";
 import { toast } from "@/hooks/use-toast";
 import { pwaAndroidFlowSteps } from "@/lib/pwaAndroidFlow";
-import BuildPipelineView from "@/components/build/BuildPipelineView";
-import BuildErrorPanel from "@/components/build/BuildErrorPanel";
+import BuildPipelineView from "@/components/build/BuildPipelineView.tsx";
+import BuildErrorPanel from "@/components/build/BuildErrorPanel.tsx";
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
