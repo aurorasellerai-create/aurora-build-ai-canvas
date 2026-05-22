@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { CheckCircle2, Clock, Terminal, WifiOff } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Clock, Terminal, WifiOff, XCircle } from "lucide-react";
+
 import {
   BUILD_STAGES,
   COLOR_CLASS,
