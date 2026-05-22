@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { safeHead, SECURITY_RESPONSE_HEADERS, SafeFetchError } from "../_shared/safeFetch.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -46,7 +47,7 @@ const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 const respond = (payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
     status: 200,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), ...SECURITY_RESPONSE_HEADERS, "Content-Type": "application/json" },
   });
 
 const getErrorMessage = (error: unknown) => {
@@ -126,102 +127,14 @@ const markJobAsFailed = async (
   }
 };
 
-// SSRF guard: reject hostnames that resolve to private/reserved/loopback/link-local IPs.
-const isPrivateIPv4 = (ip: string): boolean => {
-  const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true;
-  const [a, b] = parts;
-  if (a === 10) return true;
-  if (a === 127) return true;
-  if (a === 0) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
-  if (a >= 224) return true; // multicast/reserved
-  return false;
-};
-
-const isPrivateIPv6 = (ip: string): boolean => {
-  const lower = ip.toLowerCase();
-  if (lower === "::1" || lower === "::") return true;
-  if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique local
-  if (lower.startsWith("fe80")) return true; // link-local
-  if (lower.startsWith("::ffff:")) {
-    const v4 = lower.slice(7);
-    return isPrivateIPv4(v4);
-  }
-  return false;
-};
-
-const assertHostnameIsPublic = async (hostname: string): Promise<void> => {
-  // Reject literal IPs in private ranges and resolve hostnames via DNS.
-  const stripped = hostname.replace(/^\[|\]$/g, "");
-  const looksLikeIPv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(stripped);
-  const looksLikeIPv6 = stripped.includes(":");
-  if (looksLikeIPv4) {
-    if (isPrivateIPv4(stripped)) throw new Error("Hostname resolves to a private address");
-    return;
-  }
-  if (looksLikeIPv6) {
-    if (isPrivateIPv6(stripped)) throw new Error("Hostname resolves to a private address");
-    return;
-  }
-  // Block localhost and Docker/internal names defensively.
-  const lowered = hostname.toLowerCase();
-  if (
-    lowered === "localhost" ||
-    lowered.endsWith(".localhost") ||
-    lowered.endsWith(".local") ||
-    lowered.endsWith(".internal") ||
-    lowered === "metadata.google.internal"
-  ) {
-    throw new Error("Hostname is not allowed");
-  }
-  // DNS resolve and validate every record.
-  let records: Array<{ address: string }> = [];
-  try {
-    const [a, aaaa] = await Promise.all([
-      // @ts-ignore Deno.resolveDns is available in edge runtime
-      Deno.resolveDns(hostname, "A").catch(() => [] as string[]),
-      // @ts-ignore
-      Deno.resolveDns(hostname, "AAAA").catch(() => [] as string[]),
-    ]);
-    records = [
-      ...(a as string[]).map((address) => ({ address })),
-      ...(aaaa as string[]).map((address) => ({ address })),
-    ];
-  } catch {
-    throw new Error("DNS resolution failed");
-  }
-  if (records.length === 0) throw new Error("DNS resolution returned no records");
-  for (const { address } of records) {
-    if (address.includes(":")) {
-      if (isPrivateIPv6(address)) throw new Error("Hostname resolves to a private address");
-    } else if (isPrivateIPv4(address)) {
-      throw new Error("Hostname resolves to a private address");
-    }
-  }
-};
-
-const validateUrlReachability = async (url: string) => {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:") return false;
-  await assertHostnameIsPublic(parsed.hostname);
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), URL_VALIDATION_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, {
-      method: "HEAD",
-      redirect: "manual", // prevent redirect-based SSRF bypass
-      signal: controller.signal,
-    });
-    // Treat 2xx/3xx as reachable; redirects intentionally not followed.
-    return response.status >= 200 && response.status < 400;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+// SSRF defense — delegated to the shared safeFetch / urlGuard layer.
+// Returns true if the URL is reachable AND passes all SSRF policy checks.
+const validateUrlReachability = async (url: string, correlationId?: string): Promise<boolean> => {
+  return await safeHead(url, {
+    timeoutMs: URL_VALIDATION_TIMEOUT_MS,
+    urlGuard: { allowedProtocols: ["https:"], allowedPorts: [443] },
+    correlationId,
+  });
 };
 
 // ---------- AAB file generation & upload ----------
@@ -315,10 +228,10 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     const incomingToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!incomingToken || incomingToken !== serviceKey) {
-      logErr("[PROCESS] Unauthorized invocation rejected");
+      logErr("[SECURITY] Unauthorized process-app invocation blocked");
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized", step: currentStep }),
-        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+        { status: 401, headers: { ...getCorsHeaders(req), ...SECURITY_RESPONSE_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
@@ -398,11 +311,18 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       const errMsg = getErrorMessage(error);
-      const msg = error instanceof DOMException && error.name === "AbortError"
-        ? "A validação da URL demorou demais. Tente novamente."
-        : /private address|not allowed|DNS/i.test(errMsg)
-          ? "URL não permitida. Use um domínio público acessível pela internet."
-          : "Erro ao acessar o link. Verifique a URL e tente novamente.";
+      let msg: string;
+      if (error instanceof SafeFetchError) {
+        logErr(`[SECURITY] URL rejected by guard (${error.code}): ${errMsg}`);
+        msg = "URL não permitida. Use um domínio público acessível pela internet.";
+      } else if (error instanceof DOMException && error.name === "AbortError") {
+        msg = "A validação da URL demorou demais. Tente novamente.";
+      } else if (/private|metadata|denylist|DNS|PORT|PROTOCOL|REDIRECT/i.test(errMsg)) {
+        logErr(`[SECURITY] URL blocked: ${errMsg}`);
+        msg = "URL não permitida. Use um domínio público acessível pela internet.";
+      } else {
+        msg = "Erro ao acessar o link. Verifique a URL e tente novamente.";
+      }
       await markJobAsFailed(supabase, jobId, msg, currentStep, startTime);
       return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
     }
