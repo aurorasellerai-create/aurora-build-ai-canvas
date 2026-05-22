@@ -28,16 +28,18 @@ const BodySchema = z.object({
 });
 
 const STEPS = [
-  { progress: 10, label: "Analisando aplicativo..." },
-  { progress: 25, label: "Verificando compatibilidade mobile..." },
-  { progress: 40, label: "Preparando versão Android..." },
-  { progress: 55, label: "Gerando projeto Android..." },
-  { progress: 70, label: "Compilando APK..." },
-  { progress: 85, label: "Convertendo para AAB..." },
-  { progress: 95, label: "Finalizando..." },
+  { status: "preparing", progress: 10, label: "Analisando aplicativo..." },
+  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile..." },
+  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android..." },
+  { status: "running_gradle", progress: 45, label: "Executando Gradle..." },
+  { status: "signing", progress: 68, label: "Assinando pacote Android..." },
+  { status: "optimizing", progress: 80, label: "Otimizando AAB..." },
+  { status: "uploading", progress: 90, label: "Enviando artefato..." },
+  { status: "finalizing", progress: 97, label: "Finalizando..." },
 ];
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
+const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 
 // ---------- helpers ----------
 
@@ -64,9 +66,15 @@ const markJobAsFailed = async (
     await supabase
       .from("conversion_jobs")
       .update({
-        status: "error",
+        status: "failed",
         step_label: "Erro na conversão",
+        build_stage: step,
+        final_stage: step,
         error_message: message,
+        stderr_log: message,
+        last_log: message,
+        exit_code: 1,
+        finished_at: new Date().toISOString(),
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
@@ -196,9 +204,20 @@ Deno.serve(async (req) => {
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
+  const stdoutLines: string[] = [];
+  const stderrLines: string[] = [];
+  let finalStatusWritten = false;
+  const logOut = (message: string) => {
+    stdoutLines.push(`[${new Date().toISOString()}] ${message}`);
+    console.log(message);
+  };
+  const logErr = (message: string) => {
+    stderrLines.push(`[${new Date().toISOString()}] ${message}`);
+    console.error(message);
+  };
 
   try {
-    console.log("[PROCESS] Starting process-app execution");
+    logOut("[PROCESS] Starting process-app execution");
 
     currentStep = "client_setup";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -246,11 +265,27 @@ Deno.serve(async (req) => {
     }
     const ownerUserId = existingJob.user_id as string;
 
-    // --- mark as processing ---
+    // --- mark as running real state machine ---
     currentStep = "job_update_start";
     const { error: startUpdateError } = await supabase
       .from("conversion_jobs")
-      .update({ status: "processing", progress: 0, step_label: "Iniciando conversão...", error_message: null, processing_time_ms: 0 })
+      .update({
+        status: "preparing",
+        progress: 0,
+        step_label: "Iniciando conversão...",
+        build_stage: "preparing",
+        started_at: new Date(startTime).toISOString(),
+        error_message: null,
+        processing_time_ms: 0,
+        stdout_log: stdoutLines.join("\n"),
+        stderr_log: null,
+        exit_code: null,
+        final_stage: null,
+        finished_at: null,
+        timeout_at: null,
+        watchdog_reason: null,
+        last_log: stdoutLines.at(-1) ?? null,
+      })
       .eq("id", jobId);
 
     if (startUpdateError) {
@@ -275,35 +310,75 @@ Deno.serve(async (req) => {
     }
 
     // --- simulate build steps ---
-    currentStep = "processing";
     for (const step of STEPS) {
+      currentStep = step.status;
+      if (Date.now() - startTime > BUILD_MAX_DURATION_MS) {
+        const msg = `Timeout watchdog: build excedeu ${BUILD_MAX_DURATION_MS}ms no estágio ${currentStep}.`;
+        logErr(msg);
+        await supabase.from("conversion_jobs").update({
+          status: "timeout",
+          progress: Math.min(step.progress, 99),
+          step_label: "TIMEOUT — build encerrado pelo watchdog",
+          build_stage: step.status,
+          final_stage: step.status,
+          error_message: msg,
+          stderr_log: stderrLines.join("\n"),
+          stdout_log: stdoutLines.join("\n"),
+          exit_code: 124,
+          timeout_at: new Date().toISOString(),
+          finished_at: new Date().toISOString(),
+          watchdog_reason: "Processamento acima do limite operacional de 10 minutos.",
+          last_log: stderrLines.at(-1) ?? stdoutLines.at(-1) ?? msg,
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", jobId);
+        finalStatusWritten = true;
+        return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
+      }
+      logOut(`[PROCESS] ${step.label}`);
       await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
       const { error: progressError } = await supabase
         .from("conversion_jobs")
-        .update({ progress: step.progress, step_label: step.label, status: "processing", processing_time_ms: Date.now() - startTime })
+        .update({
+          progress: step.progress,
+          step_label: step.label,
+          status: step.status,
+          build_stage: step.status,
+          stdout_log: stdoutLines.join("\n"),
+          stderr_log: stderrLines.join("\n") || null,
+          last_log: stdoutLines.at(-1) ?? step.label,
+          processing_time_ms: Date.now() - startTime,
+        })
         .eq("id", jobId);
       if (progressError) throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
     }
 
     // --- generate file & upload to storage ---
-    currentStep = "file_upload";
-    console.log(`[PROCESS] Generating and uploading AAB for job ${jobId}`);
+    currentStep = "uploading";
+    logOut(`[PROCESS] Generating and uploading AAB for job ${jobId}`);
     const downloadUrl = await generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl);
 
     // --- finalize job ---
-    currentStep = "finalization";
+    currentStep = "finalizing";
     const { error: finalUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
-        status: "done",
+        status: "completed",
         progress: 100,
         step_label: "Concluído!",
+        build_stage: "completed",
+        final_stage: "completed",
         download_url: downloadUrl,
+        stdout_log: stdoutLines.join("\n"),
+        stderr_log: stderrLines.join("\n") || null,
+        exit_code: 0,
+        finished_at: new Date().toISOString(),
+        last_log: stdoutLines.at(-1) ?? "Build concluído com sucesso.",
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
 
     if (finalUpdateError) throw new Error(`Falha ao finalizar job: ${finalUpdateError.message}`);
+    finalStatusWritten = true;
 
     // --- send app-ready email ---
     try {
@@ -348,15 +423,27 @@ Deno.serve(async (req) => {
     return respond({ success: true, job_id: jobId, download_url: downloadUrl, message: "Processamento concluído com sucesso." });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
-    console.error(`[PROCESS] Unexpected error at step ${currentStep}:`, error);
+    logErr(`[PROCESS] Unexpected error at step ${currentStep}: ${errorMessage}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (jobId && supabaseUrl && serviceKey) {
+    if (jobId && supabaseUrl && serviceKey && !finalStatusWritten) {
       const supabase = createClient(supabaseUrl, serviceKey);
       await markJobAsFailed(supabase, jobId, errorMessage, currentStep, startTime);
     }
 
     return respond({ success: false, error: "Falha interna durante o processamento.", step: currentStep, job_id: jobId });
+  } finally {
+    if (jobId && !finalStatusWritten) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey) {
+        const supabase = createClient(supabaseUrl, serviceKey);
+        const { data: job } = await supabase.from("conversion_jobs").select("status").eq("id", jobId).maybeSingle();
+        if (job && !["completed", "failed", "timeout", "cancelled", "done", "error"].includes(job.status)) {
+          await markJobAsFailed(supabase, jobId, "Worker finalizou sem gravar status final.", currentStep, startTime);
+        }
+      }
+    }
   }
 });

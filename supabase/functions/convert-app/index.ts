@@ -26,9 +26,9 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
-  const respond = (body: unknown) =>
+    const respond = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {
-      status: 200,
+      status,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
 
@@ -78,9 +78,11 @@ Deno.serve(async (req) => {
       .insert({
         user_id: user.id,
         source_url: url,
-        status: "processing",
+        status: "queued",
         progress: 0,
-        step_label: "Iniciando processamento...",
+        step_label: "Build na fila...",
+        build_stage: "queued",
+        started_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -95,7 +97,7 @@ Deno.serve(async (req) => {
     // Invoke process-app as a SEPARATE function (won't be killed when this function returns)
     const processUrl = `${supabaseUrl}/functions/v1/process-app`;
     console.log(`[CONVERT] Triggering process-app for job ${job.id}`);
-    fetch(processUrl, {
+    const dispatchProcess = fetch(processUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -108,17 +110,31 @@ Deno.serve(async (req) => {
 
       if (!response.ok) {
         console.error(`[CONVERT] process-app HTTP error for job ${job.id}:`, response.status);
+        await supabase.from("conversion_jobs").update({
+          status: "failed",
+          step_label: "Falha ao iniciar worker",
+          error_message: `Worker retornou HTTP ${response.status}`,
+          final_stage: "queued",
+          finished_at: new Date().toISOString(),
+          stderr_log: payload,
+          last_log: payload.slice(-500),
+        }).eq("id", job.id);
       }
     }).catch(async (err) => {
       console.error("Failed to invoke process-app:", err.message);
       await supabase.from("conversion_jobs").update({
-        status: "error",
-        step_label: "Erro na conversão",
+        status: "failed",
+        step_label: "Falha ao iniciar worker",
         error_message: "Falha ao iniciar o processamento interno.",
+        final_stage: "queued",
+        finished_at: new Date().toISOString(),
+        stderr_log: err.message,
+        last_log: err.message,
       }).eq("id", job.id);
     });
+    EdgeRuntime.waitUntil(dispatchProcess);
 
-    return respond({ success: true, job_id: job.id, message: "Processo iniciado" });
+    return respond({ success: true, job_id: job.id, message: "Processo iniciado" }, 202);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
     console.error("[CONVERT] Fatal error:", err);

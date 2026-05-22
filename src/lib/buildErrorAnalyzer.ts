@@ -152,7 +152,7 @@ const RULES: CategoryRule[] = [
     category: "build_timeout",
     severity: "critical",
     title: "Build excedeu o tempo limite",
-    matchers: [/build.*(timed out|timeout)/i, /ETIMEDOUT/i],
+    matchers: [/build.*(timed out|timeout)/i, /ETIMEDOUT/i, /timeout|tempo.*(esgotado|limite)|excedeu.*tempo/i],
     whatHappened:
       "O pipeline foi cancelado automaticamente porque ultrapassou o tempo máximo permitido.",
     impact: "Nenhum artefato é produzido. Pode indicar loop ou worker sobrecarregado.",
