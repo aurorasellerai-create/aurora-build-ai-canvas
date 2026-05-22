@@ -17,16 +17,48 @@ function getCorsHeaders(req?: Request) {
 
 const corsHeaders = getCorsHeaders();
 
+// ── In-memory IP rate limit (best-effort per isolate). Hard cap on top of DB-level limit. ──
+const ipBucket = new Map<string, number[]>();
+const IP_WINDOW_MS = 10 * 60 * 1000; // 10 min
+const IP_MAX = 5;
+
+function getClientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for") || "";
+  return xff.split(",")[0].trim() || req.headers.get("cf-connecting-ip") || "unknown";
+}
+
+function checkIpRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const arr = (ipBucket.get(ip) || []).filter((t) => now - t < IP_WINDOW_MS);
+  if (arr.length >= IP_MAX) {
+    ipBucket.set(ip, arr);
+    return false;
+  }
+  arr.push(now);
+  ipBucket.set(ip, arr);
+  return true;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
+  const ip = getClientIp(req);
+
+  // 1) Edge-level IP rate limit — fail fast before doing any work.
+  if (!checkIpRateLimit(ip)) {
+    return new Response(
+      JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos." }),
+      { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json", "Retry-After": "600" } },
+    );
+  }
+
   try {
     const { email } = await req.json();
 
-    if (!email) {
-      return new Response(JSON.stringify({ error: "Email é obrigatório" }), {
+    if (!email || typeof email !== "string" || email.length > 320) {
+      return new Response(JSON.stringify({ error: "Email inválido" }), {
         status: 400,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
@@ -36,6 +68,31 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // 2) DB-level IP rate limit (cross-isolate). Reuses login_attempts.
+    try {
+      const { data: ipOk } = await adminClient.rpc("check_ip_rate_limit", { p_ip: ip });
+      if (ipOk === false) {
+        return new Response(
+          JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos." }),
+          { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json", "Retry-After": "900" } },
+        );
+      }
+    } catch (e) {
+      console.warn("IP rate limit check failed (continuing):", e);
+    }
+
+    // Record this attempt (failures-only bucket; counts toward IP limiter).
+    try {
+      await adminClient.from("login_attempts").insert({
+        email: `reset:${email.toLowerCase()}`,
+        ip,
+        user_agent: req.headers.get("user-agent")?.slice(0, 255) || null,
+        success: false,
+      });
+    } catch (e) {
+      console.warn("Failed to record reset attempt:", e);
+    }
 
     // Generate recovery link via admin API
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
@@ -63,20 +120,17 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const name = profile?.display_name || email.split("@")[0];
-
-    // The generated link contains hashed_token and other params
-    // We need to construct the proper redirect URL
     const actionLink = linkData.properties?.action_link || "";
 
-    // Send reset email via send-email function
+    // Send reset email via send-email function using SERVICE ROLE (anon key bypass removed)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${anonKey}`,
+        Authorization: `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
         templateName: "password-reset",
@@ -92,7 +146,6 @@ Deno.serve(async (req) => {
       console.log(`📧 Password reset email sent to ${email}`);
     }
 
-    // Always return success (don't reveal if email exists)
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },

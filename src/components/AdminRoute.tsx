@@ -10,9 +10,11 @@ import { useRole } from "@/hooks/useRole";
  */
 const AdminRoute = ({ children, requireFounder = false }: { children: ReactNode; requireFounder?: boolean }) => {
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, isFounder, isSuperAdmin, loading: roleLoading } = useRole();
+  const { isAdmin, isFounder, isSuperAdmin, isServerConfirmed, loading: roleLoading } = useRole();
 
-  if (authLoading || roleLoading) {
+  // Always wait for the live server response — never trust localStorage-cached
+  // roles for privileged-route gating.
+  if (authLoading || roleLoading || (user && !isServerConfirmed)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

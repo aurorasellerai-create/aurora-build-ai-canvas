@@ -98,13 +98,13 @@ const markJobAsFailed = async (
             .maybeSingle();
 
           const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          const svcKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
           let appName = "Seu App";
           try { appName = new URL(job.source_url).hostname; } catch {}
 
           await fetch(`${supabaseUrl}/functions/v1/send-email`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
             body: JSON.stringify({
               templateName: "app-failed",
               recipientEmail: user.email,
@@ -225,6 +225,18 @@ Deno.serve(async (req) => {
 
     if (!supabaseUrl || !serviceKey) {
       return respond({ success: false, error: "Configuração interna indisponível.", step: currentStep });
+    }
+
+    // ── SECURITY: internal-only. Require service-role bearer token. ──
+    currentStep = "auth";
+    const authHeader = req.headers.get("Authorization") || "";
+    const incomingToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!incomingToken || incomingToken !== serviceKey) {
+      logErr("[PROCESS] Unauthorized invocation rejected");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized", step: currentStep }),
+        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      );
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
@@ -398,10 +410,10 @@ Deno.serve(async (req) => {
             .eq("user_id", job.user_id)
             .maybeSingle();
 
-          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          const svcKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
           await fetch(`${supabaseUrl}/functions/v1/send-email`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
             body: JSON.stringify({
               templateName: "app-ready",
               recipientEmail: user.email,

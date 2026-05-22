@@ -606,11 +606,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Require authentication: service-role key OR authenticated user
+    // SECURITY: only accept service-role bearer OR a valid user JWT.
+    // The anon key is public (client bundle) and was previously bypassing auth — removed.
     const authHeader = req.headers.get("Authorization");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    
+
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -619,10 +620,14 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const isServiceRole = token === serviceRoleKey;
-    const isAnonKey = token === anonKey;
 
-    if (!isServiceRole && !isAnonKey) {
-      // Validate as user JWT
+    if (!isServiceRole) {
+      // Must be a valid authenticated user JWT (NOT the anon key).
+      if (token === anonKey) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
       const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
       const userClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -636,6 +641,7 @@ Deno.serve(async (req) => {
         });
       }
     }
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
