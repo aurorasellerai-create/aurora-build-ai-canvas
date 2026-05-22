@@ -94,8 +94,11 @@ app.post("/webhook/aab-to-apk", async (req, res) => {
 });
 
 // Health check — robust with timeout
+// Public response is minimal; full diagnostics only with valid WORKER_SECRET header
 app.get("/health", async (req, res) => {
   const startTime = Date.now();
+  const isAuthorized = req.headers["x-worker-secret"] === WORKER_SECRET;
+
 
   try {
     const redisOk = redis.status === "ready";
@@ -127,6 +130,14 @@ app.get("/health", async (req, res) => {
 
     const mem = process.memoryUsage();
     const responseTime = Date.now() - startTime;
+
+    if (!isAuthorized) {
+      // Minimal public response — no version, memory, queue, or uptime leakage
+      return res.json({
+        status: redisOk ? "ok" : "degraded",
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     res.json({
       status: redisOk ? "ok" : "degraded",

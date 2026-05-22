@@ -42,6 +42,21 @@ Deno.serve(async (req) => {
     }
 
     const { businessType, niche } = await req.json();
+
+    // Input validation: prevent prompt injection / cost abuse via oversized payloads
+    if (typeof businessType !== "string" || businessType.trim().length < 2 || businessType.length > 300) {
+      return new Response(JSON.stringify({ error: "businessType deve ter entre 2 e 300 caracteres" }), {
+        status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    if (niche !== undefined && niche !== null && (typeof niche !== "string" || niche.length > 200)) {
+      return new Response(JSON.stringify({ error: "niche deve ter no máximo 200 caracteres" }), {
+        status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const safeBusinessType = businessType.replace(/[\r\n]+/g, " ").slice(0, 300);
+    const safeNiche = typeof niche === "string" ? niche.replace(/[\r\n]+/g, " ").slice(0, 200) : "";
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -56,7 +71,7 @@ Deno.serve(async (req) => {
   "appSuggestion": "Sugestão de como transformar em app"
 }`;
 
-    const userPrompt = `Crie um negócio digital completo para: "${businessType}"${niche ? ` no nicho de "${niche}"` : ""}. Seja criativo, realista e detalhado.`;
+    const userPrompt = `Crie um negócio digital completo para: "${safeBusinessType}"${safeNiche ? ` no nicho de "${safeNiche}"` : ""}. Seja criativo, realista e detalhado.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

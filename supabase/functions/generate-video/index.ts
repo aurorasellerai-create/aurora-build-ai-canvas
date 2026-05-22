@@ -55,13 +55,21 @@ Deno.serve(async (req) => {
 
     const { description, style, duration } = await req.json();
 
-    if (!description || typeof description !== "string" || description.length < 3) {
-      return new Response(JSON.stringify({ error: "Descrição inválida" }), {
+    if (!description || typeof description !== "string" || description.trim().length < 3 || description.length > 500) {
+      return new Response(JSON.stringify({ error: "Descrição deve ter entre 3 e 500 caracteres" }), {
+        status: 400,
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    if (style !== undefined && style !== null && (typeof style !== "string" || style.length > 100)) {
+      return new Response(JSON.stringify({ error: "Style deve ter no máximo 100 caracteres" }), {
         status: 400,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
+    const safeDescription = description.replace(/[\r\n]+/g, " ").slice(0, 500);
+    const safeStyle = typeof style === "string" ? style.replace(/[\r\n]+/g, " ").slice(0, 100) : "";
     const videoDuration = duration === 10 ? 10 : 5;
 
     // Build prompt for AI to create an enhanced video description
@@ -70,7 +78,8 @@ Create an optimized, detailed prompt in English for an AI video generator.
 Focus on visual details, camera movement, lighting, and mood.
 Keep it under 200 words. Return ONLY the enhanced prompt, nothing else.`;
 
-    const userPrompt = `Video request: "${description}"${style ? ` Style: ${style}` : ""}. Duration: ${videoDuration} seconds.`;
+    const userPrompt = `Video request: "${safeDescription}"${safeStyle ? ` Style: ${safeStyle}` : ""}. Duration: ${videoDuration} seconds.`;
+
 
     // Use Lovable AI to enhance the prompt
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
