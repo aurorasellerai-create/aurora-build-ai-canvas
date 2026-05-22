@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock, Gauge, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardCopy, ClipboardCheck, Clock, Gauge, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 import {
   BUILD_STAGES,
