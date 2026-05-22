@@ -26,7 +26,7 @@ interface BuildPipelineViewProps {
   job: PipelineJob;
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
-  onCancel?: () => void | Promise<void>;
+  onCancel?: () => unknown | Promise<unknown>;
 }
 
 
