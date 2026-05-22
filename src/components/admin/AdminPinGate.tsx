@@ -5,13 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const PROTECTED_ADMIN_EMAILS = [
-  "aurora.seller.ai@gmail.com",
-  "dayse74correia@hotmail.com",
-];
-
-const isProtectedAdminEmail = (email?: string | null) =>
-  !!email && PROTECTED_ADMIN_EMAILS.includes(email.toLowerCase());
+// Privileged-admin identity is enforced server-side via has_role + PROTECTED_ADMIN_EMAILS env var.
+// Do not embed admin emails in the client bundle.
 
 interface AdminPinGateProps {
   children: ReactNode;
