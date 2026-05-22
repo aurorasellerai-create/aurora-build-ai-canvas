@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   "appSuggestion": "Sugestão de como transformar em app"
 }`;
 
-    const userPrompt = `Crie um negócio digital completo para: "${businessType}"${niche ? ` no nicho de "${niche}"` : ""}. Seja criativo, realista e detalhado.`;
+    const userPrompt = `Crie um negócio digital completo para: "${safeBusinessType}"${safeNiche ? ` no nicho de "${safeNiche}"` : ""}. Seja criativo, realista e detalhado.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
