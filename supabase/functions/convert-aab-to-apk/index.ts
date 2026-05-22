@@ -53,9 +53,11 @@ Deno.serve(async (req) => {
     const { data: job, error: insertErr } = await supabase.from("conversion_jobs").insert({
       user_id: user.id,
       source_url: `aab-upload://${fileName}`,
-      status: "processing",
+      status: "queued",
       progress: 0,
-      step_label: "Recebendo AAB assinado...",
+      step_label: "AAB recebido. Worker na fila...",
+      build_stage: "queued",
+      started_at: new Date().toISOString(),
     }).select().single();
     if (insertErr || !job) return respond({ success: false, error: "Falha ao criar conversão." });
 
@@ -67,17 +69,18 @@ Deno.serve(async (req) => {
     // Private bucket -> signed URL with 60-min TTL for worker download
     const { data: signed, error: signErr } = await supabase.storage.from("aab-files").createSignedUrl(inputPath, 60 * 60);
     if (signErr || !signed?.signedUrl) {
-      await supabase.from("conversion_jobs").update({ status: "error", step_label: "Erro na conversão", error_message: "Falha ao assinar URL de entrada." }).eq("id", job.id);
+      await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Erro na conversão", error_message: "Falha ao assinar URL de entrada.", final_stage: "queued", finished_at: new Date().toISOString() }).eq("id", job.id);
       return respond({ success: false, error: "Falha ao preparar arquivo para conversão." });
     }
 
-    fetch(`${workerUrl.replace(/\/$/, "")}/webhook/aab-to-apk`, {
+    const dispatchWorker = fetch(`${workerUrl.replace(/\/$/, "")}/webhook/aab-to-apk`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-worker-secret": workerSecret },
       body: JSON.stringify({ job_id: job.id, aab_url: signed.signedUrl, user_id: user.id }),
     }).catch(async () => {
-      await supabase.from("conversion_jobs").update({ status: "error", step_label: "Erro na conversão", error_message: "Falha ao iniciar bundletool." }).eq("id", job.id);
+      await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Erro na conversão", error_message: "Falha ao iniciar bundletool.", final_stage: "queued", finished_at: new Date().toISOString(), stderr_log: "bundletool worker dispatch failed", last_log: "Falha ao iniciar bundletool." }).eq("id", job.id);
     });
+    EdgeRuntime.waitUntil(dispatchWorker);
 
     return respond({ success: true, job_id: job.id, message: "Conversão AAB para APK iniciada com bundletool." });
   } catch (error) {
