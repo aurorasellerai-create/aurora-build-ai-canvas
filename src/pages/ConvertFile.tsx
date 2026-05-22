@@ -282,7 +282,7 @@ const ConvertFile = () => {
                       onRetry={resetAll}
                     />
                   ) : (
-                    <BuildPipelineView job={job} formatLabel="APK" packageName="com.aurora.universal" />
+                    <BuildPipelineView job={job} formatLabel="APK" packageName="com.aurora.universal" onCancel={job.cancel} />
                   )}
 
                   {job.status === "success" && job.downloadUrl && (
