@@ -389,7 +389,7 @@ export default function BuildPipelineView({
 }
 
 interface LogEntry {
-  ts: Date | string | number;
+  ts: string;
   level: string;
   message: string;
   stageStatus: string;
