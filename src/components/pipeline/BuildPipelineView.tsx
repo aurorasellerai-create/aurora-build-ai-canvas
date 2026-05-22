@@ -27,6 +27,17 @@ interface BuildPipelineViewProps {
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
   onCancel?: () => unknown | Promise<unknown>;
+  /** Estimated final artifact size in MB, used to compute throughput (default 75 MB). */
+  estimatedSizeMB?: number;
+}
+
+function formatEta(seconds: number): string {
+  if (!isFinite(seconds) || seconds <= 0) return "--";
+  const s = Math.max(1, Math.round(seconds));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r === 0 ? `${m}min` : `${m}min ${r}s`;
 }
 
 
