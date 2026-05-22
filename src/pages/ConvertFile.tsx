@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, Lightbulb, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Globe, Lightbulb, CheckCircle2, Clock } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 import { useConversionJob } from "@/hooks/useConversionJob";
 import { supabase } from "@/integrations/supabase/client";
 import BuildPipelineView from "@/components/pipeline/SafeBuildPipelineView";
+import BuildErrorPanel from "@/components/pipeline/BuildErrorPanel";
 
 const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB enterprise limit
 
