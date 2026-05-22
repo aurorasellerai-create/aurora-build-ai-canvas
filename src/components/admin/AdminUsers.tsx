@@ -145,7 +145,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
   };
 
   const isFounder = (u: any) => u.access_role === "founder";
-  const isProtectedPrincipal = (u: any) => isProtectedAdminEmail(u.email);
+  const isProtectedPrincipal = (u: any) => isProtectedAccessRole(u?.access_role);
 
   // Selection handlers
   const toggleSelect = (id: string) => {
