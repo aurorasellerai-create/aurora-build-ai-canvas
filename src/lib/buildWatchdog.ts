@@ -78,7 +78,7 @@ export async function forceTimeoutBuild(snapshot: BuildWatchdogSnapshot): Promis
       watchdog_reason: timeout.diagnosis.likelyCause,
       last_log: timeout.lastLog,
       stderr_log: [snapshot.stderr, finalLog].filter(Boolean).join("\n"),
-      recovery_diagnosis: timeout.diagnosis as unknown as Record<string, unknown>,
+      recovery_diagnosis: timeout.diagnosis as any,
     })
     .eq("id", snapshot.jobId);
 
