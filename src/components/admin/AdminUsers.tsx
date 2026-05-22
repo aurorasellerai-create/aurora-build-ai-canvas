@@ -868,7 +868,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
                     ) : null}
-                    {!isProtectedAdminEmail(selectedUser.email) && <button
+                    {!isProtectedAccessRole(selectedUser.access_role) && <button
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
                           deleteUser.mutate({ user_id: selectedUser.user_id });
