@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 const STORAGE_KEY = "aurora_active_job";
 const POLL_INTERVAL_MS = 3000;
 const REALTIME_CONNECT_TIMEOUT_MS = 5000;
-const JOB_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+const JOB_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 export type ConversionStatus =
   | "idle"
@@ -14,7 +14,8 @@ export type ConversionStatus =
   | "reconnecting"
   | "success"
   | "error"
-  | "timeout";
+  | "timeout"
+  | "cancelled";
 
 interface JobState {
   jobId: string | null;
@@ -123,7 +124,7 @@ export function useConversionJob() {
         stepLabel: row.step_label ?? "Processando...",
       });
 
-      if (row.status === "done") {
+      if (row.status === "done" || row.status === "completed") {
         cleanupAll();
         clearPersistedJob();
         safeSet({
@@ -133,7 +134,7 @@ export function useConversionJob() {
           downloadUrl: row.download_url,
         });
         toast({ title: "Arquivo Android gerado! 🚀", description: "Seu download está pronto." });
-      } else if (row.status === "error") {
+      } else if (row.status === "error" || row.status === "failed") {
         cleanupAll();
         clearPersistedJob();
         safeSet({
@@ -141,6 +142,15 @@ export function useConversionJob() {
           errorMessage: row.error_message || "Erro inesperado.",
         });
         toast({ title: "Erro na conversão", description: row.error_message || "Tente novamente.", variant: "destructive" });
+      } else if (row.status === "timeout") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "timeout", errorMessage: row.error_message || "Build excedeu o tempo máximo e foi encerrado automaticamente." });
+        toast({ title: "Build em timeout", description: row.error_message || "O watchdog encerrou a pipeline travada.", variant: "destructive" });
+      } else if (row.status === "cancelled") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "cancelled", errorMessage: row.error_message || "Build cancelado." });
       }
     },
     [safeSet, cleanupAll],
@@ -325,7 +335,7 @@ export function useConversionJob() {
             return;
           }
 
-          if (data.status === "done") {
+          if (data.status === "done" || data.status === "completed") {
             safeSet({
               jobId: persistedJobId,
               status: "success",
@@ -337,7 +347,7 @@ export function useConversionJob() {
             return;
           }
 
-          if (data.status === "error") {
+          if (data.status === "error" || data.status === "failed") {
             safeSet({
               jobId: persistedJobId,
               status: "error",
@@ -347,7 +357,17 @@ export function useConversionJob() {
             return;
           }
 
-          // Still processing — resume watching
+          if (data.status === "timeout" || data.status === "cancelled") {
+            safeSet({
+              jobId: persistedJobId,
+              status: data.status,
+              errorMessage: data.error_message || (data.status === "timeout" ? "Build encerrado por timeout." : "Build cancelado."),
+            });
+            clearPersistedJob();
+            return;
+          }
+
+          // Still running — resume watching
           safeSet({
             jobId: persistedJobId,
             status: "processing",
@@ -374,6 +394,6 @@ export function useConversionJob() {
     reset,
     isSubmitting: state.status === "submitting",
     isProcessing: state.status === "processing" || state.status === "reconnecting",
-    isFinished: state.status === "success" || state.status === "error" || state.status === "timeout",
+    isFinished: state.status === "success" || state.status === "error" || state.status === "timeout" || state.status === "cancelled",
   };
 }
