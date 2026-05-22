@@ -64,7 +64,10 @@ Deno.serve(async (req) => {
     const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
     const inputPath = `${user.id}/${job.id}/${safeName}`;
     const { error: uploadError } = await supabase.storage.from("aab-files").upload(inputPath, binary, { contentType: "application/octet-stream", upsert: true });
-    if (uploadError) return respond({ success: false, error: `Falha ao enviar AAB: ${uploadError.message}` });
+    if (uploadError) {
+      await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Falha no upload", error_message: `Falha ao enviar AAB: ${uploadError.message}`, final_stage: "uploading", finished_at: new Date().toISOString(), stderr_log: uploadError.message, last_log: uploadError.message }).eq("id", job.id);
+      return respond({ success: false, error: `Falha ao enviar AAB: ${uploadError.message}` });
+    }
 
     // Private bucket -> signed URL with 60-min TTL for worker download
     const { data: signed, error: signErr } = await supabase.storage.from("aab-files").createSignedUrl(inputPath, 60 * 60);
@@ -77,8 +80,14 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-worker-secret": workerSecret },
       body: JSON.stringify({ job_id: job.id, aab_url: signed.signedUrl, user_id: user.id }),
-    }).catch(async () => {
-      await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Erro na conversão", error_message: "Falha ao iniciar bundletool.", final_stage: "queued", finished_at: new Date().toISOString(), stderr_log: "bundletool worker dispatch failed", last_log: "Falha ao iniciar bundletool." }).eq("id", job.id);
+    }).then(async (response) => {
+      if (!response.ok) {
+        const payload = await response.text();
+        await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Erro na conversão", error_message: `Bundletool worker retornou HTTP ${response.status}.`, final_stage: "queued", finished_at: new Date().toISOString(), stderr_log: payload, last_log: payload.slice(-500) }).eq("id", job.id);
+      }
+    }).catch(async (err) => {
+      const message = err instanceof Error ? err.message : "bundletool worker dispatch failed";
+      await supabase.from("conversion_jobs").update({ status: "failed", step_label: "Erro na conversão", error_message: "Falha ao iniciar bundletool.", final_stage: "queued", finished_at: new Date().toISOString(), stderr_log: message, last_log: message }).eq("id", job.id);
     });
     EdgeRuntime.waitUntil(dispatchWorker);
 
