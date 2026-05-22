@@ -76,7 +76,7 @@ export function SecurityCopilot({ context = {} }: { context?: CopilotContext }) 
             </div>
             <div className="rounded-xl border border-white/10 bg-background/70 p-3 text-sm">
               <div className="prose prose-sm prose-invert max-w-none">
-                <ReactMarkdown>{m.answer}</ReactMarkdown>
+                <MD>{m.answer}</MD>
               </div>
               {m.citations.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -95,7 +95,7 @@ export function SecurityCopilot({ context = {} }: { context?: CopilotContext }) 
         {typing && (
           <div className="rounded-xl border border-cyan-400/30 bg-background/70 p-3 text-sm">
             <div className="prose prose-sm prose-invert max-w-none">
-              <ReactMarkdown>{typing}</ReactMarkdown>
+              <MD>{typing}</MD>
             </div>
             <span className="inline-block animate-pulse text-cyan-300">▍</span>
           </div>
