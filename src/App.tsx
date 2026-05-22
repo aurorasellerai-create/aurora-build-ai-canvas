@@ -37,6 +37,7 @@ const ValidatorDetail = lazy(() => import(/* webpackChunkName: "validator" */ ".
 const ValidatorUpload = lazy(() => import(/* webpackChunkName: "validator" */ "./pages/ValidatorUpload"));
 const ConversionHistory = lazy(() => import(/* webpackChunkName: "history" */ "./pages/ConversionHistory"));
 const NotFound = lazy(() => import(/* webpackChunkName: "notfound" */ "./pages/NotFound"));
+const SecurityCenter = lazy(() => import(/* webpackChunkName: "security" */ "./pages/SecurityCenter"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/validator/:id" element={<ProtectedRoute><ValidatorDetail /></ProtectedRoute>} />
               <Route path="/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
               <Route path="/historico" element={<ProtectedRoute><ConversionHistory /></ProtectedRoute>} />
+              <Route path="/security" element={<ProtectedRoute><SecurityCenter /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
