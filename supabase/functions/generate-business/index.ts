@@ -42,6 +42,21 @@ Deno.serve(async (req) => {
     }
 
     const { businessType, niche } = await req.json();
+
+    // Input validation: prevent prompt injection / cost abuse via oversized payloads
+    if (typeof businessType !== "string" || businessType.trim().length < 2 || businessType.length > 300) {
+      return new Response(JSON.stringify({ error: "businessType deve ter entre 2 e 300 caracteres" }), {
+        status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    if (niche !== undefined && niche !== null && (typeof niche !== "string" || niche.length > 200)) {
+      return new Response(JSON.stringify({ error: "niche deve ter no máximo 200 caracteres" }), {
+        status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const safeBusinessType = businessType.replace(/[\r\n]+/g, " ").slice(0, 300);
+    const safeNiche = typeof niche === "string" ? niche.replace(/[\r\n]+/g, " ").slice(0, 200) : "";
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
