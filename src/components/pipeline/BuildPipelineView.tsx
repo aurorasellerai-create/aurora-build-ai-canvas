@@ -438,7 +438,7 @@ function LogsPanel({
       "—".repeat(48),
     ].join("\n");
     const body = filteredLogs
-      .map((l) => `[${formatLogTime(l.ts)}] [${l.stageLabel}] [${l.level}] ${l.message}`)
+      .map((l) => `[${formatLogTime(String(l.ts))}] [${l.stageLabel}] [${l.level}] ${l.message}`)
       .join("\n");
     const text = `${header}\n${body}\n`;
     try {
@@ -511,7 +511,7 @@ function LogsPanel({
         ) : (
           filteredLogs.map((log, index) => (
             <div key={`${log.ts}-${index}`} className="grid grid-cols-[70px_auto_1fr] gap-2 rounded-md bg-background/60 px-2 py-1.5">
-              <span className="text-muted-foreground tabular-nums">{formatLogTime(log.ts)}</span>
+              <span className="text-muted-foreground tabular-nums">{formatLogTime(String(log.ts))}</span>
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{log.stageLabel}</span>
               <span className={cn(log.level === "ERROR" ? "text-destructive" : log.level === "SUCCESS" ? "text-primary" : "text-foreground")}>
                 {log.message}
