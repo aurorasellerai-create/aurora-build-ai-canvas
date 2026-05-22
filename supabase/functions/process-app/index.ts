@@ -126,16 +126,99 @@ const markJobAsFailed = async (
   }
 };
 
+// SSRF guard: reject hostnames that resolve to private/reserved/loopback/link-local IPs.
+const isPrivateIPv4 = (ip: string): boolean => {
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true;
+  const [a, b] = parts;
+  if (a === 10) return true;
+  if (a === 127) return true;
+  if (a === 0) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+  if (a >= 224) return true; // multicast/reserved
+  return false;
+};
+
+const isPrivateIPv6 = (ip: string): boolean => {
+  const lower = ip.toLowerCase();
+  if (lower === "::1" || lower === "::") return true;
+  if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique local
+  if (lower.startsWith("fe80")) return true; // link-local
+  if (lower.startsWith("::ffff:")) {
+    const v4 = lower.slice(7);
+    return isPrivateIPv4(v4);
+  }
+  return false;
+};
+
+const assertHostnameIsPublic = async (hostname: string): Promise<void> => {
+  // Reject literal IPs in private ranges and resolve hostnames via DNS.
+  const stripped = hostname.replace(/^\[|\]$/g, "");
+  const looksLikeIPv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(stripped);
+  const looksLikeIPv6 = stripped.includes(":");
+  if (looksLikeIPv4) {
+    if (isPrivateIPv4(stripped)) throw new Error("Hostname resolves to a private address");
+    return;
+  }
+  if (looksLikeIPv6) {
+    if (isPrivateIPv6(stripped)) throw new Error("Hostname resolves to a private address");
+    return;
+  }
+  // Block localhost and Docker/internal names defensively.
+  const lowered = hostname.toLowerCase();
+  if (
+    lowered === "localhost" ||
+    lowered.endsWith(".localhost") ||
+    lowered.endsWith(".local") ||
+    lowered.endsWith(".internal") ||
+    lowered === "metadata.google.internal"
+  ) {
+    throw new Error("Hostname is not allowed");
+  }
+  // DNS resolve and validate every record.
+  let records: Array<{ address: string }> = [];
+  try {
+    const [a, aaaa] = await Promise.all([
+      // @ts-ignore Deno.resolveDns is available in edge runtime
+      Deno.resolveDns(hostname, "A").catch(() => [] as string[]),
+      // @ts-ignore
+      Deno.resolveDns(hostname, "AAAA").catch(() => [] as string[]),
+    ]);
+    records = [
+      ...(a as string[]).map((address) => ({ address })),
+      ...(aaaa as string[]).map((address) => ({ address })),
+    ];
+  } catch {
+    throw new Error("DNS resolution failed");
+  }
+  if (records.length === 0) throw new Error("DNS resolution returned no records");
+  for (const { address } of records) {
+    if (address.includes(":")) {
+      if (isPrivateIPv6(address)) throw new Error("Hostname resolves to a private address");
+    } else if (isPrivateIPv4(address)) {
+      throw new Error("Hostname resolves to a private address");
+    }
+  }
+};
+
 const validateUrlReachability = async (url: string) => {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:") return false;
+  await assertHostnameIsPublic(parsed.hostname);
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), URL_VALIDATION_TIMEOUT_MS);
   try {
     const response = await fetch(url, {
       method: "HEAD",
-      redirect: "follow",
+      redirect: "manual", // prevent redirect-based SSRF bypass
       signal: controller.signal,
     });
-    return response.ok;
+    // Treat 2xx/3xx as reachable; redirects intentionally not followed.
+    return response.status >= 200 && response.status < 400;
   } finally {
     clearTimeout(timeoutId);
   }
