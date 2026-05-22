@@ -26,7 +26,9 @@ interface BuildPipelineViewProps {
   job: PipelineJob;
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
+  onCancel?: () => void | Promise<void>;
 }
+
 
 const isFailureState = (status: string) => status === "error" || status === "timeout" || status === "cancelled";
 
