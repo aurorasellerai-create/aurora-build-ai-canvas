@@ -170,6 +170,24 @@ function validateImportExports(node, importer, resolved, specifier) {
   }
 }
 
+function isReactLazyImport(importCall) {
+  const arrowOrFunction = importCall.parent;
+  if (!arrowOrFunction || (!ts.isArrowFunction(arrowOrFunction) && !ts.isFunctionExpression(arrowOrFunction))) return false;
+
+  const lazyCall = arrowOrFunction.parent;
+  return Boolean(ts.isCallExpression(lazyCall) && ts.isIdentifier(lazyCall.expression) && lazyCall.expression.text === "lazy");
+}
+
+function validateDynamicImportExports(node, importer, resolved, specifier) {
+  if (!ts.isCallExpression(node) || node.expression.kind !== ts.SyntaxKind.ImportKeyword || !isSourceFile(resolved)) return;
+  if (!isReactLazyImport(node)) return;
+
+  const exportsSet = getModuleExports(resolved);
+  if (exportsSet && !exportsSet.has("default")) {
+    errors.push(`${rel(importer)}: lazy import sem default export em "${specifier}".`);
+  }
+}
+
 function isTypeOnlyImport(node) {
   if (ts.isExportDeclaration(node)) return Boolean(node.isTypeOnly);
   if (!ts.isImportDeclaration(node) || !node.importClause) return false;
@@ -201,6 +219,7 @@ function inspectSpecifier(specifier, importer, node) {
   addImportVariant(importer, result.resolved, specifier);
   recordEdge(importer, result.resolved, isTypeOnlyImport(node));
   validateImportExports(node, importer, result.resolved, specifier);
+  validateDynamicImportExports(node, importer, result.resolved, specifier);
 }
 
 function inspectSourceFile(sourceFile) {
