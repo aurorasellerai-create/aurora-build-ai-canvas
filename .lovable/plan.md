@@ -1,129 +1,111 @@
-# Painel de Segurança Premium — `/admin`
+# Pass Final de Hardening Enterprise — Plano
 
-Stack: Lovable Cloud (Supabase) + Edge Functions Deno. Sem Firebase (incompatível com o resto do app).
+Este pedido cobre **9 áreas distintas** (CSP, rate limit, payload, webhooks, observabilidade, pipeline resilience, frontend XSS, PWA, testes de regressão). Cada uma é um trabalho substancial; entregar tudo num único loop produziria código superficial e risco real de quebrar monetização, pipeline e auth. Proponho uma execução em **3 ondas priorizadas**, cada uma entregue, validada e revisada antes da próxima.
 
----
-
-## 1. Banco de dados (1 migration)
-
-**Novas tabelas**
-
-- `admin_2fa` — `user_id (PK)`, `secret_encrypted`, `enabled`, `backup_codes` (jsonb, hash), `last_used_at`, `created_at`
-- `admin_audit_log` — `id`, `admin_id`, `action` (enum text: `login`, `logout`, `view`, `update`, `delete`, `2fa_enable`, `2fa_disable`, `role_change`, `credit_grant`, `setting_change`), `target_type`, `target_id`, `ip`, `user_agent`, `metadata` (jsonb), `created_at`
-- `security_alerts` — `id`, `admin_id`, `kind` (`new_ip`, `new_country`, `brute_force`, `2fa_failed`, `impossible_travel`), `severity` (`info|warn|critical`), `ip`, `user_agent`, `details` (jsonb), `acknowledged`, `created_at`
-
-**Extensão de `login_attempts`**: adicionar `ip` e `user_agent` (mantém `ip_hint` por compatibilidade).
-
-**RLS**: somente `admin`/`founder` lê; INSERT bloqueado para clientes (escrita só por edge functions com service role).
-
-**RPCs SECURITY DEFINER**
-- `log_admin_action(action, target_type, target_id, metadata)` — lê IP/UA do contexto da function
-- `acknowledge_alert(alert_id)`
-- `is_known_admin_ip(admin_id, ip)` → bool
+> **Restrição da plataforma:** rate limiting backend não tem primitivas estabelecidas no Lovable Cloud — implementação será ad-hoc (tabela `rate_limits` + janela deslizante via SQL). Posso fazer, mas você precisa saber que não é infra dedicada.
 
 ---
 
-## 2. Edge Functions
+## Onda 1 — Defesas de borda (entrega imediata, baixo risco)
 
-- **`admin-2fa-setup`** — gera secret TOTP (RFC 6238), retorna `otpauth://` URI + QR-data. Não habilita ainda.
-- **`admin-2fa-verify`** — recebe código de 6 dígitos, valida com janela ±1, marca `enabled=true`, gera 8 backup codes (hash SHA-256, retorna em texto **uma única vez**).
-- **`admin-2fa-disable`** — exige código TOTP ou backup code para desativar.
-- **`secure-login`** (existente) — estender:
-  1. Captura `x-forwarded-for` e `user-agent`
-  2. Se admin tem 2FA → retorna `{requires_2fa: true}` em vez de sessão
-  3. Cliente envia segundo passo com código → valida e devolve sessão
-  4. Grava `login_attempts` com IP/UA
-  5. Cria `security_alerts` se IP nunca visto antes para este admin
-  6. Cria entrada em `admin_audit_log` com `action=login`
-- **`admin-logout`** — registra `action=logout` no audit + `auth.signOut` server-side da sessão atual.
+Foco em hardening que **não toca lógica de negócio**.
 
-Lib TOTP: implementação inline ~60 linhas (HMAC-SHA1, base32) — sem dependências.
+1. **CSP enterprise** (`index.html`)
+   - Remover `'unsafe-eval'`, manter `'unsafe-inline'` apenas para `style-src` (Tailwind/Vite exigem)
+   - Adicionar allowlist explícita: Stripe, Kiwify, Google Fonts, Supabase, Lovable AI Gateway
+   - `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'self'`, `form-action 'self'` (já existe)
+   - Nota: `'strict-dynamic'` + nonce **não é viável** com Vite SWC sem plugin custom de injeção SSR — explicaria por que estamos pulando isso
 
----
+2. **Security headers compartilhados em todas as Edge Functions**
+   - Aplicar `SECURITY_RESPONSE_HEADERS` (já existe em `_shared/safeFetch.ts`) em: `convert-app`, `convert-aab-to-apk`, `generate-business`, `generate-video`, `send-email`, `kiwify-webhook`, `secure-login`, `auth-reset-password`, `admin-data`, `admin-2fa-*`, `sign-aab-download`, `cleanup-jobs`
 
-## 3. Frontend
+3. **Payload limits compartilhados** (`_shared/payloadGuard.ts` novo)
+   - `readJsonCapped(req, maxBytes)` — lê body com cap (default 256 KiB)
+   - Aplicar em endpoints públicos/AI (`generate-business`, `generate-video`, `convert-app`, `kiwify-webhook`)
 
-**Atualização do `AdminPinGate`** (login)
-- Após e-mail+senha, se `requires_2fa` → mostra tela de código 6 dígitos (campos OTP) + opção "usar backup code"
-- Bloqueio após 5 falhas de 2FA por 15 min (mesma lógica de `check_login_rate_limit`)
-
-**Nova seção `AdminSecurity.tsx`** (`/admin → Segurança`)
-
-Layout futurista, cards com gradiente neon-azul/dourado, glassmorphism, animações framer-motion:
-
-- **Card 2FA** — status (ativo/inativo), botão "Configurar" abre modal com QR + verificação. Lista backup codes.
-- **Tabela "Tentativas de login"** — últimas 50, com IP, UA truncado, sucesso/falha, timestamp.
-- **Tabela "Auditoria de ações"** — filtros por admin, ação, período. Exportar CSV.
-- **Painel "Alertas de segurança"** — chips coloridos por severidade, botão "Reconhecer". Pulse animation em criticais não vistos.
-- **Stats hero** (4 cards): admins ativos · logins 24h · alertas pendentes · IPs únicos 7d.
-
-**Adições no header do AdminLayout**
-- Badge com contador de alertas críticos não reconhecidos (sino com pulse vermelho)
-
-**Hook `useAdminAuditLogger`**
-- Wrappers para mutations admin (alterar plano, créditos, settings) que automaticamente chamam `log_admin_action`.
+4. **`_shared/auditLogger.ts`** (centralized structured logs)
+   - Tags `[SECURITY] [AUTH] [PIPELINE] [UPLOAD] [PAYMENT] [VALIDATOR]`
+   - `correlationId`, `traceId`, IP hash, UA hash
+   - Refatorar `worker-health` e `process-app` para usá-lo
 
 ---
 
-## 4. Anti brute force (reforço)
+## Onda 2 — Rate limit + Webhook hardening (requer migração DB)
 
-Já existe rate limit por e-mail. Adicionar:
-- Limite por IP: 10 tentativas/15 min em qualquer e-mail
-- Bloqueio de 1h após 20 falhas seguidas em uma janela de 1h (mesmo IP)
-- Cron job `pg_cron` diário para limpar `login_attempts` > 30 dias e gerar alerta se padrão suspeito (>50 falhas/dia em um e-mail)
+5. **Rate limit SQL-based**
+   - Migração: tabela `rate_limits (key text, window_start timestamptz, count int)` + função `check_rate_limit(key, max, window_seconds) returns boolean`
+   - Helper `_shared/rateLimit.ts` que chama a função
+   - Aplicar em: `secure-login` (já tem login_attempts, reusar), `generate-business`, `generate-video`, `convert-app`, `send-email`, `kiwify-webhook`
+   - Header `Retry-After` em 429
+   - **Limitação honesta:** sem Redis, latência por chamada é maior que ideal (~30-80ms)
 
----
-
-## 5. Alertas de login suspeito
-
-Regras (avaliadas no `secure-login` após sucesso):
-- **`new_ip`** (info) — IP nunca registrado para este admin
-- **`brute_force`** (warn) — ≥5 falhas nos últimos 15 min antes do sucesso
-- **`impossible_travel`** (critical) — login bem-sucedido com IP em geo diferente do anterior em < 1h (geo via cabeçalho `cf-ipcountry` se disponível, senão pula)
-- Notificação opcional por e-mail (via `send-email`) ao admin afetado para `critical`
+6. **Webhook hardening — `kiwify-webhook`**
+   - Auditar assinatura existente, adicionar tolerância de timestamp (±5min) se ainda não tiver
+   - Dedupe via tabela `webhook_dedupe` (já existe) — validar uso
+   - Logar tentativas de replay como `[SECURITY] WEBHOOK_REPLAY`
 
 ---
 
-## 6. Visual
+## Onda 3 — Pipeline resilience + Frontend + Testes
 
-Mantém Aurora Build AI:
-- Cards `card-aurora` com borda animada
-- Cores: `--primary` (#FFD700), `--secondary` (cyan)
-- Ícones lucide: ShieldCheck, Lock, KeyRound, Smartphone (2FA), History, AlertTriangle, MapPin
-- Tabelas com `Table` shadcn já existente
-- Modal 2FA com QR renderizado client-side via `qrcode` (lib leve, ~10kb)
+7. **Pipeline resilience**
+   - `mark_stale_conversion_jobs_as_timeout` já existe — adicionar `pg_cron` (verificar se já está agendado) a cada 5min
+   - Cleanup de órfãos no storage (`aab-files`) para jobs > 7 dias em `error`/`timeout`
+   - Worker heartbeat: nova coluna `last_heartbeat_at` em `conversion_jobs`, atualizada a cada step
 
----
+8. **Frontend XSS sweep**
+   - Grep por `dangerouslySetInnerHTML` no projeto — auditar cada ocorrência
+   - Se houver markdown user-supplied: instalar `dompurify` e wrapper `SafeHtml`
+   - Validar que toasts (sonner) não renderizam HTML cru
 
-## Arquivos
+9. **PWA**
+   - Projeto **não tem** service worker registrado (verifiquei: install-only PWA via `useInstallPrompt`). Não há cache poisoning vector. Documentar como "N/A — sem SW" e mover
 
-**Novos**
-- `supabase/functions/admin-2fa-setup/index.ts`
-- `supabase/functions/admin-2fa-verify/index.ts`
-- `supabase/functions/admin-2fa-disable/index.ts`
-- `supabase/functions/admin-logout/index.ts`
-- `src/components/admin/AdminSecurity.tsx`
-- `src/components/admin/Admin2FASetup.tsx`
-- `src/hooks/useAdminAuditLogger.ts`
-- `src/lib/totp.ts` (helpers client p/ exibir backup codes)
-
-**Editados**
-- 1 migration SQL
-- `supabase/functions/secure-login/index.ts`
-- `src/components/admin/AdminPinGate.tsx` (passo 2FA)
-- `src/components/admin/AdminLayout.tsx` (badge alertas + nova entrada)
-- `src/pages/Admin.tsx` (rota interna `security`)
-
-**Dependência nova**
-- `qrcode` (~10kb gz) para renderizar QR do 2FA
+10. **Testes de regressão** (`supabase/functions/_shared/*.test.ts` + `src/test/security.test.ts`)
+    - urlGuard: IPs privados, IPv6, encoded IPs, metadata, DNS rebinding
+    - safeFetch: redirect limit, size cap, timeout, cross-origin header strip
+    - rateLimit: janela deslizante, burst, retry-after
+    - CSP: snapshot test do header
 
 ---
 
-## Decisões a confirmar antes de eu começar
+## O que **não** vou fazer sem aprovação explícita
 
-1. **2FA** — TOTP (Google Authenticator/Authy/1Password) está OK, ou prefere código por e-mail?
-2. **Geo-IP** — usar só `cf-ipcountry` (grátis, vem do CDN) ou integrar serviço pago (ip-api/ipinfo)?
-3. **Notificação de alertas críticos** — enviar e-mail automático ao admin, ou só mostrar no painel?
-4. **Escopo de auditoria** — registrar **toda** ação admin (clicks de visualização inclusive) ou só mutações (alterações em users, plans, créditos, settings)?
+- Trocar Vite por SSR para suportar nonce CSP real (mudança de stack)
+- Adicionar Redis/Upstash (novo serviço externo, custo)
+- Reescrever `kiwify-webhook` se assinatura já está validada (risco de quebrar pagamentos)
+- Migrar logs para serviço externo (Datadog/Sentry) — `system_logs` table já existe
 
-Confirme essas 4 e eu implemento o pacote completo na sequência.
+---
+
+## Detalhes técnicos (referência)
+
+**Arquivos a criar:**
+- `supabase/functions/_shared/auditLogger.ts`
+- `supabase/functions/_shared/payloadGuard.ts`
+- `supabase/functions/_shared/rateLimit.ts`
+- `supabase/functions/_shared/urlGuard.test.ts`
+- `supabase/functions/_shared/safeFetch.test.ts`
+
+**Arquivos a editar (Onda 1):**
+- `index.html` (CSP)
+- ~12 edge functions (security headers, audit logger)
+
+**Migração SQL (Onda 2):**
+```sql
+CREATE TABLE public.rate_limits (
+  key text PRIMARY KEY,
+  window_start timestamptz NOT NULL DEFAULT now(),
+  count int NOT NULL DEFAULT 0
+);
+CREATE FUNCTION public.check_rate_limit(_key text, _max int, _window_seconds int)
+RETURNS boolean ...;
+```
+
+---
+
+## Pergunta antes de começar
+
+**Quer que eu comece pela Onda 1 agora** (CSP + security headers + payload guard + audit logger — ~1 loop, risco baixo, sem migração), e depois você revisa antes da Onda 2?
+
+Ou prefere outra ordenação (ex.: rate limit primeiro porque tem abuso ativo)?

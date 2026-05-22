@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
+import { readJsonCapped, PayloadTooLargeError, InvalidJsonError } from "../_shared/payloadGuard.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -12,6 +14,7 @@ function getCorsHeaders(req?: Request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    ...SECURITY_RESPONSE_HEADERS,
   };
 }
 
@@ -41,7 +44,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { businessType, niche } = await req.json();
+    let parsedBody: { businessType?: unknown; niche?: unknown };
+    try {
+      parsedBody = await readJsonCapped(req, 8 * 1024); // 8 KiB cap for AI prompt
+    } catch (e) {
+      if (e instanceof PayloadTooLargeError) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 413, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (e instanceof InvalidJsonError) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      throw e;
+    }
+    const { businessType, niche } = parsedBody;
 
     // Input validation: prevent prompt injection / cost abuse via oversized payloads
     if (typeof businessType !== "string" || businessType.trim().length < 2 || businessType.length > 300) {
