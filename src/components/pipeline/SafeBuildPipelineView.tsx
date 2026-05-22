@@ -11,6 +11,7 @@ interface SafeBuildPipelineViewProps {
   formatLabel: string;
   packageName: string;
   onCancel?: () => unknown | Promise<unknown>;
+  onRetry?: () => unknown | Promise<unknown>;
 }
 
 
