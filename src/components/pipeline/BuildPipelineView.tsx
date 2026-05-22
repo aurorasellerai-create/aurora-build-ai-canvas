@@ -201,6 +201,57 @@ export default function BuildPipelineView({
     }
   };
 
+  // --- Freeze detection ---
+  // Track the wall-clock time of the last observed progress/label change.
+  // If nothing changes for `freezeThresholdSec` while active, surface a retry UI.
+  const lastChangeRef = useRef<number>(Date.now());
+  const lastSnapshotRef = useRef<string>("");
+  const [nowTick, setNowTick] = useState(Date.now());
+  const [retrying, setRetrying] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const autoRetryFiredRef = useRef<number>(0);
+
+  useEffect(() => {
+    const snapshot = `${job.status}|${rawProgress}|${job.stepLabel}`;
+    if (snapshot !== lastSnapshotRef.current) {
+      lastSnapshotRef.current = snapshot;
+      lastChangeRef.current = Date.now();
+    }
+  }, [job.status, rawProgress, job.stepLabel]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
+
+  const stalledSec = isActive ? Math.floor((nowTick - lastChangeRef.current) / 1000) : 0;
+  const isFrozen = isActive && stalledSec >= freezeThresholdSec;
+  const countdown = isFrozen ? Math.max(0, autoRetryAfterSec - (stalledSec - freezeThresholdSec)) : autoRetryAfterSec;
+
+  const handleRetry = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    setRetryAttempt((n) => n + 1);
+    try {
+      await onRetry();
+      lastChangeRef.current = Date.now(); // give the retry a fresh window
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  // Auto-retry once countdown elapses. Re-fires every full window while still frozen.
+  useEffect(() => {
+    if (!isFrozen || !onRetry || retrying) return;
+    if (countdown > 0) return;
+    const bucket = Math.floor(stalledSec / Math.max(1, freezeThresholdSec + autoRetryAfterSec));
+    if (autoRetryFiredRef.current === bucket) return;
+    autoRetryFiredRef.current = bucket;
+    void handleRetry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFrozen, countdown, onRetry, retrying, stalledSec, freezeThresholdSec, autoRetryAfterSec]);
+
   const shownProgress = isDone ? 100 : Math.round(displayedProgress);
 
   return (
