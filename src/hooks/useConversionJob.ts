@@ -446,11 +446,37 @@ export function useConversionJob() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // --- One-shot refresh / manual retry of the realtime+polling watcher ---
+  const refresh = useCallback(async (): Promise<boolean> => {
+    const jobId = state.jobId;
+    if (!jobId) return false;
+    try {
+      const { data, error } = await supabase
+        .from("conversion_jobs")
+        .select("status, progress, step_label, error_message, download_url")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (error || !data) return false;
+      processRow(data);
+      // Re-arm realtime + polling in case the channel went stale.
+      if (data.status !== "done" && data.status !== "completed" && data.status !== "error" && data.status !== "failed" && data.status !== "timeout" && data.status !== "cancelled") {
+        stopRealtime();
+        startRealtime(jobId);
+        startPolling(jobId);
+      }
+      return true;
+    } catch (err) {
+      console.warn("[CONVERT] Refresh failed:", err);
+      return false;
+    }
+  }, [state.jobId, processRow, stopRealtime, startRealtime, startPolling]);
+
   return {
     ...state,
     submit,
     reset,
     cancel,
+    refresh,
 
     isSubmitting: state.status === "submitting",
     isProcessing: state.status === "processing" || state.status === "reconnecting",
