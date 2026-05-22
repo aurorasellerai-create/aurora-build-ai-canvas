@@ -450,6 +450,8 @@ export function useConversionJob() {
     ...state,
     submit,
     reset,
+    cancel,
+
     isSubmitting: state.status === "submitting",
     isProcessing: state.status === "processing" || state.status === "reconnecting",
     isFinished: state.status === "success" || state.status === "error" || state.status === "timeout" || state.status === "cancelled",
