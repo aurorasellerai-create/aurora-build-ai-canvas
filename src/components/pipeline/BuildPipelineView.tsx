@@ -319,6 +319,36 @@ export default function BuildPipelineView({
         )}
       </div>
 
+      {isFrozen && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground">
+          <WifiOff className="h-4 w-4 shrink-0 text-amber-400" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-amber-300">Sem atualizações há {stalledSec}s</p>
+            <p className="text-[11px] text-muted-foreground">
+              {retrying
+                ? "Sincronizando com o servidor…"
+                : onRetry
+                  ? `Nova tentativa automática em ${countdown}s${retryAttempt > 0 ? ` · tentativa ${retryAttempt}` : ""}.`
+                  : "Aguardando o worker responder. Você pode atualizar manualmente."}
+            </p>
+          </div>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={retrying}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/25",
+                retrying && "opacity-60 cursor-not-allowed",
+              )}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", retrying && "animate-spin")} />
+              {retrying ? "Reconectando…" : "Tentar agora"}
+            </button>
+          )}
+        </div>
+      )}
+
       {job.status === "reconnecting" && (
         <div className="flex items-center gap-2 rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-xs text-muted-foreground">
           <WifiOff className="h-4 w-4 text-secondary" />
