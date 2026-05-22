@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock, Gauge, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Gauge, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
 
 import {
   BUILD_STAGES,
@@ -27,8 +27,14 @@ interface BuildPipelineViewProps {
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
   onCancel?: () => unknown | Promise<unknown>;
+  /** Manual resync — re-fetches job state + re-arms realtime. */
+  onRetry?: () => unknown | Promise<unknown>;
   /** Estimated final artifact size in MB, used to compute throughput (default 75 MB). */
   estimatedSizeMB?: number;
+  /** Seconds without any progress update before showing the freeze warning (default 25s). */
+  freezeThresholdSec?: number;
+  /** Seconds for the auto-retry countdown once freeze is detected (default 15s). */
+  autoRetryAfterSec?: number;
 }
 
 function formatEta(seconds: number): string {
@@ -76,7 +82,16 @@ function StageDot({ stage, active, done }: { stage: BuildStage; active: boolean;
   );
 }
 
-export default function BuildPipelineView({ job, formatLabel, packageName, onCancel, estimatedSizeMB = 75 }: BuildPipelineViewProps) {
+export default function BuildPipelineView({
+  job,
+  formatLabel,
+  packageName,
+  onCancel,
+  onRetry,
+  estimatedSizeMB = 75,
+  freezeThresholdSec = 25,
+  autoRetryAfterSec = 15,
+}: BuildPipelineViewProps) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const rawProgress = Math.max(0, Math.min(100, Math.round(job.progress || 0)));
@@ -186,6 +201,57 @@ export default function BuildPipelineView({ job, formatLabel, packageName, onCan
     }
   };
 
+  // --- Freeze detection ---
+  // Track the wall-clock time of the last observed progress/label change.
+  // If nothing changes for `freezeThresholdSec` while active, surface a retry UI.
+  const lastChangeRef = useRef<number>(Date.now());
+  const lastSnapshotRef = useRef<string>("");
+  const [nowTick, setNowTick] = useState(Date.now());
+  const [retrying, setRetrying] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const autoRetryFiredRef = useRef<number>(0);
+
+  useEffect(() => {
+    const snapshot = `${job.status}|${rawProgress}|${job.stepLabel}`;
+    if (snapshot !== lastSnapshotRef.current) {
+      lastSnapshotRef.current = snapshot;
+      lastChangeRef.current = Date.now();
+    }
+  }, [job.status, rawProgress, job.stepLabel]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
+
+  const stalledSec = isActive ? Math.floor((nowTick - lastChangeRef.current) / 1000) : 0;
+  const isFrozen = isActive && stalledSec >= freezeThresholdSec;
+  const countdown = isFrozen ? Math.max(0, autoRetryAfterSec - (stalledSec - freezeThresholdSec)) : autoRetryAfterSec;
+
+  const handleRetry = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    setRetryAttempt((n) => n + 1);
+    try {
+      await onRetry();
+      lastChangeRef.current = Date.now(); // give the retry a fresh window
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  // Auto-retry once countdown elapses. Re-fires every full window while still frozen.
+  useEffect(() => {
+    if (!isFrozen || !onRetry || retrying) return;
+    if (countdown > 0) return;
+    const bucket = Math.floor(stalledSec / Math.max(1, freezeThresholdSec + autoRetryAfterSec));
+    if (autoRetryFiredRef.current === bucket) return;
+    autoRetryFiredRef.current = bucket;
+    void handleRetry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFrozen, countdown, onRetry, retrying, stalledSec, freezeThresholdSec, autoRetryAfterSec]);
+
   const shownProgress = isDone ? 100 : Math.round(displayedProgress);
 
   return (
@@ -252,6 +318,36 @@ export default function BuildPipelineView({ job, formatLabel, packageName, onCan
           </div>
         )}
       </div>
+
+      {isFrozen && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground">
+          <WifiOff className="h-4 w-4 shrink-0 text-amber-400" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-amber-300">Sem atualizações há {stalledSec}s</p>
+            <p className="text-[11px] text-muted-foreground">
+              {retrying
+                ? "Sincronizando com o servidor…"
+                : onRetry
+                  ? `Nova tentativa automática em ${countdown}s${retryAttempt > 0 ? ` · tentativa ${retryAttempt}` : ""}.`
+                  : "Aguardando o worker responder. Você pode atualizar manualmente."}
+            </p>
+          </div>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={retrying}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-500/25",
+                retrying && "opacity-60 cursor-not-allowed",
+              )}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", retrying && "animate-spin")} />
+              {retrying ? "Reconectando…" : "Tentar agora"}
+            </button>
+          )}
+        </div>
+      )}
 
       {job.status === "reconnecting" && (
         <div className="flex items-center gap-2 rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-xs text-muted-foreground">
