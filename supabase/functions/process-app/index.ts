@@ -204,9 +204,20 @@ Deno.serve(async (req) => {
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
+  const stdoutLines: string[] = [];
+  const stderrLines: string[] = [];
+  let finalStatusWritten = false;
+  const logOut = (message: string) => {
+    stdoutLines.push(`[${new Date().toISOString()}] ${message}`);
+    console.log(message);
+  };
+  const logErr = (message: string) => {
+    stderrLines.push(`[${new Date().toISOString()}] ${message}`);
+    console.error(message);
+  };
 
   try {
-    console.log("[PROCESS] Starting process-app execution");
+    logOut("[PROCESS] Starting process-app execution");
 
     currentStep = "client_setup";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -254,11 +265,27 @@ Deno.serve(async (req) => {
     }
     const ownerUserId = existingJob.user_id as string;
 
-    // --- mark as processing ---
+    // --- mark as running real state machine ---
     currentStep = "job_update_start";
     const { error: startUpdateError } = await supabase
       .from("conversion_jobs")
-      .update({ status: "processing", progress: 0, step_label: "Iniciando conversão...", error_message: null, processing_time_ms: 0 })
+      .update({
+        status: "preparing",
+        progress: 0,
+        step_label: "Iniciando conversão...",
+        build_stage: "preparing",
+        started_at: new Date(startTime).toISOString(),
+        error_message: null,
+        processing_time_ms: 0,
+        stdout_log: stdoutLines.join("\n"),
+        stderr_log: null,
+        exit_code: null,
+        final_stage: null,
+        finished_at: null,
+        timeout_at: null,
+        watchdog_reason: null,
+        last_log: stdoutLines.at(-1) ?? null,
+      })
       .eq("id", jobId);
 
     if (startUpdateError) {
