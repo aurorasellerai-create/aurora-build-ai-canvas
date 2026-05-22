@@ -266,7 +266,7 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
   }
 
   // Logged in but not admin
-  if (!isAdmin && !isProtectedAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center card-aurora p-8 max-w-md">
