@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Glo
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 import { useConversionJob } from "@/hooks/useConversionJob";
+import BuildPipelineView from "@/components/build/BuildPipelineView";
 
 type ConversionType = null | "apk-to-aab" | "aab-to-apk" | "to-pwa";
 
