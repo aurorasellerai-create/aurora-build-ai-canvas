@@ -30,13 +30,10 @@ interface UserDetail {
 
 type FilterType = "all" | "vip" | "cliente" | "premium" | "teste";
 
-const PROTECTED_ADMIN_EMAILS = [
-  "aurora.seller.ai@gmail.com",
-  "dayse74correia@hotmail.com",
-];
-
-const isProtectedAdminEmail = (email?: string | null) =>
-  !!email && PROTECTED_ADMIN_EMAILS.includes(email.toLowerCase());
+// Protected-admin identity comes from the server (access_role enriched by admin-data edge function).
+// Do not embed admin emails in the client bundle.
+const isProtectedAccessRole = (role?: string | null) =>
+  role === "founder" || role === "super_admin";
 
 const getRoleBadge = (role: string) => {
   if (role === "founder") return <Badge className="bg-purple-600 text-white border-purple-500 text-[10px]">👑 Founder</Badge>;
@@ -147,7 +144,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
   };
 
   const isFounder = (u: any) => u.access_role === "founder";
-  const isProtectedPrincipal = (u: any) => isProtectedAdminEmail(u.email);
+  const isProtectedPrincipal = (u: any) => isProtectedAccessRole(u?.access_role);
 
   // Selection handlers
   const toggleSelect = (id: string) => {
@@ -766,7 +763,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       <Select
                         value={selectedUser.access_role}
                         onValueChange={(val) => {
-                          if (isProtectedAdminEmail(selectedUser.email) && val !== selectedUser.access_role) {
+                          if (isProtectedAccessRole(selectedUser.access_role) && val !== selectedUser.access_role) {
                             toast({ title: "Acesso administrativo protegido", variant: "destructive" });
                             return;
                           }
@@ -855,7 +852,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase font-semibold">Ações Rápidas</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedUser.status === "ativo" && !isProtectedAdminEmail(selectedUser.email) ? (
+                    {selectedUser.status === "ativo" && !isProtectedAccessRole(selectedUser.access_role) ? (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" }); setSelectedUser({ ...selectedUser, status: "bloqueado" }); }}
                         className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
@@ -870,7 +867,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                         <Unlock className="w-3 h-3" /> Desbloquear
                       </button>
                     ) : null}
-                    {!isProtectedAdminEmail(selectedUser.email) && <button
+                    {!isProtectedAccessRole(selectedUser.access_role) && <button
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir este usuário? Esta ação é irreversível.")) {
                           deleteUser.mutate({ user_id: selectedUser.user_id });

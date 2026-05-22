@@ -5,13 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const PROTECTED_ADMIN_EMAILS = [
-  "aurora.seller.ai@gmail.com",
-  "dayse74correia@hotmail.com",
-];
-
-const isProtectedAdminEmail = (email?: string | null) =>
-  !!email && PROTECTED_ADMIN_EMAILS.includes(email.toLowerCase());
+// Privileged-admin identity is enforced server-side via has_role + PROTECTED_ADMIN_EMAILS env var.
+// Do not embed admin emails in the client bundle.
 
 interface AdminPinGateProps {
   children: ReactNode;
@@ -228,7 +223,6 @@ const AdminLoginForm = () => {
 
 const AdminPinGate = ({ children }: AdminPinGateProps) => {
   const { user, loading: authLoading } = useAuth();
-  const isProtectedAdmin = isProtectedAdminEmail(user?.email);
 
   const {
     data: isAdmin,
@@ -241,7 +235,7 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
         supabase.rpc("has_role", { _user_id: user!.id, _role: "admin" as any }),
         supabase.rpc("has_role", { _user_id: user!.id, _role: "founder" as any }),
       ]);
-      return !!isAdminRole || !!isFounderRole || isProtectedAdminEmail(user?.email);
+      return !!isAdminRole || !!isFounderRole;
     },
     enabled: !!user && !authLoading,
     retry: 2,
@@ -272,7 +266,7 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
   }
 
   // Logged in but not admin
-  if (!isAdmin && !isProtectedAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center card-aurora p-8 max-w-md">
