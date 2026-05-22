@@ -621,8 +621,8 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const isServiceRole = token === serviceRoleKey;
 
+    let userEmail: string | null = null;
     if (!isServiceRole) {
-      // Must be a valid authenticated user JWT (NOT the anon key).
       if (token === anonKey) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
@@ -640,6 +640,7 @@ Deno.serve(async (req) => {
           status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
+      userEmail = (claimsData.claims.email as string | undefined)?.toLowerCase() ?? null;
     }
 
 
@@ -656,6 +657,23 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
+    }
+
+    // SECURITY: with a user JWT, restrict to safe self-targeted templates
+    // to prevent phishing/email abuse from the official sender domain.
+    if (!isServiceRole) {
+      const USER_ALLOWED_TEMPLATES: TemplateName[] = ["welcome"];
+      if (!USER_ALLOWED_TEMPLATES.includes(body.templateName)) {
+        return new Response(JSON.stringify({ error: "Forbidden template for user context" }), {
+          status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const recipient = String(body.recipientEmail).trim().toLowerCase();
+      if (!userEmail || recipient !== userEmail) {
+        return new Response(JSON.stringify({ error: "Recipient must match authenticated user" }), {
+          status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { subject, html } = renderTemplate(body);
