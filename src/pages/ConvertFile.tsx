@@ -242,12 +242,20 @@ const ConvertFile = () => {
               >
                 {converting || isAabToApkRunning ? (
                   <>
-                    <RefreshCw className="w-5 h-5 animate-spin" /> Convertendo...
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    {converting && uploadProgress > 0 && uploadProgress < 100 ? `Enviando ${uploadProgress}%...` : "Convertendo..."}
                   </>
                 ) : (
                   "Converter agora"
                 )}
               </button>
+
+              {converting && uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+
 
               {conversionType === "aab-to-apk" && job.status !== "idle" && (
                 <div className="space-y-3">
