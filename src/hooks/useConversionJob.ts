@@ -248,9 +248,21 @@ export function useConversionJob() {
       stopTimeout();
       timeoutRef.current = setTimeout(() => {
         if (mountedRef.current) {
+          supabase.from("conversion_jobs").update({
+            status: "timeout",
+            step_label: "TIMEOUT — build encerrado pelo watchdog",
+            error_message: "Build excedeu 10 minutos sem status final e foi encerrado automaticamente.",
+            finished_at: new Date().toISOString(),
+            timeout_at: new Date().toISOString(),
+            final_stage: "timeout",
+            watchdog_reason: "Fail-safe do cliente: nenhum status final recebido dentro do limite operacional.",
+            last_log: "Watchdog local forçou timeout para evitar processing infinito.",
+          }).eq("id", jobId).then(({ error }) => {
+            if (error) console.warn("[CONVERT] Failed to persist timeout:", error.message);
+          });
           safeSet((prev) => {
             if (prev.status === "processing" || prev.status === "reconnecting") {
-              return { status: "timeout", errorMessage: "Processamento demorando mais que o esperado. Tente novamente." };
+              return { status: "timeout", errorMessage: "Build excedeu 10 minutos sem status final e foi encerrado automaticamente." };
             }
             return {};
           });
