@@ -556,22 +556,40 @@ interface EmailRequest {
   data?: Record<string, any>;
 }
 
+function esc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escUrl(s: unknown): string {
+  const raw = String(s ?? "").trim();
+  // Only allow http(s) URLs; otherwise neutralize to prevent javascript: / data: injection
+  if (!/^https?:\/\//i.test(raw)) return "#";
+  return esc(raw);
+}
+
 function renderTemplate(req: EmailRequest): { subject: string; html: string } {
-  const name = req.data?.name || "usuário";
+  // HTML-escape ALL user-supplied values before they enter template strings
+  // to prevent in-email HTML/phishing injection (e.g. display_name with <a> tags).
+  const name = esc(req.data?.name || "usuário");
 
   switch (req.templateName) {
     case "welcome":
       return welcomeEmail(name);
     case "plan-confirmation":
-      return planConfirmationEmail(name, req.data?.plan || "pro", req.data?.credits || 0);
+      return planConfirmationEmail(name, req.data?.plan || "pro", Number(req.data?.credits) || 0);
     case "credit-purchase":
-      return creditPurchaseEmail(name, req.data?.creditsAmount || 0, req.data?.packageName || "starter");
+      return creditPurchaseEmail(name, Number(req.data?.creditsAmount) || 0, req.data?.packageName || "starter");
     case "password-reset":
-      return passwordResetEmail(name, req.data?.resetLink || "");
+      return passwordResetEmail(name, escUrl(req.data?.resetLink));
     case "app-ready":
-      return appReadyEmail(name, req.data?.appName || "Seu App", req.data?.downloadUrl || "");
+      return appReadyEmail(name, esc(req.data?.appName || "Seu App"), escUrl(req.data?.downloadUrl));
     case "app-failed":
-      return appFailedEmail(name, req.data?.appName || "Seu App", req.data?.errorMessage || "Erro desconhecido");
+      return appFailedEmail(name, esc(req.data?.appName || "Seu App"), esc(req.data?.errorMessage || "Erro desconhecido"));
     case "plan-renewal":
       return planRenewalEmail(name, req.data?.plan || "pro");
     case "plan-cancelled":
