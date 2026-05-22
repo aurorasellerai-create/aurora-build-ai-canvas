@@ -83,51 +83,84 @@ export type Database = {
       conversion_jobs: {
         Row: {
           archived: boolean
+          build_stage: string | null
           created_at: string
           deletion_scheduled_at: string | null
           download_url: string | null
           error_message: string | null
+          exit_code: number | null
+          final_stage: string | null
+          finished_at: string | null
           id: string
+          last_log: string | null
           marked_for_deletion: boolean
           processing_time_ms: number | null
           progress: number
+          recovery_diagnosis: Json | null
           source_url: string
+          started_at: string | null
           status: string
+          stderr_log: string | null
+          stdout_log: string | null
           step_label: string | null
+          timeout_at: string | null
           updated_at: string
           user_id: string
+          watchdog_reason: string | null
         }
         Insert: {
           archived?: boolean
+          build_stage?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
           download_url?: string | null
           error_message?: string | null
+          exit_code?: number | null
+          final_stage?: string | null
+          finished_at?: string | null
           id?: string
+          last_log?: string | null
           marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
+          recovery_diagnosis?: Json | null
           source_url: string
+          started_at?: string | null
           status?: string
+          stderr_log?: string | null
+          stdout_log?: string | null
           step_label?: string | null
+          timeout_at?: string | null
           updated_at?: string
           user_id: string
+          watchdog_reason?: string | null
         }
         Update: {
           archived?: boolean
+          build_stage?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
           download_url?: string | null
           error_message?: string | null
+          exit_code?: number | null
+          final_stage?: string | null
+          finished_at?: string | null
           id?: string
+          last_log?: string | null
           marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
+          recovery_diagnosis?: Json | null
           source_url?: string
+          started_at?: string | null
           status?: string
+          stderr_log?: string | null
+          stdout_log?: string | null
           step_label?: string | null
+          timeout_at?: string | null
           updated_at?: string
           user_id?: string
+          watchdog_reason?: string | null
         }
         Relationships: []
       }
@@ -677,6 +710,10 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: string
+      }
+      mark_stale_conversion_jobs_as_timeout: {
+        Args: { _max_age?: string }
+        Returns: number
       }
       process_referral_rewards: {
         Args: { p_referrer_id: string }
