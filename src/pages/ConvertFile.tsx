@@ -5,7 +5,11 @@ import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Glo
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 import { useConversionJob } from "@/hooks/useConversionJob";
+import { supabase } from "@/integrations/supabase/client";
 import BuildPipelineView from "@/components/pipeline/SafeBuildPipelineView";
+
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB enterprise limit
+
 
 type ConversionType = null | "apk-to-aab" | "aab-to-apk" | "to-pwa";
 
@@ -33,37 +37,55 @@ const CONVERSIONS = [
   },
 ];
 
-const fileToBase64 = (input: File) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result));
-  reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
-  reader.readAsDataURL(input);
-});
-
 const ConvertFile = () => {
   const [conversionType, setConversionType] = useState<ConversionType>(null);
   const [file, setFile] = useState<File | null>(null);
   const [converting, setConverting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { balance, consumeCredits, getCost } = useCredits();
   const job = useConversionJob();
 
   const handleConvert = async () => {
     if (!file || !conversionType) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast({ title: "Arquivo muito grande", description: "Envie um AAB de até 20MB.", variant: "destructive" });
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast({ title: "Arquivo muito grande", description: `Limite máximo: ${(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)}MB.`, variant: "destructive" });
+      return;
+    }
+    if (file.size < 256) {
+      toast({ title: "Arquivo inválido", description: "Arquivo muito pequeno para ser um app válido.", variant: "destructive" });
       return;
     }
 
     setConverting(true);
+    setUploadProgress(0);
     try {
       const credited = await consumeCredits("generate_app");
       if (!credited) return;
 
       if (conversionType === "aab-to-apk") {
-        const fileBase64 = await fileToBase64(file);
+        // Direct-to-storage upload (suporta arquivos grandes sem base64/edge memory)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const tempId = crypto.randomUUID();
+        const storagePath = `${user.id}/pending-${tempId}/${safeName}`;
+
+        setUploadProgress(5);
+        const { error: uploadError } = await supabase.storage
+          .from("aab-files")
+          .upload(storagePath, file, {
+            contentType: "application/octet-stream",
+            upsert: false,
+            cacheControl: "3600",
+          });
+        if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+        setUploadProgress(100);
+        console.info("[UPLOAD] Large file uploaded", { path: storagePath, sizeMB: (file.size / 1024 / 1024).toFixed(1) });
+
         const started = await job.submit("aab-upload", {
           functionName: "convert-aab-to-apk",
-          body: { fileName: file.name, fileBase64 },
+          body: { fileName: safeName, storagePath, fileSize: file.size },
         });
         if (started) toast({ title: "Conversão iniciada", description: "Usando bundletool oficial do Google em modo universal." });
         return;
@@ -79,6 +101,7 @@ const ConvertFile = () => {
       setConverting(false);
     }
   };
+
 
   const currentStep = conversionType === null ? 1 : !file ? 2 : 3;
   const selectedConversion = CONVERSIONS.find((c) => c.id === conversionType);
@@ -177,9 +200,10 @@ const ConvertFile = () => {
                   <>
                     <p className="text-sm text-foreground font-semibold">Clique para selecionar</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Arquivo {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"}
+                      Arquivo {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"} • até {(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)}MB
                     </p>
                   </>
+
                 )}
                 <input
                   type="file"
@@ -218,12 +242,20 @@ const ConvertFile = () => {
               >
                 {converting || isAabToApkRunning ? (
                   <>
-                    <RefreshCw className="w-5 h-5 animate-spin" /> Convertendo...
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    {converting && uploadProgress > 0 && uploadProgress < 100 ? `Enviando ${uploadProgress}%...` : "Convertendo..."}
                   </>
                 ) : (
                   "Converter agora"
                 )}
               </button>
+
+              {converting && uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+
 
               {conversionType === "aab-to-apk" && job.status !== "idle" && (
                 <div className="space-y-3">
