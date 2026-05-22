@@ -66,9 +66,15 @@ const markJobAsFailed = async (
     await supabase
       .from("conversion_jobs")
       .update({
-        status: "error",
+        status: "failed",
         step_label: "Erro na conversão",
+        build_stage: step,
+        final_stage: step,
         error_message: message,
+        stderr_log: message,
+        last_log: message,
+        exit_code: 1,
+        finished_at: new Date().toISOString(),
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);
