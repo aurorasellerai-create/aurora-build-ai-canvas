@@ -410,10 +410,10 @@ Deno.serve(async (req) => {
             .eq("user_id", job.user_id)
             .maybeSingle();
 
-          const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+          const svcKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
           await fetch(`${supabaseUrl}/functions/v1/send-email`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${svcKey}` },
             body: JSON.stringify({
               templateName: "app-ready",
               recipientEmail: user.email,
