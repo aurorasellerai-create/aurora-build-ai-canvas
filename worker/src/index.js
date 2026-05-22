@@ -131,6 +131,14 @@ app.get("/health", async (req, res) => {
     const mem = process.memoryUsage();
     const responseTime = Date.now() - startTime;
 
+    if (!isAuthorized) {
+      // Minimal public response — no version, memory, queue, or uptime leakage
+      return res.json({
+        status: redisOk ? "ok" : "degraded",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     res.json({
       status: redisOk ? "ok" : "degraded",
       uptime: Math.floor(process.uptime()),
