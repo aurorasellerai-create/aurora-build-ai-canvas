@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
+import { readJsonCapped, PayloadTooLargeError, InvalidJsonError } from "../_shared/payloadGuard.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -13,6 +15,7 @@ function getCorsHeaders(req?: Request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    ...SECURITY_RESPONSE_HEADERS,
   };
 }
 
@@ -58,9 +61,10 @@ Deno.serve(async (req) => {
     // Validate body
     let body: unknown;
     try {
-      body = await req.json();
-      console.log("[CONVERT] Input received:", JSON.stringify(body));
-    } catch {
+      body = await readJsonCapped(req, 16 * 1024); // 16 KiB — URL + metadata only
+    } catch (e) {
+      if (e instanceof PayloadTooLargeError) return respond({ success: false, error: e.message, step: "input_parsing" }, 413);
+      if (e instanceof InvalidJsonError) return respond({ success: false, error: "Body JSON inválido", step: "input_parsing" }, 400);
       return respond({ success: false, error: "Body JSON inválido", step: "input_parsing" });
     }
 
