@@ -423,15 +423,27 @@ Deno.serve(async (req) => {
     return respond({ success: true, job_id: jobId, download_url: downloadUrl, message: "Processamento concluído com sucesso." });
   } catch (error) {
     const errorMessage = getErrorMessage(error);
-    console.error(`[PROCESS] Unexpected error at step ${currentStep}:`, error);
+    logErr(`[PROCESS] Unexpected error at step ${currentStep}: ${errorMessage}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (jobId && supabaseUrl && serviceKey) {
+    if (jobId && supabaseUrl && serviceKey && !finalStatusWritten) {
       const supabase = createClient(supabaseUrl, serviceKey);
       await markJobAsFailed(supabase, jobId, errorMessage, currentStep, startTime);
     }
 
     return respond({ success: false, error: "Falha interna durante o processamento.", step: currentStep, job_id: jobId });
+  } finally {
+    if (jobId && !finalStatusWritten) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey) {
+        const supabase = createClient(supabaseUrl, serviceKey);
+        const { data: job } = await supabase.from("conversion_jobs").select("status").eq("id", jobId).maybeSingle();
+        if (job && !["completed", "failed", "timeout", "cancelled", "done", "error"].includes(job.status)) {
+          await markJobAsFailed(supabase, jobId, "Worker finalizou sem gravar status final.", currentStep, startTime);
+        }
+      }
+    }
   }
 });
