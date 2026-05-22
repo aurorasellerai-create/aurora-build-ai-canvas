@@ -311,11 +311,18 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       const errMsg = getErrorMessage(error);
-      const msg = error instanceof DOMException && error.name === "AbortError"
-        ? "A validação da URL demorou demais. Tente novamente."
-        : /private address|not allowed|DNS/i.test(errMsg)
-          ? "URL não permitida. Use um domínio público acessível pela internet."
-          : "Erro ao acessar o link. Verifique a URL e tente novamente.";
+      let msg: string;
+      if (error instanceof SafeFetchError) {
+        logErr(`[SECURITY] URL rejected by guard (${error.code}): ${errMsg}`);
+        msg = "URL não permitida. Use um domínio público acessível pela internet.";
+      } else if (error instanceof DOMException && error.name === "AbortError") {
+        msg = "A validação da URL demorou demais. Tente novamente.";
+      } else if (/private|metadata|denylist|DNS|PORT|PROTOCOL|REDIRECT/i.test(errMsg)) {
+        logErr(`[SECURITY] URL blocked: ${errMsg}`);
+        msg = "URL não permitida. Use um domínio público acessível pela internet.";
+      } else {
+        msg = "Erro ao acessar o link. Verifique a URL e tente novamente.";
+      }
       await markJobAsFailed(supabase, jobId, msg, currentStep, startTime);
       return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
     }
