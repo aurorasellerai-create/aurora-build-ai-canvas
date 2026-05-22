@@ -10,7 +10,7 @@ interface SafeBuildPipelineViewProps {
   job: ConversionJobLike;
   formatLabel: string;
   packageName: string;
-  onCancel?: () => void | Promise<void>;
+  onCancel?: () => unknown | Promise<unknown>;
 }
 
 
