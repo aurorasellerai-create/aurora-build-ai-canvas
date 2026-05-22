@@ -16,6 +16,8 @@ import {
   deriveValidatorScores,
 } from "@/components/validator/ValidatorPremium";
 import { ValidatorAuditTimeline } from "@/components/validator/ValidatorAuditTimeline";
+import AiExplanationPanel from "@/components/validator/AiExplanationCard";
+
 import {
   flushPendingValidatorCorrections,
   saveValidatorCorrection,
