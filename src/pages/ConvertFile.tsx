@@ -200,9 +200,10 @@ const ConvertFile = () => {
                   <>
                     <p className="text-sm text-foreground font-semibold">Clique para selecionar</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Arquivo {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"}
+                      Arquivo {conversionType === "apk-to-aab" ? ".apk" : conversionType === "aab-to-apk" ? ".aab" : ".apk ou .aab"} • até {(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)}MB
                     </p>
                   </>
+
                 )}
                 <input
                   type="file"
