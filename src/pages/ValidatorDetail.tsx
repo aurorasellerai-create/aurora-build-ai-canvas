@@ -1084,12 +1084,37 @@ function AndroidDeepAnalysis({
         ]}
       />
 
+      <AiExplanationPanel
+        items={[
+          ...manifest.map((i) => ({
+            key: i.key.replace(/^manifest:/, "manifest:"),
+            detectedSeverity: i.sev,
+            fallbackDescription: `${i.label}: ${i.value}`,
+            source: "Manifest" as const,
+          })),
+          ...permissions.map((i) => ({
+            key: i.name,
+            detectedSeverity: i.sev,
+            fallbackDescription: i.desc,
+            source: "Permissão" as const,
+          })),
+          ...scan.map((i) => ({
+            key: i.key,
+            detectedSeverity: i.sev,
+            fallbackDescription: `${i.area}: ${i.result}`,
+            source: "Scan" as const,
+          })),
+        ].filter((i) => i.detectedSeverity !== "ok")}
+        typing
+      />
+
       <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex items-start gap-3">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
           Análise gerada a partir do arquivo {format.toUpperCase()} enviado. Para publicar na Play Store, corrija itens marcados como <span className="text-destructive font-bold">críticos</span> e revise as <span className="text-primary font-bold">permissões sensíveis</span> com justificativa no formulário de envio.
         </p>
       </div>
+
 
     </motion.section>
   );
