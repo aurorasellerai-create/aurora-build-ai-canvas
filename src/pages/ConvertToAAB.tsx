@@ -14,6 +14,7 @@ import { useConversionJob } from "@/hooks/useConversionJob";
 import { toast } from "@/hooks/use-toast";
 import { pwaAndroidFlowSteps } from "@/lib/pwaAndroidFlow";
 import BuildPipelineView from "@/components/build/BuildPipelineView";
+import BuildErrorPanel from "@/components/build/BuildErrorPanel";
 
 const ConvertToAAB = () => {
   const { user } = useAuth();
@@ -171,19 +172,11 @@ const ConvertToAAB = () => {
           )}
 
           {showError && (
-            <motion.div key="error" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
-              <XCircle className="w-16 h-16 text-destructive mx-auto" />
-              <h2 className="font-display text-xl font-bold text-foreground">
-                {job.status === "timeout" ? "Tempo esgotado" : "Erro na conversão"}
-              </h2>
-              <p className="text-sm text-muted-foreground">{job.errorMessage || "Ocorreu um erro inesperado."}</p>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="w-full py-3 bg-muted text-foreground font-display font-semibold rounded-lg border border-border hover:border-primary/40 transition-all flex items-center justify-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" /> Tentar novamente
-              </button>
+            <motion.div key="error" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+              <BuildErrorPanel
+                errorMessage={job.errorMessage || (job.status === "timeout" ? "Tempo esgotado durante a conversão." : "Erro inesperado.")}
+                onRetry={handleReset}
+              />
             </motion.div>
           )}
 
