@@ -223,7 +223,6 @@ const AdminLoginForm = () => {
 
 const AdminPinGate = ({ children }: AdminPinGateProps) => {
   const { user, loading: authLoading } = useAuth();
-  const isProtectedAdmin = isProtectedAdminEmail(user?.email);
 
   const {
     data: isAdmin,
@@ -236,7 +235,7 @@ const AdminPinGate = ({ children }: AdminPinGateProps) => {
         supabase.rpc("has_role", { _user_id: user!.id, _role: "admin" as any }),
         supabase.rpc("has_role", { _user_id: user!.id, _role: "founder" as any }),
       ]);
-      return !!isAdminRole || !!isFounderRole || isProtectedAdminEmail(user?.email);
+      return !!isAdminRole || !!isFounderRole;
     },
     enabled: !!user && !authLoading,
     retry: 2,
