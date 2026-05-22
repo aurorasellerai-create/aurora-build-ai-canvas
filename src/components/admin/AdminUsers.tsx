@@ -764,7 +764,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                       <Select
                         value={selectedUser.access_role}
                         onValueChange={(val) => {
-                          if (isProtectedAdminEmail(selectedUser.email) && val !== selectedUser.access_role) {
+                          if (isProtectedAccessRole(selectedUser.access_role) && val !== selectedUser.access_role) {
                             toast({ title: "Acesso administrativo protegido", variant: "destructive" });
                             return;
                           }
