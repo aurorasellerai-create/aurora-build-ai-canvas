@@ -397,9 +397,12 @@ Deno.serve(async (req) => {
         return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
       }
     } catch (error) {
+      const errMsg = getErrorMessage(error);
       const msg = error instanceof DOMException && error.name === "AbortError"
         ? "A validação da URL demorou demais. Tente novamente."
-        : "Erro ao acessar o link. Verifique a URL e tente novamente.";
+        : /private address|not allowed|DNS/i.test(errMsg)
+          ? "URL não permitida. Use um domínio público acessível pela internet."
+          : "Erro ao acessar o link. Verifique a URL e tente novamente.";
       await markJobAsFailed(supabase, jobId, msg, currentStep, startTime);
       return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
     }
