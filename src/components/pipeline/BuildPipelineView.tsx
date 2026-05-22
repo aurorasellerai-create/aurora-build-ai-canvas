@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock, Gauge, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Gauge, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
 
 import {
   BUILD_STAGES,
