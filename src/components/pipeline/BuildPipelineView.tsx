@@ -27,8 +27,14 @@ interface BuildPipelineViewProps {
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
   onCancel?: () => unknown | Promise<unknown>;
+  /** Manual resync — re-fetches job state + re-arms realtime. */
+  onRetry?: () => unknown | Promise<unknown>;
   /** Estimated final artifact size in MB, used to compute throughput (default 75 MB). */
   estimatedSizeMB?: number;
+  /** Seconds without any progress update before showing the freeze warning (default 25s). */
+  freezeThresholdSec?: number;
+  /** Seconds for the auto-retry countdown once freeze is detected (default 15s). */
+  autoRetryAfterSec?: number;
 }
 
 function formatEta(seconds: number): string {
