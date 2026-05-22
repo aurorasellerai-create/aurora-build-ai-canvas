@@ -188,32 +188,9 @@ const ConvertToAAB = () => {
           )}
 
           {showProcessing && (
-            <motion.div key="processing" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-aurora p-8 space-y-6 text-center">
-              <Loader2 className="w-14 h-14 text-primary mx-auto animate-spin" />
-              <h2 className="font-display text-xl font-bold text-foreground">{job.stepLabel || "Processando..."}</h2>
-
-              {job.status === "reconnecting" && (
-                <div className="flex items-center justify-center gap-2 text-xs text-destructive/80">
-                  <WifiOff className="w-3.5 h-3.5" />
-                  <span>Reconectando...</span>
-                </div>
-              )}
-
-              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: "linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary)))" }}
-                  animate={{ width: `${Math.min(job.progress, 100)}%` }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{Math.round(Math.min(job.progress, 100))}%</span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> ~{Math.max(1, Math.round((100 - job.progress) * 0.2 / 10))} min
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">Não feche esta página.</p>
+            <motion.div key="processing" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+              <BuildPipelineView job={job} formatLabel="AAB" packageName={`com.aurora.${(appUrl.match(/\/\/([^/]+)/)?.[1] || "app").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 20) || "app"}`} />
+              <p className="text-[11px] text-muted-foreground text-center mt-3">Não feche esta página. O build continua mesmo se a conexão cair.</p>
             </motion.div>
           )}
 
