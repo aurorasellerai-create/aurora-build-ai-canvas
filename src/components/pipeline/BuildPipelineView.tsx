@@ -181,7 +181,13 @@ export default function BuildPipelineView({
     return getReachedStages(rawProgress);
   }, [isFailure, rawProgress]);
   const reachedNames = new Set(reachedStages.map((stage) => stage.status));
-  const logs = useMemo(() => reachedStages.flatMap((stage) => logsForStage(stage.status)), [reachedStages]);
+  const logs = useMemo(
+    () =>
+      reachedStages.flatMap((stage) =>
+        logsForStage(stage.status).map((log) => ({ ...log, stageStatus: stage.status, stageLabel: stage.shortLabel })),
+      ),
+    [reachedStages],
+  );
   const CurrentIcon = currentStage.icon;
   const color = COLOR_CLASS[currentStage.color];
   const canCancel = Boolean(onCancel) && isActive;
