@@ -318,6 +318,47 @@ export function useConversionJob() {
     [state.status, safeSet, watchJob],
   );
 
+  // --- Cancel current job ---
+  const cancel = useCallback(async (): Promise<boolean> => {
+    const jobId = state.jobId;
+    if (!jobId) {
+      reset();
+      return true;
+    }
+    if (state.status !== "processing" && state.status !== "reconnecting" && state.status !== "submitting") {
+      return false;
+    }
+
+    // Optimistic UI: immediately switch to cancelled state
+    cleanupAll();
+    clearPersistedJob();
+    safeSet({
+      status: "cancelled",
+      errorMessage: "Conversão cancelada pelo usuário.",
+      stepLabel: "Cancelado",
+    });
+    toast({ title: "Conversão cancelada", description: "O build foi interrompido. Você pode iniciar uma nova conversão." });
+
+    // Best-effort DB update so the worker sees the cancellation
+    try {
+      const { error } = await supabase
+        .from("conversion_jobs")
+        .update({
+          status: "cancelled",
+          step_label: "Cancelado pelo usuário",
+          error_message: "Conversão cancelada pelo usuário.",
+          finished_at: new Date().toISOString(),
+          final_stage: "cancelled",
+          last_log: "Usuário acionou o botão de cancelar no client.",
+        })
+        .eq("id", jobId);
+      if (error) console.warn("[CONVERT] Cancel persistence failed:", error.message);
+    } catch (err) {
+      console.warn("[CONVERT] Cancel persistence error:", err);
+    }
+    return true;
+  }, [state.jobId, state.status, cleanupAll, safeSet, reset]);
+
   // --- Reset ---
   const reset = useCallback(() => {
     resetFlagRef.current = true;
@@ -325,6 +366,7 @@ export function useConversionJob() {
     clearPersistedJob();
     setState(initialState);
   }, [cleanupAll]);
+
 
   // --- Restore persisted job on mount ---
   useEffect(() => {
