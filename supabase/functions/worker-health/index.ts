@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -12,7 +13,25 @@ function getCorsHeaders(req?: Request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary": "Origin",
   };
+}
+
+function jsonResponse(req: Request, status: number, body: Record<string, unknown>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...getCorsHeaders(req),
+      ...SECURITY_RESPONSE_HEADERS,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+function clientFingerprint(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for") || "";
+  const ua = (req.headers.get("user-agent") || "").slice(0, 80);
+  return `${fwd.split(",")[0].trim() || "unknown"}|${ua}`;
 }
 
 Deno.serve(async (req) => {
@@ -20,45 +39,57 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
+  const correlationId = crypto.randomUUID();
+
   try {
-    // Require authentication
+    // 1. Require an Authorization header.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-      });
+      console.warn(`[SECURITY] worker-health unauthenticated access blocked cid=${correlationId} fp=${clientFingerprint(req)}`);
+      return jsonResponse(req, 401, { error: "Unauthorized", correlationId });
     }
 
+    // 2. Validate JWT via Supabase claims (verifies signature + expiration).
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-      });
+      console.warn(`[SECURITY] worker-health invalid JWT cid=${correlationId} fp=${clientFingerprint(req)}`);
+      return jsonResponse(req, 401, { error: "Unauthorized", correlationId });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const claims = claimsData.claims as Record<string, unknown>;
+    const userId = claims.sub as string | undefined;
+    const exp = typeof claims.exp === "number" ? claims.exp : 0;
 
+    // 3. Explicit expiration check (defense-in-depth — getClaims already enforces).
+    if (!userId || (exp && exp * 1000 < Date.now())) {
+      console.warn(`[SECURITY] worker-health expired/invalid token cid=${correlationId}`);
+      return jsonResponse(req, 401, { error: "Unauthorized", correlationId });
+    }
+
+    // 4. Role authorization — admin/founder only. Deny-by-default on any error.
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Restrict health/queue metadata to privileged roles only.
     const { data: isPrivileged, error: roleError } = await supabase.rpc("is_privileged", {
       _user_id: userId,
     });
-    if (roleError || !isPrivileged) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-      });
+    if (roleError) {
+      console.error(`[SECURITY] worker-health role lookup failed cid=${correlationId}:`, roleError.message);
+      return jsonResponse(req, 403, { error: "Forbidden", correlationId });
+    }
+    if (!isPrivileged) {
+      console.warn(`[SECURITY] worker-health forbidden user=${userId} cid=${correlationId} fp=${clientFingerprint(req)}`);
+      return jsonResponse(req, 403, { error: "Forbidden", correlationId });
     }
 
+    // 5. Admin-only: gather queue stats.
     let dbStatus = "disconnected";
     let queueStats = { waiting: 0, active: 0, completed: 0, failed: 0 };
 
@@ -81,7 +112,7 @@ Deno.serve(async (req) => {
       dbStatus = "error";
     }
 
-    const health = {
+    return jsonResponse(req, 200, {
       status: "ok",
       mode: "serverless",
       database: dbStatus,
@@ -90,16 +121,11 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString(),
       version: "3.0.0",
       runtime: "edge",
-    };
-
-    return new Response(JSON.stringify(health, null, 2), {
-      status: 200,
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      correlationId,
     });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ status: "error", message: err.message }),
-      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
-    );
+    const message = err instanceof Error ? err.message : "unknown";
+    console.error(`[SECURITY] worker-health unexpected error cid=${correlationId}:`, message);
+    return jsonResponse(req, 500, { status: "error", message: "Internal error", correlationId });
   }
 });
