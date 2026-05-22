@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Bot, Send, Sparkles, ExternalLink } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+function MD({ children }: { children: string }) {
+  // minimal markdown: **bold**, line breaks
+  const html = children
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br/>");
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { askSecurityCopilot, type CopilotAnswer, type CopilotContext } from "@/lib/securityCopilotEngine";
