@@ -375,20 +375,151 @@ export default function BuildPipelineView({
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-muted/20 p-4">
-          <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
-            <Terminal className="h-3.5 w-3.5" /> Logs
-          </div>
-          <div className="max-h-80 space-y-2 overflow-auto font-mono text-[11px] leading-relaxed">
-            {logs.map((log, index) => (
-              <div key={`${log.ts}-${index}`} className="grid grid-cols-[70px_1fr] gap-2 rounded-md bg-background/60 px-2 py-1.5">
-                <span className="text-muted-foreground">{formatLogTime(log.ts)}</span>
-                <span className={cn(log.level === "ERROR" ? "text-destructive" : log.level === "SUCCESS" ? "text-primary" : "text-foreground")}>{log.message}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <LogsPanel
+          logs={logs}
+          stages={reachedStages.map((s) => ({ status: s.status, label: s.shortLabel }))}
+          packageName={packageName}
+          jobId={job.jobId}
+          formatLabel={formatLabel}
+          status={job.status}
+        />
       </div>
     </section>
+  );
+}
+
+interface LogEntry {
+  ts: Date | string | number;
+  level: string;
+  message: string;
+  stageStatus: string;
+  stageLabel: string;
+}
+
+function LogsPanel({
+  logs,
+  stages,
+  packageName,
+  jobId,
+  formatLabel,
+  status,
+}: {
+  logs: LogEntry[];
+  stages: { status: string; label: string }[];
+  packageName: string;
+  jobId: string | null;
+  formatLabel: string;
+  status: string;
+}) {
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [stageFilter, setStageFilter] = useState<string>("all");
+  const [copied, setCopied] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const filteredLogs = useMemo(
+    () => (stageFilter === "all" ? logs : logs.filter((l) => l.stageStatus === stageFilter)),
+    [logs, stageFilter],
+  );
+
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = scrollerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [filteredLogs.length, autoScroll]);
+
+  const handleCopy = async () => {
+    const header = [
+      `Aurora Build · Pipeline ${formatLabel}`,
+      `Job: ${jobId ?? "n/a"}`,
+      `Pacote: ${packageName}`,
+      `Status: ${status}`,
+      `Filtro: ${stageFilter === "all" ? "todas as etapas" : stageFilter}`,
+      `Exportado: ${new Date().toISOString()}`,
+      "—".repeat(48),
+    ].join("\n");
+    const body = filteredLogs
+      .map((l) => `[${formatLogTime(l.ts as Date)}] [${l.stageLabel}] [${l.level}] ${l.message}`)
+      .join("\n");
+    const text = `${header}\n${body}\n`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast({ title: "Logs copiados", description: "Cole na conversa com o suporte." });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Falha ao copiar", description: "Selecione e copie manualmente.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+          <Terminal className="h-3.5 w-3.5" /> Logs
+        </div>
+        <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+          {filteredLogs.length}/{logs.length}
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <select
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+            aria-label="Filtrar logs por etapa"
+            className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="all">Todas as etapas</option>
+            {stages.map((s) => (
+              <option key={s.status} value={s.status}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={(e) => setAutoScroll(e.target.checked)}
+              className="h-3 w-3 accent-primary"
+            />
+            Auto-scroll
+          </label>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copiar logs"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+          >
+            {copied ? <ClipboardCheck className="h-3 w-3 text-primary" /> : <ClipboardCopy className="h-3 w-3" />}
+            {copied ? "Copiado" : "Copiar"}
+          </button>
+        </div>
+      </div>
+      <div
+        ref={scrollerRef}
+        onWheel={() => {
+          const el = scrollerRef.current;
+          if (!el) return;
+          const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+          if (!atBottom && autoScroll) setAutoScroll(false);
+        }}
+        className="max-h-80 space-y-2 overflow-auto font-mono text-[11px] leading-relaxed"
+      >
+        {filteredLogs.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border bg-background/40 px-2 py-4 text-center text-muted-foreground">
+            Nenhum log para esta etapa ainda.
+          </div>
+        ) : (
+          filteredLogs.map((log, index) => (
+            <div key={`${log.ts}-${index}`} className="grid grid-cols-[70px_auto_1fr] gap-2 rounded-md bg-background/60 px-2 py-1.5">
+              <span className="text-muted-foreground tabular-nums">{formatLogTime(log.ts as Date)}</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{log.stageLabel}</span>
+              <span className={cn(log.level === "ERROR" ? "text-destructive" : log.level === "SUCCESS" ? "text-primary" : "text-foreground")}>
+                {log.message}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
