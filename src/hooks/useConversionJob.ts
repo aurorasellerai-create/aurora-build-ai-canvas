@@ -318,7 +318,16 @@ export function useConversionJob() {
     [state.status, safeSet, watchJob],
   );
 
+  // --- Reset (declared first so cancel can call it) ---
+  const reset = useCallback(() => {
+    resetFlagRef.current = true;
+    cleanupAll();
+    clearPersistedJob();
+    setState(initialState);
+  }, [cleanupAll]);
+
   // --- Cancel current job ---
+
   const cancel = useCallback(async (): Promise<boolean> => {
     const jobId = state.jobId;
     if (!jobId) {
