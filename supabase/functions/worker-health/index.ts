@@ -43,9 +43,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    const userId = claimsData.claims.sub as string;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Restrict health/queue metadata to privileged roles only.
+    const { data: isPrivileged, error: roleError } = await supabase.rpc("is_privileged", {
+      _user_id: userId,
+    });
+    if (roleError || !isPrivileged) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
 
     let dbStatus = "disconnected";
     let queueStats = { waiting: 0, active: 0, completed: 0, failed: 0 };
