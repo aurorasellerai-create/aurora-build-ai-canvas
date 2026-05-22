@@ -10,7 +10,9 @@ interface SafeBuildPipelineViewProps {
   job: ConversionJobLike;
   formatLabel: string;
   packageName: string;
+  onCancel?: () => unknown | Promise<unknown>;
 }
+
 
 // Lazy import isolates resolution errors from the parent bundle.
 // If the chunk fails to load (missing file, network error, build mismatch),

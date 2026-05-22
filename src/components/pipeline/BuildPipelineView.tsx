@@ -1,5 +1,6 @@
-import { useMemo } from "react";
-import { CheckCircle2, Clock, Terminal, WifiOff } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Clock, Terminal, WifiOff, XCircle } from "lucide-react";
+
 import {
   BUILD_STAGES,
   COLOR_CLASS,
@@ -25,7 +26,9 @@ interface BuildPipelineViewProps {
   job: PipelineJob;
   formatLabel: "AAB" | "APK" | string;
   packageName: string;
+  onCancel?: () => unknown | Promise<unknown>;
 }
+
 
 const isFailureState = (status: string) => status === "error" || status === "timeout" || status === "cancelled";
 
@@ -62,7 +65,9 @@ function StageDot({ stage, active, done }: { stage: BuildStage; active: boolean;
   );
 }
 
-export default function BuildPipelineView({ job, formatLabel, packageName }: BuildPipelineViewProps) {
+export default function BuildPipelineView({ job, formatLabel, packageName, onCancel }: BuildPipelineViewProps) {
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const progress = Math.max(0, Math.min(100, Math.round(job.progress || 0)));
   const currentStage = isFailureState(job.status) ? FAILED_STAGE : getStageFromProgress(progress);
   const reachedStages = useMemo(() => {
@@ -73,6 +78,23 @@ export default function BuildPipelineView({ job, formatLabel, packageName }: Bui
   const logs = useMemo(() => reachedStages.flatMap((stage) => logsForStage(stage.status)), [reachedStages]);
   const CurrentIcon = currentStage.icon;
   const color = COLOR_CLASS[currentStage.color];
+  const canCancel = Boolean(onCancel) && (job.status === "processing" || job.status === "reconnecting" || job.status === "submitting");
+
+  const handleCancelClick = async () => {
+    if (!onCancel) return;
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      setTimeout(() => setConfirmCancel(false), 4000);
+      return;
+    }
+    try {
+      setCancelling(true);
+      await onCancel();
+    } finally {
+      setCancelling(false);
+      setConfirmCancel(false);
+    }
+  };
 
   return (
     <section className="card-aurora space-y-5 p-5" aria-live="polite">
@@ -89,7 +111,26 @@ export default function BuildPipelineView({ job, formatLabel, packageName }: Bui
           </div>
           <p className="mt-1 break-words text-xs text-muted-foreground">{packageName}</p>
         </div>
+        {canCancel && (
+          <button
+            type="button"
+            onClick={handleCancelClick}
+            disabled={cancelling}
+            aria-label="Cancelar conversão"
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition",
+              confirmCancel
+                ? "border-destructive bg-destructive text-destructive-foreground hover:opacity-90"
+                : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20",
+              cancelling && "opacity-60 cursor-not-allowed",
+            )}
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            {cancelling ? "Cancelando..." : confirmCancel ? "Confirmar cancelar" : "Cancelar"}
+          </button>
+        )}
       </div>
+
 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">

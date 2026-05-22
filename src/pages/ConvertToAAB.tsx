@@ -182,7 +182,7 @@ const ConvertToAAB = () => {
 
           {showProcessing && (
             <motion.div key="processing" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
-              <BuildPipelineView job={job} formatLabel="AAB" packageName={`com.aurora.${(appUrl.match(/\/\/([^/]+)/)?.[1] || "app").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 20) || "app"}`} />
+              <BuildPipelineView job={job} formatLabel="AAB" packageName={`com.aurora.${(appUrl.match(/\/\/([^/]+)/)?.[1] || "app").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 20) || "app"}`} onCancel={job.cancel} />
               <p className="text-[11px] text-muted-foreground text-center mt-3">Não feche esta página. O build continua mesmo se a conexão cair.</p>
             </motion.div>
           )}
