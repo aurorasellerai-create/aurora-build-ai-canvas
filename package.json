@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "check:imports": "node scripts/check-imports.mjs",
+    "validate:paths": "node scripts/validate-paths.mjs",
     "update:browserslist": "npx --yes update-browserslist-db@latest || echo 'browserslist update skipped'",
     "build": "npm run update:browserslist && npm run check:imports && vite build",
     "build:dev": "npm run update:browserslist && npm run check:imports && vite build --mode development",
