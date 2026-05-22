@@ -94,8 +94,11 @@ app.post("/webhook/aab-to-apk", async (req, res) => {
 });
 
 // Health check — robust with timeout
+// Public response is minimal; full diagnostics only with valid WORKER_SECRET header
 app.get("/health", async (req, res) => {
   const startTime = Date.now();
+  const isAuthorized = req.headers["x-worker-secret"] === WORKER_SECRET;
+
 
   try {
     const redisOk = redis.status === "ready";
