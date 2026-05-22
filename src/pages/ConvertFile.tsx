@@ -45,6 +45,21 @@ const ConvertFile = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const { balance, consumeCredits, getCost } = useCredits();
   const job = useConversionJob();
+  const pipelineRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to pipeline as soon as a job starts (kills "tela congelada")
+  useEffect(() => {
+    if (job.status !== "idle" && pipelineRef.current) {
+      pipelineRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [job.status === "idle" ? "idle" : "active"]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resetAll = () => {
+    job.reset();
+    setFile(null);
+    setUploadProgress(0);
+    setConverting(false);
+  };
 
   const handleConvert = async () => {
     if (!file || !conversionType) return;
@@ -57,45 +72,45 @@ const ConvertFile = () => {
       return;
     }
 
+    if (conversionType !== "aab-to-apk") {
+      toast({
+        title: "Em breve",
+        description: "Esta conversão estará disponível em breve. Por enquanto, use AAB → APK.",
+      });
+      return;
+    }
+
     setConverting(true);
     setUploadProgress(0);
     try {
       const credited = await consumeCredits("generate_app");
       if (!credited) return;
 
-      if (conversionType === "aab-to-apk") {
-        // Direct-to-storage upload (suporta arquivos grandes sem base64/edge memory)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+      // Direct-to-storage upload (suporta arquivos grandes sem base64/edge memory)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
 
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        const tempId = crypto.randomUUID();
-        const storagePath = `${user.id}/pending-${tempId}/${safeName}`;
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const tempId = crypto.randomUUID();
+      const storagePath = `${user.id}/pending-${tempId}/${safeName}`;
 
-        setUploadProgress(5);
-        const { error: uploadError } = await supabase.storage
-          .from("aab-files")
-          .upload(storagePath, file, {
-            contentType: "application/octet-stream",
-            upsert: false,
-            cacheControl: "3600",
-          });
-        if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
-        setUploadProgress(100);
-        console.info("[UPLOAD] Large file uploaded", { path: storagePath, sizeMB: (file.size / 1024 / 1024).toFixed(1) });
-
-        const started = await job.submit("aab-upload", {
-          functionName: "convert-aab-to-apk",
-          body: { fileName: safeName, storagePath, fileSize: file.size },
+      setUploadProgress(5);
+      const { error: uploadError } = await supabase.storage
+        .from("aab-files")
+        .upload(storagePath, file, {
+          contentType: "application/octet-stream",
+          upsert: false,
+          cacheControl: "3600",
         });
-        if (started) toast({ title: "Conversão iniciada", description: "Usando bundletool oficial do Google em modo universal." });
-        return;
-      }
+      if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+      setUploadProgress(100);
+      console.info("[UPLOAD] Large file uploaded", { path: storagePath, sizeMB: (file.size / 1024 / 1024).toFixed(1) });
 
-      toast({
-        title: "Conversão em processamento",
-        description: "Seu arquivo está sendo convertido. Você receberá o resultado em breve.",
+      const started = await job.submit("aab-upload", {
+        functionName: "convert-aab-to-apk",
+        body: { fileName: safeName, storagePath, fileSize: file.size },
       });
+      if (started) toast({ title: "Conversão iniciada", description: "Pipeline realtime ativo — acompanhe abaixo." });
     } catch (error) {
       toast({ title: "Erro na conversão", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" });
     } finally {
@@ -106,7 +121,8 @@ const ConvertFile = () => {
 
   const currentStep = conversionType === null ? 1 : !file ? 2 : 3;
   const selectedConversion = CONVERSIONS.find((c) => c.id === conversionType);
-  const isAabToApkRunning = conversionType === "aab-to-apk" && (job.status === "processing" || job.status === "submitting" || job.status === "reconnecting");
+  const isJobActive = job.status === "processing" || job.status === "submitting" || job.status === "reconnecting";
+  const isAabToApkRunning = conversionType === "aab-to-apk" && isJobActive;
 
   return (
     <div className="min-h-screen bg-background">
