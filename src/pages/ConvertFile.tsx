@@ -275,18 +275,58 @@ const ConvertFile = () => {
 
 
               {conversionType === "aab-to-apk" && job.status !== "idle" && (
-                <div className="space-y-3">
-                  <BuildPipelineView job={job} formatLabel="APK" packageName="com.aurora.universal" />
+                <div ref={pipelineRef} className="space-y-3 scroll-mt-20">
+                  {(job.status === "error" || job.status === "timeout" || job.status === "cancelled") ? (
+                    <BuildErrorPanel
+                      errorMessage={job.errorMessage || "Erro inesperado na conversão."}
+                      onRetry={resetAll}
+                    />
+                  ) : (
+                    <BuildPipelineView job={job} formatLabel="APK" packageName="com.aurora.universal" />
+                  )}
+
                   {job.status === "success" && job.downloadUrl && (
-                    <a href={job.downloadUrl} target="_blank" rel="noopener noreferrer" className="block w-full text-center rounded-lg bg-secondary px-4 py-3 text-sm font-bold text-secondary-foreground glow-cyan">
-                      📲 Baixar APK universal
-                    </a>
+                    <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-center animate-fade-in">
+                      <div className="flex items-center justify-center gap-2 text-primary">
+                        <CheckCircle2 className="h-5 w-5" />
+                        <span className="font-display font-bold">Conversão concluída com sucesso</span>
+                      </div>
+                      {file && (
+                        <p className="text-xs text-muted-foreground">
+                          Arquivo original: {(file.size / 1024 / 1024).toFixed(1)} MB
+                        </p>
+                      )}
+                      <a
+                        href={job.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full rounded-lg bg-secondary px-4 py-3 text-sm font-bold text-secondary-foreground glow-cyan"
+                      >
+                        📲 Baixar APK universal
+                      </a>
+                      <button
+                        type="button"
+                        onClick={resetAll}
+                        className="text-xs text-muted-foreground underline hover:text-foreground"
+                      >
+                        Nova conversão
+                      </button>
+                    </div>
+                  )}
+
+                  {isJobActive && (
+                    <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      Pipeline rodando em segundo plano. Você pode aguardar nesta tela.
+                    </p>
                   )}
                 </div>
               )}
             </motion.div>
           )}
         </motion.div>
+
+
 
         {/* Education block */}
         <motion.div
