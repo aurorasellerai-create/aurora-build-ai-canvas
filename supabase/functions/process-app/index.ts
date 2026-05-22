@@ -47,7 +47,7 @@ const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 const respond = (payload: Record<string, unknown>) =>
   new Response(JSON.stringify(payload), {
     status: 200,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), ...SECURITY_RESPONSE_HEADERS, "Content-Type": "application/json" },
   });
 
 const getErrorMessage = (error: unknown) => {
