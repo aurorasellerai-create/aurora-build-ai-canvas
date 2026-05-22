@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { useState, useCallback, useEffect } from "react";
-import App from "./App.tsx";
-import SplashScreen from "./components/SplashScreen.tsx";
+import App from "./App";
+import SplashScreen from "./components/SplashScreen";
 import "./index.css";
 
 const Root = () => {
