@@ -853,7 +853,7 @@ const AdminUsers = ({ enabled }: { enabled: boolean }) => {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase font-semibold">Ações Rápidas</p>
                   <div className="flex flex-wrap gap-2">
-                    {selectedUser.status === "ativo" && !isProtectedAdminEmail(selectedUser.email) ? (
+                    {selectedUser.status === "ativo" && !isProtectedAccessRole(selectedUser.access_role) ? (
                       <button
                         onClick={() => { updateStatus.mutate({ user_id: selectedUser.user_id, status: "bloqueado" }); setSelectedUser({ ...selectedUser, status: "bloqueado" }); }}
                         className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors flex items-center gap-1"
