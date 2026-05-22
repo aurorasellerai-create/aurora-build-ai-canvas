@@ -8,11 +8,13 @@ const ALLOWED_ORIGINS = [
   "https://6db001cd-6f98-4de0-bc1d-7aa673f8d426.lovableproject.com",
 ];
 
-const PRIMARY_FOUNDER_EMAIL = "aurora.seller.ai@gmail.com";
-const PROTECTED_ADMIN_EMAILS = [
-  PRIMARY_FOUNDER_EMAIL,
-  "dayse74correia@hotmail.com",
-];
+// Admin identities are loaded from the PROTECTED_ADMIN_EMAILS env secret
+// (comma-separated). Source code no longer hardcodes account identifiers.
+const PROTECTED_ADMIN_EMAILS = (Deno.env.get("PROTECTED_ADMIN_EMAILS") || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+const PRIMARY_FOUNDER_EMAIL = PROTECTED_ADMIN_EMAILS[0] || "";
 
 const normalizeEmail = (email?: string | null) => (email || "").trim().toLowerCase();
 
