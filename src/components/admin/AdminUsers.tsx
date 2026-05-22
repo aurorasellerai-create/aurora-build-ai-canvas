@@ -32,7 +32,6 @@ type FilterType = "all" | "vip" | "cliente" | "premium" | "teste";
 
 // Protected-admin identity comes from the server (access_role enriched by admin-data edge function).
 // Do not embed admin emails in the client bundle.
-const isProtectedAdminEmail = (_email?: string | null) => false;
 const isProtectedAccessRole = (role?: string | null) =>
   role === "founder" || role === "super_admin";
 
