@@ -76,20 +76,99 @@ function StageDot({ stage, active, done }: { stage: BuildStage; active: boolean;
   );
 }
 
-export default function BuildPipelineView({ job, formatLabel, packageName, onCancel }: BuildPipelineViewProps) {
+export default function BuildPipelineView({ job, formatLabel, packageName, onCancel, estimatedSizeMB = 75 }: BuildPipelineViewProps) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const progress = Math.max(0, Math.min(100, Math.round(job.progress || 0)));
-  const currentStage = isFailureState(job.status) ? FAILED_STAGE : getStageFromProgress(progress);
+  const rawProgress = Math.max(0, Math.min(100, Math.round(job.progress || 0)));
+
+  const isFailure = isFailureState(job.status);
+  const isDone = job.status === "success";
+  const isActive = job.status === "processing" || job.status === "reconnecting" || job.status === "submitting";
+
+  // Smoothly animate displayed progress toward server-reported progress.
+  // While active, cap displayed at 97% so the bar never "completes" prematurely.
+  const [displayedProgress, setDisplayedProgress] = useState(rawProgress);
+  const targetRef = useRef(rawProgress);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    targetRef.current = isDone ? 100 : isActive ? Math.min(rawProgress, 97) : rawProgress;
+  }, [rawProgress, isDone, isActive]);
+  useEffect(() => {
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.25, (now - last) / 1000);
+      last = now;
+      setDisplayedProgress((prev) => {
+        const target = targetRef.current;
+        const diff = target - prev;
+        if (Math.abs(diff) < 0.05) return target;
+        // Ease toward target — fast catch-up when far, gentle drift when close.
+        const step = diff * Math.min(1, dt * (Math.abs(diff) > 5 ? 4 : 1.2));
+        // Tiny forward drift while active so the bar never looks frozen.
+        const drift = isActive && diff < 1 ? dt * 0.15 : 0;
+        return Math.min(target, prev + step + drift);
+      });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isActive]);
+
+  // Throughput + ETA — sample progress over time, smooth with EMA.
+  const startRef = useRef<number | null>(null);
+  const lastSampleRef = useRef<{ t: number; p: number } | null>(null);
+  const velocityRef = useRef(0); // % per second, smoothed
+  const [etaSec, setEtaSec] = useState<number | null>(null);
+  const [mbps, setMbps] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      if (!isDone && !isFailure) {
+        startRef.current = null;
+        lastSampleRef.current = null;
+        velocityRef.current = 0;
+        setEtaSec(null);
+        setMbps(null);
+      }
+      return;
+    }
+    const now = Date.now();
+    if (startRef.current == null) {
+      startRef.current = now;
+      lastSampleRef.current = { t: now, p: rawProgress };
+      return;
+    }
+    const last = lastSampleRef.current!;
+    const dt = (now - last.t) / 1000;
+    if (dt >= 0.5) {
+      const dp = Math.max(0, rawProgress - last.p);
+      const instant = dp / dt; // % per second
+      // EMA smoothing (alpha low for stability)
+      velocityRef.current = velocityRef.current === 0 ? instant : velocityRef.current * 0.75 + instant * 0.25;
+      lastSampleRef.current = { t: now, p: rawProgress };
+    }
+    // Fallback velocity from total elapsed if instantaneous is zero
+    const elapsed = (now - startRef.current) / 1000;
+    const fallback = elapsed > 0 ? rawProgress / elapsed : 0;
+    const v = Math.max(velocityRef.current, fallback, 0.05); // floor avoids divide-by-zero
+    const remaining = Math.max(0, 100 - rawProgress);
+    setEtaSec(remaining / v);
+    // Throughput: % per second × bytes-per-percent
+    setMbps((v * estimatedSizeMB) / 100);
+  }, [rawProgress, isActive, isDone, isFailure, estimatedSizeMB]);
+
+  const currentStage = isFailure ? FAILED_STAGE : getStageFromProgress(rawProgress);
   const reachedStages = useMemo(() => {
-    if (isFailureState(job.status)) return [FAILED_STAGE];
-    return getReachedStages(progress);
-  }, [job.status, progress]);
+    if (isFailure) return [FAILED_STAGE];
+    return getReachedStages(rawProgress);
+  }, [isFailure, rawProgress]);
   const reachedNames = new Set(reachedStages.map((stage) => stage.status));
   const logs = useMemo(() => reachedStages.flatMap((stage) => logsForStage(stage.status)), [reachedStages]);
   const CurrentIcon = currentStage.icon;
   const color = COLOR_CLASS[currentStage.color];
-  const canCancel = Boolean(onCancel) && (job.status === "processing" || job.status === "reconnecting" || job.status === "submitting");
+  const canCancel = Boolean(onCancel) && isActive;
 
   const handleCancelClick = async () => {
     if (!onCancel) return;
@@ -106,6 +185,8 @@ export default function BuildPipelineView({ job, formatLabel, packageName, onCan
       setConfirmCancel(false);
     }
   };
+
+  const shownProgress = isDone ? 100 : Math.round(displayedProgress);
 
   return (
     <section className="card-aurora space-y-5 p-5" aria-live="polite">
@@ -146,11 +227,30 @@ export default function BuildPipelineView({ job, formatLabel, packageName, onCan
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-foreground">{job.stepLabel || currentStage.description}</span>
-          <span className="font-bold text-primary">{progress}%</span>
+          <span className="font-bold text-primary tabular-nums">{shownProgress}%</span>
         </div>
         <div className="h-3 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
+          <div
+            className={cn(
+              "h-full rounded-full bg-primary",
+              isActive && "bg-gradient-to-r from-primary/80 via-primary to-primary/80 bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]",
+            )}
+            style={{ width: `${shownProgress}%`, transition: "width 120ms linear" }}
+          />
         </div>
+        {(isActive || isDone) && (
+          <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground tabular-nums">
+            <span className="inline-flex items-center gap-1.5">
+              <Timer className="h-3 w-3 text-secondary" />
+              ETA: <span className="font-semibold text-foreground">{isDone ? "0s" : formatEta(etaSec ?? Infinity)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Gauge className="h-3 w-3 text-secondary" />
+              Velocidade: <span className="font-semibold text-foreground">{mbps != null && mbps > 0 ? `${mbps.toFixed(2)} MB/s` : "calculando…"}</span>
+            </span>
+            <span className="opacity-70">~{estimatedSizeMB} MB estimado</span>
+          </div>
+        )}
       </div>
 
       {job.status === "reconnecting" && (
