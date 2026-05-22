@@ -82,7 +82,16 @@ function StageDot({ stage, active, done }: { stage: BuildStage; active: boolean;
   );
 }
 
-export default function BuildPipelineView({ job, formatLabel, packageName, onCancel, estimatedSizeMB = 75 }: BuildPipelineViewProps) {
+export default function BuildPipelineView({
+  job,
+  formatLabel,
+  packageName,
+  onCancel,
+  onRetry,
+  estimatedSizeMB = 75,
+  freezeThresholdSec = 25,
+  autoRetryAfterSec = 15,
+}: BuildPipelineViewProps) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const rawProgress = Math.max(0, Math.min(100, Math.round(job.progress || 0)));
