@@ -30,13 +30,11 @@ interface UserDetail {
 
 type FilterType = "all" | "vip" | "cliente" | "premium" | "teste";
 
-const PROTECTED_ADMIN_EMAILS = [
-  "aurora.seller.ai@gmail.com",
-  "dayse74correia@hotmail.com",
-];
-
-const isProtectedAdminEmail = (email?: string | null) =>
-  !!email && PROTECTED_ADMIN_EMAILS.includes(email.toLowerCase());
+// Protected-admin identity comes from the server (access_role enriched by admin-data edge function).
+// Do not embed admin emails in the client bundle.
+const isProtectedAdminEmail = (_email?: string | null) => false;
+const isProtectedAccessRole = (role?: string | null) =>
+  role === "founder" || role === "super_admin";
 
 const getRoleBadge = (role: string) => {
   if (role === "founder") return <Badge className="bg-purple-600 text-white border-purple-500 text-[10px]">👑 Founder</Badge>;
