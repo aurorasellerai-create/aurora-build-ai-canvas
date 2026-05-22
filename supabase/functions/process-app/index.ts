@@ -227,6 +227,18 @@ Deno.serve(async (req) => {
       return respond({ success: false, error: "Configuração interna indisponível.", step: currentStep });
     }
 
+    // ── SECURITY: internal-only. Require service-role bearer token. ──
+    currentStep = "auth";
+    const authHeader = req.headers.get("Authorization") || "";
+    const incomingToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!incomingToken || incomingToken !== serviceKey) {
+      logErr("[PROCESS] Unauthorized invocation rejected");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized", step: currentStep }),
+        { status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // --- parse & validate input ---
