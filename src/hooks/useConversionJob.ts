@@ -368,13 +368,8 @@ export function useConversionJob() {
     return true;
   }, [state.jobId, state.status, cleanupAll, safeSet, reset]);
 
-  // --- Reset ---
-  const reset = useCallback(() => {
-    resetFlagRef.current = true;
-    cleanupAll();
-    clearPersistedJob();
-    setState(initialState);
-  }, [cleanupAll]);
+
+
 
 
   // --- Restore persisted job on mount ---
