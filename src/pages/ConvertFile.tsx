@@ -5,7 +5,11 @@ import { ArrowLeft, RefreshCw, Upload, Zap, AlertTriangle, Info, Smartphone, Glo
 import { useCredits } from "@/hooks/useCredits";
 import { toast } from "@/hooks/use-toast";
 import { useConversionJob } from "@/hooks/useConversionJob";
+import { supabase } from "@/integrations/supabase/client";
 import BuildPipelineView from "@/components/pipeline/SafeBuildPipelineView";
+
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB enterprise limit
+
 
 type ConversionType = null | "apk-to-aab" | "aab-to-apk" | "to-pwa";
 
