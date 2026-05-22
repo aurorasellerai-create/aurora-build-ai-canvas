@@ -28,16 +28,18 @@ const BodySchema = z.object({
 });
 
 const STEPS = [
-  { progress: 10, label: "Analisando aplicativo..." },
-  { progress: 25, label: "Verificando compatibilidade mobile..." },
-  { progress: 40, label: "Preparando versão Android..." },
-  { progress: 55, label: "Gerando projeto Android..." },
-  { progress: 70, label: "Compilando APK..." },
-  { progress: 85, label: "Convertendo para AAB..." },
-  { progress: 95, label: "Finalizando..." },
+  { status: "preparing", progress: 10, label: "Analisando aplicativo..." },
+  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile..." },
+  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android..." },
+  { status: "running_gradle", progress: 45, label: "Executando Gradle..." },
+  { status: "signing", progress: 68, label: "Assinando pacote Android..." },
+  { status: "optimizing", progress: 80, label: "Otimizando AAB..." },
+  { status: "uploading", progress: 90, label: "Enviando artefato..." },
+  { status: "finalizing", progress: 97, label: "Finalizando..." },
 ];
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
+const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 
 // ---------- helpers ----------
 
