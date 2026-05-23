@@ -26,21 +26,25 @@ const BodySchema = z.object({
     .refine((value) => value.startsWith("https://"), {
       message: "A URL deve usar HTTPS",
     }),
+  resume: z.boolean().optional(),
 });
 
 const STEPS = [
-  { status: "preparing", progress: 10, label: "Analisando aplicativo..." },
-  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile..." },
-  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android..." },
-  { status: "running_gradle", progress: 45, label: "Executando Gradle..." },
-  { status: "signing", progress: 68, label: "Assinando pacote Android..." },
-  { status: "optimizing", progress: 80, label: "Otimizando AAB..." },
-  { status: "uploading", progress: 90, label: "Enviando artefato..." },
-  { status: "finalizing", progress: 97, label: "Finalizando..." },
+  { status: "preparing", progress: 10, label: "Analisando aplicativo...", tag: "PIPELINE" },
+  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile...", tag: "PIPELINE" },
+  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android...", tag: "PIPELINE" },
+  { status: "running_gradle", progress: 45, label: "Executando Gradle...", tag: "PIPELINE" },
+  { status: "signing", progress: 68, label: "Assinando pacote Android...", tag: "SIGNING" },
+  { status: "optimizing", progress: 80, label: "Otimizando AAB...", tag: "PIPELINE" },
+  { status: "uploading", progress: 90, label: "Enviando artefato...", tag: "UPLOAD" },
+  { status: "finalizing", progress: 97, label: "Finalizando...", tag: "PIPELINE" },
 ];
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
 const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
+const SIGNING_MAX_DURATION_MS = 180 * 1000;
+const HEARTBEAT_INTERVAL_MS = 5000;
+const UPLOAD_MAX_ATTEMPTS = 3;
 
 // ---------- helpers ----------
 
