@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
 import AuthBackButton from "@/components/AuthBackButton";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -49,18 +50,16 @@ const ResetPassword = () => {
           Nova senha
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
-            <input
-              type="password"
-              placeholder="Nova senha (mín. 6 caracteres)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
-            />
-          </div>
+          <PasswordInput
+            placeholder="Nova senha (mín. 6 caracteres)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete="new-password"
+            leftAdornment={<Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground z-10" />}
+            className="w-full pl-10 pr-10 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
+          />
           {error && <p className="text-destructive text-sm text-center">{error}</p>}
           <button
             type="submit"
