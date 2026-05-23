@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { job_id, url } = parsed.data;
+    const { job_id, url, resume } = parsed.data;
     jobId = job_id;
 
     // --- lookup job ---
