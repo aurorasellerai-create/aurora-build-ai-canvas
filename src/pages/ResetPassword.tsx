@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
 import AuthBackButton from "@/components/AuthBackButton";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
