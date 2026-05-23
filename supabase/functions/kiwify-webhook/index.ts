@@ -89,10 +89,14 @@ async function sendTransactionalEmail(
 }
 
 // Webhook endpoints don't need CORS (server-to-server), but keep minimal headers
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
+import { checkRateLimit, ipHashFromRequest } from "../_shared/rateLimit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://aurorabuild.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-kiwify-signature, signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  ...SECURITY_RESPONSE_HEADERS,
 };
 
 // Credit packages mapping

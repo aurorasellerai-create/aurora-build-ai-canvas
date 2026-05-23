@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
 import { readJsonCapped, PayloadTooLargeError, InvalidJsonError } from "../_shared/payloadGuard.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -56,6 +57,20 @@ Deno.serve(async (req) => {
     if (authError || !user) {
       console.error("[CONVERT] Invalid auth token", authError);
       return respond({ success: false, error: "Token inválido", step: "auth" });
+    }
+
+    // Burst protection: 3 builds / 60s per user
+    const rl = await checkRateLimit(supabase, {
+      endpoint: "convert-app",
+      identity: user.id,
+      max: 3,
+      windowSeconds: 60,
+    });
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Muitas conversões em sequência. Aguarde alguns segundos.", retry_after_seconds: rl.retryAfterSeconds, step: "rate_limit" }),
+        { status: 429, headers: { ...getCorsHeaders(req), "Content-Type": "application/json", "Retry-After": String(rl.retryAfterSeconds) } },
+      );
     }
 
     // Validate body
