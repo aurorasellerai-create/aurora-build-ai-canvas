@@ -91,6 +91,31 @@ Deno.serve(async (req) => {
     const { url } = parsed.data;
     console.log(`[CONVERT] Creating job for ${url}`);
 
+    // Server-side enforcement: build quota + credit consumption (cannot be bypassed by direct API calls)
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: buildOk, error: buildErr } = await userClient.rpc("check_and_increment_build", { p_user_id: user.id });
+    if (buildErr) {
+      console.error("[CONVERT] build-limit check failed:", buildErr.message);
+      return respond({ success: false, error: "Falha ao validar limite de builds.", step: "quota" }, 500);
+    }
+    if (!buildOk) {
+      return respond({ success: false, error: "Limite diário de builds atingido para o seu plano.", step: "quota" }, 402);
+    }
+    const { data: creditsOk, error: creditsErr } = await userClient.rpc("consume_credits", {
+      p_user_id: user.id,
+      p_action: "convert_app",
+      p_amount: 1,
+    });
+    if (creditsErr) {
+      console.error("[CONVERT] credit consumption failed:", creditsErr.message);
+      return respond({ success: false, error: "Falha ao validar créditos.", step: "credits" }, 500);
+    }
+    if (!creditsOk) {
+      return respond({ success: false, error: "Créditos insuficientes para iniciar a conversão.", step: "credits" }, 402);
+    }
+
     // Create job record
     const { data: job, error: insertErr } = await supabase
       .from("conversion_jobs")

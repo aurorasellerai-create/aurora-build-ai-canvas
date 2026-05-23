@@ -18,6 +18,32 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Authentication: only the pg_cron caller (which carries the service-role key)
+  // or an authenticated admin/founder may trigger the watchdog. This prevents
+  // anonymous attackers from forcibly stalling all in-flight conversion jobs.
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const bearer = authHeader.replace(/^Bearer\s+/i, "");
+  let authorized = bearer === serviceKey;
+  if (!authorized && bearer) {
+    try {
+      const supa = createClient(supabaseUrl, serviceKey);
+      const { data: claims } = await supa.auth.getClaims(bearer);
+      const sub = claims?.claims?.sub as string | undefined;
+      if (sub) {
+        const { data: priv } = await supa.rpc("is_privileged", { _user_id: sub });
+        authorized = Boolean(priv);
+      }
+    } catch (_e) {
+      authorized = false;
+    }
+  }
+  if (!authorized) {
+    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(supabaseUrl, serviceKey);
   const result: Record<string, unknown> = { ok: true };
 
