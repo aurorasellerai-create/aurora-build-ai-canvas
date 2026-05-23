@@ -114,7 +114,7 @@ const AdminLoginForm = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showForgot, setShowForgotInit] = useState(false); void setShowForgotInit;
+  
   const [showForgot, setShowForgot] = useState(false);
 
   if (showForgot) {
