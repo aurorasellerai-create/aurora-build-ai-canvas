@@ -83,6 +83,7 @@ export type Database = {
       conversion_jobs: {
         Row: {
           archived: boolean
+          artifact_verified: boolean
           build_stage: string | null
           created_at: string
           deletion_scheduled_at: string | null
@@ -91,12 +92,17 @@ export type Database = {
           exit_code: number | null
           final_stage: string | null
           finished_at: string | null
+          heartbeat_progress: number | null
+          heartbeat_stage: string | null
           id: string
+          last_heartbeat: string | null
           last_log: string | null
           marked_for_deletion: boolean
           processing_time_ms: number | null
           progress: number
+          recovery_attempts: number
           recovery_diagnosis: Json | null
+          signing_started_at: string | null
           source_url: string
           started_at: string | null
           status: string
@@ -105,11 +111,13 @@ export type Database = {
           step_label: string | null
           timeout_at: string | null
           updated_at: string
+          upload_attempts: number
           user_id: string
           watchdog_reason: string | null
         }
         Insert: {
           archived?: boolean
+          artifact_verified?: boolean
           build_stage?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
@@ -118,12 +126,17 @@ export type Database = {
           exit_code?: number | null
           final_stage?: string | null
           finished_at?: string | null
+          heartbeat_progress?: number | null
+          heartbeat_stage?: string | null
           id?: string
+          last_heartbeat?: string | null
           last_log?: string | null
           marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
+          recovery_attempts?: number
           recovery_diagnosis?: Json | null
+          signing_started_at?: string | null
           source_url: string
           started_at?: string | null
           status?: string
@@ -132,11 +145,13 @@ export type Database = {
           step_label?: string | null
           timeout_at?: string | null
           updated_at?: string
+          upload_attempts?: number
           user_id: string
           watchdog_reason?: string | null
         }
         Update: {
           archived?: boolean
+          artifact_verified?: boolean
           build_stage?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
@@ -145,12 +160,17 @@ export type Database = {
           exit_code?: number | null
           final_stage?: string | null
           finished_at?: string | null
+          heartbeat_progress?: number | null
+          heartbeat_stage?: string | null
           id?: string
+          last_heartbeat?: string | null
           last_log?: string | null
           marked_for_deletion?: boolean
           processing_time_ms?: number | null
           progress?: number
+          recovery_attempts?: number
           recovery_diagnosis?: Json | null
+          signing_started_at?: string | null
           source_url?: string
           started_at?: string | null
           status?: string
@@ -159,6 +179,7 @@ export type Database = {
           step_label?: string | null
           timeout_at?: string | null
           updated_at?: string
+          upload_attempts?: number
           user_id?: string
           watchdog_reason?: string | null
         }
@@ -738,8 +759,16 @@ export type Database = {
         }
         Returns: string
       }
+      mark_signing_timeout_jobs: {
+        Args: { _signing_max?: string }
+        Returns: number
+      }
       mark_stale_conversion_jobs_as_timeout: {
         Args: { _max_age?: string }
+        Returns: number
+      }
+      mark_stalled_conversion_jobs: {
+        Args: { _heartbeat_max?: string }
         Returns: number
       }
       process_referral_rewards: {

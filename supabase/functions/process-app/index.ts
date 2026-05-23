@@ -26,21 +26,25 @@ const BodySchema = z.object({
     .refine((value) => value.startsWith("https://"), {
       message: "A URL deve usar HTTPS",
     }),
+  resume: z.boolean().optional(),
 });
 
 const STEPS = [
-  { status: "preparing", progress: 10, label: "Analisando aplicativo..." },
-  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile..." },
-  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android..." },
-  { status: "running_gradle", progress: 45, label: "Executando Gradle..." },
-  { status: "signing", progress: 68, label: "Assinando pacote Android..." },
-  { status: "optimizing", progress: 80, label: "Otimizando AAB..." },
-  { status: "uploading", progress: 90, label: "Enviando artefato..." },
-  { status: "finalizing", progress: 97, label: "Finalizando..." },
+  { status: "preparing", progress: 10, label: "Analisando aplicativo...", tag: "PIPELINE" },
+  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile...", tag: "PIPELINE" },
+  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android...", tag: "PIPELINE" },
+  { status: "running_gradle", progress: 45, label: "Executando Gradle...", tag: "PIPELINE" },
+  { status: "signing", progress: 68, label: "Assinando pacote Android...", tag: "SIGNING" },
+  { status: "optimizing", progress: 80, label: "Otimizando AAB...", tag: "PIPELINE" },
+  { status: "uploading", progress: 90, label: "Enviando artefato...", tag: "UPLOAD" },
+  { status: "finalizing", progress: 97, label: "Finalizando...", tag: "PIPELINE" },
 ];
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
 const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
+const SIGNING_MAX_DURATION_MS = 180 * 1000;
+const HEARTBEAT_INTERVAL_MS = 5000;
+const UPLOAD_MAX_ATTEMPTS = 3;
 
 // ---------- helpers ----------
 
@@ -257,14 +261,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { job_id, url } = parsed.data;
+    const { job_id, url, resume } = parsed.data;
     jobId = job_id;
 
     // --- lookup job ---
     currentStep = "job_lookup";
     const { data: existingJob, error: lookupError } = await supabase
       .from("conversion_jobs")
-      .select("id, user_id")
+      .select("id, user_id, status, download_url, artifact_verified, recovery_attempts")
       .eq("id", jobId)
       .maybeSingle();
 
@@ -273,16 +277,33 @@ Deno.serve(async (req) => {
     }
     const ownerUserId = existingJob.user_id as string;
 
+    // --- Partial recovery: skip build if we already have a verified artifact path ---
+    const recoveryMode =
+      resume === true ||
+      ["stalled", "signing_timeout", "timeout"].includes(String(existingJob.status));
+    const hasArtifactCandidate = Boolean(existingJob.download_url) && !existingJob.artifact_verified;
+    const skipBuild = recoveryMode && hasArtifactCandidate;
+
+    if (recoveryMode) {
+      logOut(`[RECOVERY] Resuming job ${jobId} (skipBuild=${skipBuild})`);
+    }
+
     // --- mark as running real state machine ---
     currentStep = "job_update_start";
+    const initialStatus = recoveryMode ? "recovering" : "preparing";
+    const initialLabel = recoveryMode ? "Recuperando pipeline..." : "Iniciando conversão...";
     const { error: startUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
-        status: "preparing",
-        progress: 0,
-        step_label: "Iniciando conversão...",
-        build_stage: "preparing",
+        status: initialStatus,
+        progress: skipBuild ? 88 : 0,
+        step_label: initialLabel,
+        build_stage: initialStatus,
         started_at: new Date(startTime).toISOString(),
+        last_heartbeat: new Date().toISOString(),
+        heartbeat_stage: initialStatus,
+        heartbeat_progress: skipBuild ? 88 : 0,
+        recovery_attempts: recoveryMode ? (existingJob.recovery_attempts ?? 0) + 1 : (existingJob.recovery_attempts ?? 0),
         error_message: null,
         processing_time_ms: 0,
         stdout_log: stdoutLines.join("\n"),
@@ -299,6 +320,24 @@ Deno.serve(async (req) => {
     if (startUpdateError) {
       return respond({ success: false, error: "Não foi possível iniciar o job.", step: currentStep, job_id: jobId });
     }
+
+    // --- heartbeat: ping every 5s with current stage/progress ---
+    let hbStage = initialStatus;
+    let hbProgress = skipBuild ? 88 : 0;
+    const heartbeat = setInterval(() => {
+      supabase
+        .from("conversion_jobs")
+        .update({
+          last_heartbeat: new Date().toISOString(),
+          heartbeat_stage: hbStage,
+          heartbeat_progress: hbProgress,
+        })
+        .eq("id", jobId!)
+        .then(({ error }) => {
+          if (error) console.warn("[HEARTBEAT] update failed:", error.message);
+        });
+    }, HEARTBEAT_INTERVAL_MS);
+    const stopHeartbeat = () => clearInterval(heartbeat);
 
     // --- validate URL ---
     currentStep = "url_validation";
@@ -327,56 +366,123 @@ Deno.serve(async (req) => {
       return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
     }
 
-    // --- simulate build steps ---
-    for (const step of STEPS) {
-      currentStep = step.status;
-      if (Date.now() - startTime > BUILD_MAX_DURATION_MS) {
-        const msg = `Timeout watchdog: build excedeu ${BUILD_MAX_DURATION_MS}ms no estágio ${currentStep}.`;
-        logErr(msg);
-        await supabase.from("conversion_jobs").update({
-          status: "timeout",
-          progress: Math.min(step.progress, 99),
-          step_label: "TIMEOUT — build encerrado pelo watchdog",
-          build_stage: step.status,
-          final_stage: step.status,
-          error_message: msg,
-          stderr_log: stderrLines.join("\n"),
-          stdout_log: stdoutLines.join("\n"),
-          exit_code: 124,
-          timeout_at: new Date().toISOString(),
-          finished_at: new Date().toISOString(),
-          watchdog_reason: "Processamento acima do limite operacional de 10 minutos.",
-          last_log: stderrLines.at(-1) ?? stdoutLines.at(-1) ?? msg,
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", jobId);
-        finalStatusWritten = true;
-        return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
+    // --- build steps (skipped on recovery if artifact already exists) ---
+    if (!skipBuild) {
+      for (const step of STEPS) {
+        currentStep = step.status;
+        hbStage = step.status;
+        hbProgress = step.progress;
+        if (Date.now() - startTime > BUILD_MAX_DURATION_MS) {
+          const msg = `Timeout watchdog: build excedeu ${BUILD_MAX_DURATION_MS}ms no estágio ${currentStep}.`;
+          logErr(`[PIPELINE] ${msg}`);
+          stopHeartbeat();
+          await supabase.from("conversion_jobs").update({
+            status: "timeout",
+            progress: Math.min(step.progress, 99),
+            step_label: "TIMEOUT — build encerrado pelo watchdog",
+            build_stage: step.status,
+            final_stage: step.status,
+            error_message: msg,
+            stderr_log: stderrLines.join("\n"),
+            stdout_log: stdoutLines.join("\n"),
+            exit_code: 124,
+            timeout_at: new Date().toISOString(),
+            finished_at: new Date().toISOString(),
+            watchdog_reason: "Processamento acima do limite operacional de 10 minutos.",
+            last_log: stderrLines.at(-1) ?? stdoutLines.at(-1) ?? msg,
+            processing_time_ms: Date.now() - startTime,
+          }).eq("id", jobId);
+          finalStatusWritten = true;
+          return respond({ success: false, error: msg, step: currentStep, job_id: jobId });
+        }
+        logOut(`[${step.tag}] ${step.label}`);
+
+        // Signing stage: track start + abort if it exceeds SIGNING_MAX_DURATION_MS
+        const stepStartedAt = Date.now();
+        if (step.status === "signing") {
+          await supabase
+            .from("conversion_jobs")
+            .update({ signing_started_at: new Date().toISOString() })
+            .eq("id", jobId);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
+
+        if (step.status === "signing" && Date.now() - stepStartedAt > SIGNING_MAX_DURATION_MS) {
+          const msg = "[SIGNING] Assinatura excedeu 180s — abortando.";
+          logErr(msg);
+          stopHeartbeat();
+          await supabase.from("conversion_jobs").update({
+            status: "signing_timeout",
+            progress: step.progress,
+            step_label: "Assinatura travada",
+            build_stage: "signing",
+            final_stage: "signing",
+            error_message: msg,
+            stderr_log: stderrLines.join("\n") || msg,
+            stdout_log: stdoutLines.join("\n"),
+            exit_code: 124,
+            finished_at: new Date().toISOString(),
+            watchdog_reason: "[SIGNING] timeout 180s",
+            last_log: msg,
+            processing_time_ms: Date.now() - startTime,
+          }).eq("id", jobId);
+          finalStatusWritten = true;
+          return respond({ success: false, error: msg, step: "signing", job_id: jobId });
+        }
+
+        const { error: progressError } = await supabase
+          .from("conversion_jobs")
+          .update({
+            progress: step.progress,
+            step_label: step.label,
+            status: step.status,
+            build_stage: step.status,
+            stdout_log: stdoutLines.join("\n"),
+            stderr_log: stderrLines.join("\n") || null,
+            last_log: stdoutLines.at(-1) ?? step.label,
+            processing_time_ms: Date.now() - startTime,
+          })
+          .eq("id", jobId);
+        if (progressError) throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
       }
-      logOut(`[PROCESS] ${step.label}`);
-      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1000));
-      const { error: progressError } = await supabase
-        .from("conversion_jobs")
-        .update({
-          progress: step.progress,
-          step_label: step.label,
-          status: step.status,
-          build_stage: step.status,
-          stdout_log: stdoutLines.join("\n"),
-          stderr_log: stderrLines.join("\n") || null,
-          last_log: stdoutLines.at(-1) ?? step.label,
-          processing_time_ms: Date.now() - startTime,
-        })
-        .eq("id", jobId);
-      if (progressError) throw new Error(`Falha ao atualizar progresso: ${progressError.message}`);
+    } else {
+      logOut(`[RECOVERY] Skipping compile stages — reusing existing artifact reference`);
     }
 
-    // --- generate file & upload to storage ---
+    // --- generate file & upload to storage (with retry x3 exponential backoff) ---
     currentStep = "uploading";
-    logOut(`[PROCESS] Generating and uploading AAB for job ${jobId}`);
-    const downloadUrl = await generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl);
+    hbStage = "uploading";
+    hbProgress = 92;
+    logOut(`[UPLOAD] Generating and uploading AAB for job ${jobId}`);
+    let downloadUrl: string | null = null;
+    let uploadErr: unknown = null;
+    for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
+      try {
+        await supabase.from("conversion_jobs").update({ upload_attempts: attempt }).eq("id", jobId);
+        downloadUrl = await generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl);
+        if (downloadUrl) { uploadErr = null; break; }
+      } catch (e) {
+        uploadErr = e;
+        logErr(`[UPLOAD] attempt ${attempt}/${UPLOAD_MAX_ATTEMPTS} failed: ${getErrorMessage(e)}`);
+        if (attempt < UPLOAD_MAX_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, 1500 * Math.pow(2, attempt - 1)));
+        }
+      }
+    }
+    if (!downloadUrl) {
+      const msg = `[UPLOAD] Falha após ${UPLOAD_MAX_ATTEMPTS} tentativas: ${getErrorMessage(uploadErr)}`;
+      stopHeartbeat();
+      await markJobAsFailed(supabase, jobId, msg, "uploading", startTime);
+      finalStatusWritten = true;
+      return respond({ success: false, error: msg, step: "uploading", job_id: jobId });
+    }
 
     // --- finalize job ---
     currentStep = "finalizing";
+    hbStage = "finalizing";
+    hbProgress = 99;
+    stopHeartbeat();
     const { error: finalUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
@@ -386,11 +492,15 @@ Deno.serve(async (req) => {
         build_stage: "completed",
         final_stage: "completed",
         download_url: downloadUrl,
+        artifact_verified: true,
+        last_heartbeat: new Date().toISOString(),
+        heartbeat_stage: "completed",
+        heartbeat_progress: 100,
         stdout_log: stdoutLines.join("\n"),
         stderr_log: stderrLines.join("\n") || null,
         exit_code: 0,
         finished_at: new Date().toISOString(),
-        last_log: stdoutLines.at(-1) ?? "Build concluído com sucesso.",
+        last_log: stdoutLines.at(-1) ?? "[PIPELINE] Build concluído com sucesso.",
         processing_time_ms: Date.now() - startTime,
       })
       .eq("id", jobId);

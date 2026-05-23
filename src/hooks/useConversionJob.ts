@@ -12,6 +12,9 @@ export type ConversionStatus =
   | "submitting"
   | "processing"
   | "reconnecting"
+  | "recovering"
+  | "stalled"
+  | "signing_timeout"
   | "success"
   | "error"
   | "timeout"
@@ -24,6 +27,7 @@ interface JobState {
   stepLabel: string;
   errorMessage: string | null;
   downloadUrl: string | null;
+  lastHeartbeatAt: string | null;
 }
 
 type SubmitOptions = {
@@ -40,6 +44,7 @@ const initialState: JobState = {
   stepLabel: "",
   errorMessage: null,
   downloadUrl: null,
+  lastHeartbeatAt: null,
 };
 
 function persistJob(jobId: string) {
@@ -118,10 +123,18 @@ export function useConversionJob() {
 
   // --- Process a row from the DB ---
   const processRow = useCallback(
-    (row: { status: string; progress: number; step_label: string | null; error_message: string | null; download_url: string | null }) => {
+    (row: {
+      status: string;
+      progress: number;
+      step_label: string | null;
+      error_message: string | null;
+      download_url: string | null;
+      last_heartbeat?: string | null;
+    }) => {
       safeSet({
         progress: row.progress ?? 0,
         stepLabel: row.step_label ?? "Processando...",
+        lastHeartbeatAt: row.last_heartbeat ?? null,
       });
 
       if (row.status === "done" || row.status === "completed") {
@@ -147,6 +160,18 @@ export function useConversionJob() {
         clearPersistedJob();
         safeSet({ status: "timeout", errorMessage: row.error_message || "Build excedeu o tempo máximo e foi encerrado automaticamente." });
         toast({ title: "Build em timeout", description: row.error_message || "O watchdog encerrou a pipeline travada.", variant: "destructive" });
+      } else if (row.status === "stalled") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "stalled", errorMessage: row.error_message || "Worker parou de responder. Você pode tentar novamente." });
+        toast({ title: "Pipeline travada", description: "Worker sem resposta. Retome de onde parou.", variant: "destructive" });
+      } else if (row.status === "signing_timeout") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "signing_timeout", errorMessage: row.error_message || "A etapa de assinatura travou. Você pode tentar novamente." });
+        toast({ title: "Assinatura travada", description: "A etapa de signing demorou demais.", variant: "destructive" });
+      } else if (row.status === "recovering") {
+        safeSet({ status: "recovering", stepLabel: row.step_label ?? "Recuperando pipeline..." });
       } else if (row.status === "cancelled") {
         cleanupAll();
         clearPersistedJob();
@@ -166,7 +191,7 @@ export function useConversionJob() {
         try {
           const { data, error } = await supabase
             .from("conversion_jobs")
-            .select("status, progress, step_label, error_message, download_url")
+            .select("status, progress, step_label, error_message, download_url, last_heartbeat")
             .eq("id", jobId)
             .maybeSingle();
 
@@ -384,7 +409,7 @@ export function useConversionJob() {
         try {
           const { data, error } = await supabase
             .from("conversion_jobs")
-            .select("status, progress, step_label, error_message, download_url")
+            .select("status, progress, step_label, error_message, download_url, last_heartbeat")
             .eq("id", persistedJobId)
             .maybeSingle();
 
@@ -425,12 +450,25 @@ export function useConversionJob() {
             return;
           }
 
+          if (data.status === "stalled" || data.status === "signing_timeout") {
+            safeSet({
+              jobId: persistedJobId,
+              status: data.status,
+              progress: data.progress ?? 0,
+              stepLabel: data.step_label ?? "Pipeline travada",
+              errorMessage: data.error_message || "Worker sem resposta. Retome de onde parou.",
+              lastHeartbeatAt: (data as any).last_heartbeat ?? null,
+            });
+            return;
+          }
+
           // Still running — resume watching
           safeSet({
             jobId: persistedJobId,
-            status: "processing",
+            status: data.status === "recovering" ? "recovering" : "processing",
             progress: data.progress ?? 0,
             stepLabel: data.step_label ?? "Processando...",
+            lastHeartbeatAt: (data as any).last_heartbeat ?? null,
           });
           watchJob(persistedJobId);
         } catch (err) {
@@ -453,7 +491,7 @@ export function useConversionJob() {
     try {
       const { data, error } = await supabase
         .from("conversion_jobs")
-        .select("status, progress, step_label, error_message, download_url")
+        .select("status, progress, step_label, error_message, download_url, last_heartbeat")
         .eq("id", jobId)
         .maybeSingle();
       if (error || !data) return false;
@@ -471,15 +509,57 @@ export function useConversionJob() {
     }
   }, [state.jobId, processRow, stopRealtime, startRealtime, startPolling]);
 
+  // --- Retry / resume a stalled or signing_timeout build ---
+  const retry = useCallback(async (): Promise<boolean> => {
+    const jobId = state.jobId;
+    if (!jobId) return false;
+    try {
+      const { data: job } = await supabase
+        .from("conversion_jobs")
+        .select("source_url")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (!job?.source_url) return false;
+      console.log("[RECOVERY] Resuming job", jobId);
+      safeSet({ status: "recovering", errorMessage: null, stepLabel: "Recuperando pipeline..." });
+      const { data, error } = await supabase.functions.invoke("process-app", {
+        body: { job_id: jobId, url: job.source_url, resume: true },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.success === false) throw new Error(data.error || "Falha ao retomar build.");
+      persistJob(jobId);
+      watchJob(jobId);
+      return true;
+    } catch (err: any) {
+      console.warn("[RECOVERY] Retry failed:", err);
+      toast({ title: "Não foi possível retomar", description: err?.message || "Tente novamente.", variant: "destructive" });
+      return false;
+    }
+  }, [state.jobId, safeSet, watchJob]);
+
+  // --- Heartbeat staleness flag (worker silent >45s while still running) ---
+  const isHeartbeatStale = (() => {
+    if (!state.lastHeartbeatAt) return false;
+    if (state.status !== "processing" && state.status !== "reconnecting" && state.status !== "recovering") return false;
+    return Date.now() - new Date(state.lastHeartbeatAt).getTime() > 45_000;
+  })();
+
   return {
     ...state,
     submit,
     reset,
     cancel,
     refresh,
+    retry,
+    isHeartbeatStale,
 
     isSubmitting: state.status === "submitting",
-    isProcessing: state.status === "processing" || state.status === "reconnecting",
-    isFinished: state.status === "success" || state.status === "error" || state.status === "timeout" || state.status === "cancelled",
+    isProcessing: state.status === "processing" || state.status === "reconnecting" || state.status === "recovering",
+    isStalled: state.status === "stalled" || state.status === "signing_timeout",
+    isFinished:
+      state.status === "success" ||
+      state.status === "error" ||
+      state.status === "timeout" ||
+      state.status === "cancelled",
   };
 }
