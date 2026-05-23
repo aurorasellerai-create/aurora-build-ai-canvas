@@ -43,6 +43,23 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return respond({ success: false, error: "Token inválido" });
 
+    // Server-side enforcement: build quota + credit consumption (cannot be bypassed by direct API calls)
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: buildOk, error: buildErr } = await userClient.rpc("check_and_increment_build", { p_user_id: user.id });
+    if (buildErr) return respond({ success: false, error: "Falha ao validar limite de builds." });
+    if (!buildOk) return respond({ success: false, error: "Limite diário de builds atingido para o seu plano." });
+    const { data: creditsOk, error: creditsErr } = await userClient.rpc("consume_credits", {
+      p_user_id: user.id,
+      p_action: "convert_aab_to_apk",
+      p_amount: 1,
+    });
+    if (creditsErr) return respond({ success: false, error: "Falha ao validar créditos." });
+    if (!creditsOk) return respond({ success: false, error: "Créditos insuficientes para iniciar a conversão." });
+
+
+
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) return respond({ success: false, error: "Dados inválidos", details: parsed.error.flatten().fieldErrors });
 
