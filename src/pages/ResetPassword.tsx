@@ -51,6 +51,8 @@ const ResetPassword = () => {
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <PasswordInput
+            id="new-password"
+            name="new-password"
             placeholder="Nova senha (mín. 6 caracteres)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
