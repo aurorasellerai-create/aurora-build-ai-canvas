@@ -191,7 +191,7 @@ export function useConversionJob() {
         try {
           const { data, error } = await supabase
             .from("conversion_jobs")
-            .select("status, progress, step_label, error_message, download_url")
+            .select("status, progress, step_label, error_message, download_url, last_heartbeat")
             .eq("id", jobId)
             .maybeSingle();
 
@@ -409,7 +409,7 @@ export function useConversionJob() {
         try {
           const { data, error } = await supabase
             .from("conversion_jobs")
-            .select("status, progress, step_label, error_message, download_url")
+            .select("status, progress, step_label, error_message, download_url, last_heartbeat")
             .eq("id", persistedJobId)
             .maybeSingle();
 
@@ -478,7 +478,7 @@ export function useConversionJob() {
     try {
       const { data, error } = await supabase
         .from("conversion_jobs")
-        .select("status, progress, step_label, error_message, download_url")
+        .select("status, progress, step_label, error_message, download_url, last_heartbeat")
         .eq("id", jobId)
         .maybeSingle();
       if (error || !data) return false;
