@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
 import { readJsonCapped, PayloadTooLargeError, InvalidJsonError } from "../_shared/payloadGuard.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -43,6 +44,20 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    // Rate limit: 10 calls / 60s per user (AI cost-protection)
+    const userId = String(claimsData.claims.sub);
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const rl = await checkRateLimit(serviceClient, {
+      endpoint: "generate-business",
+      identity: userId,
+      max: 10,
+      windowSeconds: 60,
+    });
+    if (!rl.allowed) return rateLimitResponse(rl, getCorsHeaders(req));
 
     let parsedBody: { businessType?: unknown; niche?: unknown };
     try {

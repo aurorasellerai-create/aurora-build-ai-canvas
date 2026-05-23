@@ -1,4 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
+import { readJsonCapped, PayloadTooLargeError, InvalidJsonError } from "../_shared/payloadGuard.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rateLimit.ts";
 
 const ALLOWED_ORIGINS = [
   "https://aurorabuild.com.br",
@@ -12,6 +15,7 @@ function getCorsHeaders(req?: Request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    ...SECURITY_RESPONSE_HEADERS,
   };
 }
 
@@ -53,7 +57,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { description, style, duration } = await req.json();
+    // Rate limit: 5 video generations / 5min per user (high cost endpoint)
+    const serviceClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    const rl = await checkRateLimit(serviceClient, {
+      endpoint: "generate-video",
+      identity: user.id,
+      max: 5,
+      windowSeconds: 300,
+    });
+    if (!rl.allowed) return rateLimitResponse(rl, getCorsHeaders(req));
+
+    let parsedBody: { description?: unknown; style?: unknown; duration?: unknown };
+    try {
+      parsedBody = await readJsonCapped(req, 8 * 1024);
+    } catch (e) {
+      if (e instanceof PayloadTooLargeError) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 413, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (e instanceof InvalidJsonError) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 400, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      throw e;
+    }
+    const { description, style, duration } = parsedBody;
 
     if (!description || typeof description !== "string" || description.trim().length < 3 || description.length > 500) {
       return new Response(JSON.stringify({ error: "Descrição deve ter entre 3 e 500 caracteres" }), {

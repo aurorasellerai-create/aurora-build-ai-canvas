@@ -89,10 +89,14 @@ async function sendTransactionalEmail(
 }
 
 // Webhook endpoints don't need CORS (server-to-server), but keep minimal headers
+import { SECURITY_RESPONSE_HEADERS } from "../_shared/safeFetch.ts";
+import { checkRateLimit, ipHashFromRequest } from "../_shared/rateLimit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://aurorabuild.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-kiwify-signature, signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  ...SECURITY_RESPONSE_HEADERS,
 };
 
 // Credit packages mapping
@@ -457,6 +461,31 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Flood protection: 200 requests / 60s per source IP (signature still required below).
+    // Generous limit — Kiwify can retry legitimately on failures.
+    const floodRl = await checkRateLimit(getAdminClient(), {
+      endpoint: "kiwify-webhook",
+      identity: ipHashFromRequest(req),
+      max: 200,
+      windowSeconds: 60,
+    });
+    if (!floodRl.allowed) {
+      console.warn(`[SECURITY] {"evt":"WEBHOOK_FLOOD","retry_after":${floodRl.retryAfterSeconds}}`);
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(floodRl.retryAfterSeconds) },
+      });
+    }
+
+    // Payload size cap: 256 KiB is generous for Kiwify webhook payloads.
+    const contentLength = Number(req.headers.get("content-length") ?? "0");
+    if (contentLength > 256 * 1024) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), {
+        status: 413,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
