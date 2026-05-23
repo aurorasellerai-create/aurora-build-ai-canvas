@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, ClipboardCopy, ClipboardCheck, Clock, Gauge, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, ClipboardCopy, ClipboardCheck, Clock, Gauge, Hourglass, RefreshCw, Terminal, Timer, WifiOff, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 import {
@@ -47,8 +47,40 @@ function formatEta(seconds: number): string {
   return r === 0 ? `${m}min` : `${m}min ${r}s`;
 }
 
+interface LogEntry {
+  ts: string;
+  level: string;
+  message: string;
+  stageStatus: string;
+  stageLabel: string;
+}
+
+const STAGE_KEEPALIVE: Record<string, string[]> = {
+  Queued: ["Aguardando worker disponível...", "Reservando slot no cluster..."],
+  Preparing: ["Analisando manifesto da aplicação...", "Preparando workspace isolado..."],
+  InstallingDependencies: ["Instalando dependências Capacitor...", "Resolvendo árvore npm...", "Cache de plugins Android atualizado..."],
+  RunningGradle: ["Compilando módulos Android...", "Resolvendo dependências Gradle...", "Processando recursos res/..."],
+  GeneratingAPK: ["Empacotando recursos APK...", "Linkando binário nativo..."],
+  GeneratingAAB: ["Empacotando Android App Bundle...", "Gerando módulo base...", "Indexando recursos por densidade..."],
+  SigningBundle: ["Finalizando assinatura...", "Validando integridade do bundle...", "Aplicando blocos v1+v2+v3..."],
+  Optimizing: ["Compactando bundle...", "Aplicando zipalign...", "Otimizando recursos finais..."],
+  Uploading: ["Enviando chunks para storage seguro...", "Verificando checksum SHA-256...", "Confirmando upload multipart..."],
+  SyncingCloud: ["Sincronizando metadados...", "Indexando build no histórico..."],
+  RunningValidator: ["Aurora Validator analisando manifest...", "Auditando permissões..."],
+  GeneratingReport: ["Gerando relatório técnico...", "Calculando assinatura final..."],
+  Finalizing: ["Emitindo URL de download segura...", "Fechando job..."],
+  _default: ["Pipeline ativa...", "Worker processando..."],
+};
+
+const STAGE_OBS_TAG: Record<string, string> = {
+  SigningBundle: "SIGNING",
+  Uploading: "UPLOAD_FINAL",
+  SyncingCloud: "UPLOAD_FINAL",
+  Finalizing: "JOB_FINALIZING",
+};
 
 const isFailureState = (status: string) => status === "error" || status === "timeout" || status === "cancelled";
+
 
 const statusLabel: Record<string, string> = {
   submitting: "Enviando",
@@ -181,12 +213,18 @@ export default function BuildPipelineView({
     return getReachedStages(rawProgress);
   }, [isFailure, rawProgress]);
   const reachedNames = new Set(reachedStages.map((stage) => stage.status));
-  const logs = useMemo(
+  const baseLogs = useMemo(
     () =>
       reachedStages.flatMap((stage) =>
         logsForStage(stage.status).map((log) => ({ ...log, stageStatus: stage.status, stageLabel: stage.shortLabel })),
       ),
     [reachedStages],
+  );
+  // Continuous streaming logs (heartbeat, stall, recovery, completion).
+  const [streamLogs, setStreamLogs] = useState<LogEntry[]>([]);
+  const logs = useMemo(
+    () => [...baseLogs, ...streamLogs].sort((a, b) => String(a.ts).localeCompare(String(b.ts))),
+    [baseLogs, streamLogs],
   );
   const CurrentIcon = currentStage.icon;
   const color = COLOR_CLASS[currentStage.color];
@@ -259,6 +297,91 @@ export default function BuildPipelineView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFrozen, countdown, onRetry, retrying, stalledSec, freezeThresholdSec, autoRetryAfterSec]);
 
+  // --- Soft stall (>60s without change) — informative only, no false error ---
+  const SOFT_STALL_SEC = 60;
+  const isSoftStalled = isActive && stalledSec >= SOFT_STALL_SEC;
+
+  // --- Continuous log streaming ---
+  // Emit a heartbeat log every 4s while active so the UI never feels frozen.
+  const pushLog = (entry: Omit<LogEntry, "ts"> & { ts?: string }) =>
+    setStreamLogs((prev) => {
+      const next = [...prev, { ...entry, ts: entry.ts ?? new Date().toISOString() }];
+      return next.length > 60 ? next.slice(-60) : next;
+    });
+
+  useEffect(() => {
+    if (!isActive) return;
+    const stageKey = currentStage.status;
+    const stageLabel = currentStage.shortLabel;
+    const phrases = STAGE_KEEPALIVE[stageKey] ?? STAGE_KEEPALIVE._default;
+    let idx = 0;
+    const id = setInterval(() => {
+      const phrase = phrases[idx % phrases.length];
+      idx += 1;
+      pushLog({
+        level: "INFO",
+        message: `[HEARTBEAT] ${phrase}`,
+        stageStatus: stageKey,
+        stageLabel,
+      });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [isActive, currentStage.status, currentStage.shortLabel]);
+
+  // Emit [STALL_DETECTED] and [PIPELINE_RECOVERED] transitions.
+  const stallEmittedRef = useRef(false);
+  useEffect(() => {
+    if (isSoftStalled && !stallEmittedRef.current) {
+      stallEmittedRef.current = true;
+      pushLog({
+        level: "WARN",
+        message: "[STALL_DETECTED] Build demorando mais que o normal, mas ainda processando.",
+        stageStatus: currentStage.status,
+        stageLabel: currentStage.shortLabel,
+      });
+    } else if (!isSoftStalled && stallEmittedRef.current && isActive) {
+      stallEmittedRef.current = false;
+      pushLog({
+        level: "SUCCESS",
+        message: "[PIPELINE_RECOVERED] Atualização recebida do worker.",
+        stageStatus: currentStage.status,
+        stageLabel: currentStage.shortLabel,
+      });
+    }
+  }, [isSoftStalled, isActive, currentStage.status, currentStage.shortLabel]);
+
+  // Tag key terminal stages and final completion.
+  const lastTaggedStageRef = useRef<string>("");
+  useEffect(() => {
+    if (!isActive) return;
+    const tag = STAGE_OBS_TAG[currentStage.status];
+    if (!tag) return;
+    if (lastTaggedStageRef.current === currentStage.status) return;
+    lastTaggedStageRef.current = currentStage.status;
+    pushLog({
+      level: "INFO",
+      message: `[${tag}] Entrando na etapa ${currentStage.shortLabel}.`,
+      stageStatus: currentStage.status,
+      stageLabel: currentStage.shortLabel,
+    });
+  }, [isActive, currentStage.status, currentStage.shortLabel]);
+
+  const completedEmittedRef = useRef(false);
+  useEffect(() => {
+    if (isDone && !completedEmittedRef.current) {
+      completedEmittedRef.current = true;
+      pushLog({
+        level: "SUCCESS",
+        message: "[JOB_COMPLETED] Build finalizado, download liberado e histórico salvo.",
+        stageStatus: "Completed",
+        stageLabel: "Concluído",
+      });
+    }
+    if (!isDone && !isActive && !isFailure) {
+      completedEmittedRef.current = false;
+    }
+  }, [isDone, isActive, isFailure]);
+
   const shownProgress = isDone ? 100 : Math.round(displayedProgress);
 
   return (
@@ -326,6 +449,33 @@ export default function BuildPipelineView({
         )}
       </div>
 
+      {isActive && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background/40 px-3 py-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <span className="font-semibold text-foreground">Worker online</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Activity className="h-3 w-3 text-secondary" />
+            Última atividade há <span className="font-semibold text-foreground tabular-nums">{stalledSec}s</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 opacity-80">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+            Pipeline ativa
+          </span>
+        </div>
+      )}
+
+      {isSoftStalled && !isFrozen && (
+        <div className="flex items-center gap-2 rounded-lg border border-secondary/30 bg-secondary/10 p-3 text-xs text-muted-foreground">
+          <Hourglass className="h-4 w-4 shrink-0 text-secondary" />
+          Build demorando mais que o normal, mas ainda processando. Nenhuma ação necessária.
+        </div>
+      )}
+
       {isFrozen && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground">
           <WifiOff className="h-4 w-4 shrink-0 text-amber-400" />
@@ -388,13 +538,6 @@ export default function BuildPipelineView({
   );
 }
 
-interface LogEntry {
-  ts: string;
-  level: string;
-  message: string;
-  stageStatus: string;
-  stageLabel: string;
-}
 
 function LogsPanel({
   logs,
