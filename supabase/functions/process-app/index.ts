@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
     currentStep = "job_lookup";
     const { data: existingJob, error: lookupError } = await supabase
       .from("conversion_jobs")
-      .select("id, user_id")
+      .select("id, user_id, status, download_url, artifact_verified, recovery_attempts")
       .eq("id", jobId)
       .maybeSingle();
 
@@ -277,16 +277,33 @@ Deno.serve(async (req) => {
     }
     const ownerUserId = existingJob.user_id as string;
 
+    // --- Partial recovery: skip build if we already have a verified artifact path ---
+    const recoveryMode =
+      resume === true ||
+      ["stalled", "signing_timeout", "timeout"].includes(String(existingJob.status));
+    const hasArtifactCandidate = Boolean(existingJob.download_url) && !existingJob.artifact_verified;
+    const skipBuild = recoveryMode && hasArtifactCandidate;
+
+    if (recoveryMode) {
+      logOut(`[RECOVERY] Resuming job ${jobId} (skipBuild=${skipBuild})`);
+    }
+
     // --- mark as running real state machine ---
     currentStep = "job_update_start";
+    const initialStatus = recoveryMode ? "recovering" : "preparing";
+    const initialLabel = recoveryMode ? "Recuperando pipeline..." : "Iniciando conversão...";
     const { error: startUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
-        status: "preparing",
-        progress: 0,
-        step_label: "Iniciando conversão...",
-        build_stage: "preparing",
+        status: initialStatus,
+        progress: skipBuild ? 88 : 0,
+        step_label: initialLabel,
+        build_stage: initialStatus,
         started_at: new Date(startTime).toISOString(),
+        last_heartbeat: new Date().toISOString(),
+        heartbeat_stage: initialStatus,
+        heartbeat_progress: skipBuild ? 88 : 0,
+        recovery_attempts: recoveryMode ? (existingJob.recovery_attempts ?? 0) + 1 : (existingJob.recovery_attempts ?? 0),
         error_message: null,
         processing_time_ms: 0,
         stdout_log: stdoutLines.join("\n"),
@@ -303,6 +320,24 @@ Deno.serve(async (req) => {
     if (startUpdateError) {
       return respond({ success: false, error: "Não foi possível iniciar o job.", step: currentStep, job_id: jobId });
     }
+
+    // --- heartbeat: ping every 5s with current stage/progress ---
+    let hbStage = initialStatus;
+    let hbProgress = skipBuild ? 88 : 0;
+    const heartbeat = setInterval(() => {
+      supabase
+        .from("conversion_jobs")
+        .update({
+          last_heartbeat: new Date().toISOString(),
+          heartbeat_stage: hbStage,
+          heartbeat_progress: hbProgress,
+        })
+        .eq("id", jobId!)
+        .then(({ error }) => {
+          if (error) console.warn("[HEARTBEAT] update failed:", error.message);
+        });
+    }, HEARTBEAT_INTERVAL_MS);
+    const stopHeartbeat = () => clearInterval(heartbeat);
 
     // --- validate URL ---
     currentStep = "url_validation";
