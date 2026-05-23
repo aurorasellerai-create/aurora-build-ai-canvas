@@ -168,6 +168,8 @@ const AdminLoginForm = () => {
           </div>
           <div className="relative">
             <PasswordInput
+              id="admin-password"
+              name="password"
               placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

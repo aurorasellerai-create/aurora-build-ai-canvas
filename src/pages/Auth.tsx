@@ -147,6 +147,8 @@ const Auth = () => {
             />
           </div>
           <PasswordInput
+            id="password"
+            name="password"
             placeholder="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
