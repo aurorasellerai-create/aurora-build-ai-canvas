@@ -27,6 +27,7 @@ interface JobState {
   stepLabel: string;
   errorMessage: string | null;
   downloadUrl: string | null;
+  lastHeartbeatAt: string | null;
 }
 
 type SubmitOptions = {
