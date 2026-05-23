@@ -44,6 +44,7 @@ const initialState: JobState = {
   stepLabel: "",
   errorMessage: null,
   downloadUrl: null,
+  lastHeartbeatAt: null,
 };
 
 function persistJob(jobId: string) {
