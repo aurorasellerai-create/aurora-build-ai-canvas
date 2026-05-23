@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Loader2, Mail, Lock, User, ShieldAlert } from "lucide-react";
 import AuthBackButton from "@/components/AuthBackButton";
 import { supabase } from "@/integrations/supabase/client";
+import { PasswordInput } from "@/components/ui/password-input";
 import { analytics } from "@/lib/analytics";
 
 const MAX_CLIENT_ATTEMPTS = 5;
