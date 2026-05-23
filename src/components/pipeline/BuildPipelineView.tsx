@@ -538,13 +538,6 @@ export default function BuildPipelineView({
   );
 }
 
-interface LogEntry {
-  ts: string;
-  level: string;
-  message: string;
-  stageStatus: string;
-  stageLabel: string;
-}
 
 function LogsPanel({
   logs,
