@@ -167,25 +167,18 @@ const AdminLoginForm = () => {
             />
           </div>
           <div className="relative">
-            <Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
-            <input
-              type={showPassword ? "text" : "password"}
+            <PasswordInput
               placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              autoComplete="current-password"
+              leftAdornment={<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />}
               className="w-full pl-10 pr-10 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-3 p-0.5 text-muted-foreground hover:text-foreground transition"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
           </div>
+
 
           <div className="text-right">
             <button
