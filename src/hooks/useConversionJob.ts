@@ -496,15 +496,57 @@ export function useConversionJob() {
     }
   }, [state.jobId, processRow, stopRealtime, startRealtime, startPolling]);
 
+  // --- Retry / resume a stalled or signing_timeout build ---
+  const retry = useCallback(async (): Promise<boolean> => {
+    const jobId = state.jobId;
+    if (!jobId) return false;
+    try {
+      const { data: job } = await supabase
+        .from("conversion_jobs")
+        .select("source_url")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (!job?.source_url) return false;
+      console.log("[RECOVERY] Resuming job", jobId);
+      safeSet({ status: "recovering", errorMessage: null, stepLabel: "Recuperando pipeline..." });
+      const { data, error } = await supabase.functions.invoke("process-app", {
+        body: { job_id: jobId, url: job.source_url, resume: true },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.success === false) throw new Error(data.error || "Falha ao retomar build.");
+      persistJob(jobId);
+      watchJob(jobId);
+      return true;
+    } catch (err: any) {
+      console.warn("[RECOVERY] Retry failed:", err);
+      toast({ title: "Não foi possível retomar", description: err?.message || "Tente novamente.", variant: "destructive" });
+      return false;
+    }
+  }, [state.jobId, safeSet, watchJob]);
+
+  // --- Heartbeat staleness flag (worker silent >45s while still running) ---
+  const isHeartbeatStale = (() => {
+    if (!state.lastHeartbeatAt) return false;
+    if (state.status !== "processing" && state.status !== "reconnecting" && state.status !== "recovering") return false;
+    return Date.now() - new Date(state.lastHeartbeatAt).getTime() > 45_000;
+  })();
+
   return {
     ...state,
     submit,
     reset,
     cancel,
     refresh,
+    retry,
+    isHeartbeatStale,
 
     isSubmitting: state.status === "submitting",
-    isProcessing: state.status === "processing" || state.status === "reconnecting",
-    isFinished: state.status === "success" || state.status === "error" || state.status === "timeout" || state.status === "cancelled",
+    isProcessing: state.status === "processing" || state.status === "reconnecting" || state.status === "recovering",
+    isStalled: state.status === "stalled" || state.status === "signing_timeout",
+    isFinished:
+      state.status === "success" ||
+      state.status === "error" ||
+      state.status === "timeout" ||
+      state.status === "cancelled",
   };
 }
