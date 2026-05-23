@@ -11,6 +11,9 @@ export const BUILD_JOB_STATES = [
   "failed",
   "timeout",
   "cancelled",
+  "stalled",
+  "signing_timeout",
+  "recovering",
 ] as const;
 
 export type BuildJobStatus = (typeof BUILD_JOB_STATES)[number];
@@ -18,6 +21,8 @@ export type BuildJobStatus = (typeof BUILD_JOB_STATES)[number];
 export type LegacyBuildStatus = "pending" | "processing" | "done" | "error";
 
 export const FINAL_BUILD_STATES: BuildJobStatus[] = ["completed", "failed", "timeout", "cancelled"];
+/** Non-final but actionable: user may retry / resume the pipeline. */
+export const RECOVERABLE_BUILD_STATES: BuildJobStatus[] = ["stalled", "signing_timeout", "timeout"];
 
 const ORDER: BuildJobStatus[] = [
   "queued",
@@ -44,7 +49,14 @@ const LABELS: Record<BuildJobStatus, string> = {
   failed: "Falhou",
   timeout: "Timeout",
   cancelled: "Cancelado",
+  stalled: "Worker sem resposta",
+  signing_timeout: "Assinatura travada",
+  recovering: "Recuperando pipeline...",
 };
+
+export function isRecoverableBuildState(status: string | null | undefined): boolean {
+  return RECOVERABLE_BUILD_STATES.includes(normalizeBuildStatus(status));
+}
 
 export function isFinalBuildState(status: string | null | undefined): boolean {
   return FINAL_BUILD_STATES.includes(normalizeBuildStatus(status));
