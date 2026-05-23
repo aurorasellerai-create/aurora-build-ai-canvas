@@ -494,6 +494,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_hits: {
+        Row: {
+          bucket_key: string
+          hit_at: string
+          id: number
+        }
+        Insert: {
+          bucket_key: string
+          hit_at?: string
+          id?: number
+        }
+        Update: {
+          bucket_key?: string
+          hit_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           created_at: string
@@ -680,8 +698,17 @@ export type Database = {
       }
       check_ip_rate_limit: { Args: { p_ip: string }; Returns: boolean }
       check_login_rate_limit: { Args: { p_email: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          _bucket_key: string
+          _max_hits: number
+          _window_seconds: number
+        }
+        Returns: Json
+      }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
       cleanup_old_security_data: { Args: never; Returns: undefined }
+      cleanup_rate_limit_hits: { Args: never; Returns: undefined }
       cleanup_webhook_dedupe: { Args: never; Returns: undefined }
       consume_credits: {
         Args: { p_action: string; p_amount?: number; p_user_id: string }
