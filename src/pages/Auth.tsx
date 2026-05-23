@@ -146,18 +146,16 @@ const Auth = () => {
               className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
             />
           </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
-            <input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
-            />
-          </div>
+          <PasswordInput
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete={isLogin ? "current-password" : "new-password"}
+            leftAdornment={<Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground z-10" />}
+            className="w-full pl-10 pr-10 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition"
+          />
 
           {isLocked && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
