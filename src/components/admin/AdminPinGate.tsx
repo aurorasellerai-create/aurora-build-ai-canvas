@@ -2,8 +2,9 @@ import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Loader2, Lock, Mail, ShieldAlert, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Shield, Loader2, Lock, Mail, ShieldAlert, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { PasswordInput } from "@/components/ui/password-input";
 
 // Privileged-admin identity is enforced server-side via has_role + PROTECTED_ADMIN_EMAILS env var.
 // Do not embed admin emails in the client bundle.
