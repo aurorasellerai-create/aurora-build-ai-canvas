@@ -450,12 +450,25 @@ export function useConversionJob() {
             return;
           }
 
+          if (data.status === "stalled" || data.status === "signing_timeout") {
+            safeSet({
+              jobId: persistedJobId,
+              status: data.status,
+              progress: data.progress ?? 0,
+              stepLabel: data.step_label ?? "Pipeline travada",
+              errorMessage: data.error_message || "Worker sem resposta. Retome de onde parou.",
+              lastHeartbeatAt: (data as any).last_heartbeat ?? null,
+            });
+            return;
+          }
+
           // Still running — resume watching
           safeSet({
             jobId: persistedJobId,
-            status: "processing",
+            status: data.status === "recovering" ? "recovering" : "processing",
             progress: data.progress ?? 0,
             stepLabel: data.step_label ?? "Processando...",
+            lastHeartbeatAt: (data as any).last_heartbeat ?? null,
           });
           watchJob(persistedJobId);
         } catch (err) {
