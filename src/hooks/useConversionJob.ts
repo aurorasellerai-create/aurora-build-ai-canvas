@@ -123,10 +123,18 @@ export function useConversionJob() {
 
   // --- Process a row from the DB ---
   const processRow = useCallback(
-    (row: { status: string; progress: number; step_label: string | null; error_message: string | null; download_url: string | null }) => {
+    (row: {
+      status: string;
+      progress: number;
+      step_label: string | null;
+      error_message: string | null;
+      download_url: string | null;
+      last_heartbeat?: string | null;
+    }) => {
       safeSet({
         progress: row.progress ?? 0,
         stepLabel: row.step_label ?? "Processando...",
+        lastHeartbeatAt: row.last_heartbeat ?? null,
       });
 
       if (row.status === "done" || row.status === "completed") {
@@ -152,6 +160,18 @@ export function useConversionJob() {
         clearPersistedJob();
         safeSet({ status: "timeout", errorMessage: row.error_message || "Build excedeu o tempo máximo e foi encerrado automaticamente." });
         toast({ title: "Build em timeout", description: row.error_message || "O watchdog encerrou a pipeline travada.", variant: "destructive" });
+      } else if (row.status === "stalled") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "stalled", errorMessage: row.error_message || "Worker parou de responder. Você pode tentar novamente." });
+        toast({ title: "Pipeline travada", description: "Worker sem resposta. Retome de onde parou.", variant: "destructive" });
+      } else if (row.status === "signing_timeout") {
+        cleanupAll();
+        clearPersistedJob();
+        safeSet({ status: "signing_timeout", errorMessage: row.error_message || "A etapa de assinatura travou. Você pode tentar novamente." });
+        toast({ title: "Assinatura travada", description: "A etapa de signing demorou demais.", variant: "destructive" });
+      } else if (row.status === "recovering") {
+        safeSet({ status: "recovering", stepLabel: row.step_label ?? "Recuperando pipeline..." });
       } else if (row.status === "cancelled") {
         cleanupAll();
         clearPersistedJob();
