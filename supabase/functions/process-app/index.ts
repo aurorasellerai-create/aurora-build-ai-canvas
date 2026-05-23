@@ -181,6 +181,18 @@ const generateAndUploadAAB = async (
     throw new Error(`Falha no upload do arquivo: ${uploadError.message}`);
   }
 
+  // --- Artifact verification: confirm the object actually exists in storage ---
+  const { data: listed, error: listErr } = await supabase.storage
+    .from("aab-files")
+    .list(`${userId}/${jobId}`, { limit: 10 });
+  const verified = !listErr && (listed ?? []).some(
+    (o: any) => o.name === "app-release.aab" && (o.metadata?.size ?? 1) > 0,
+  );
+  if (!verified) {
+    throw new Error("[UPLOAD] Artefato não encontrado no storage após upload.");
+  }
+  console.log(`[UPLOAD] Artifact verified in storage: ${filePath}`);
+
   // Private bucket: signed URL (45 min). UI re-signs via sign-aab-download on demand.
   const { data: signed, error: signErr } = await supabase.storage
     .from("aab-files")
@@ -190,7 +202,7 @@ const generateAndUploadAAB = async (
     throw new Error("Não foi possível gerar a URL assinada de download.");
   }
 
-  console.log(`[PROCESS] AAB uploaded successfully (signed URL issued)`);
+  console.log(`[UPLOAD] AAB uploaded + verified (signed URL issued)`);
   return signed.signedUrl;
 };
 
