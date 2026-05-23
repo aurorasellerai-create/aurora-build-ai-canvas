@@ -216,16 +216,19 @@ Deno.serve(async (req) => {
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
+  const correlationId = crypto.randomUUID().slice(0, 8);
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
   let finalStatusWritten = false;
   const logOut = (message: string) => {
-    stdoutLines.push(`[${new Date().toISOString()}] ${message}`);
-    console.log(message);
+    const line = `[${new Date().toISOString()}] [cid=${correlationId}] ${message}`;
+    stdoutLines.push(line);
+    console.log(line);
   };
   const logErr = (message: string) => {
-    stderrLines.push(`[${new Date().toISOString()}] ${message}`);
-    console.error(message);
+    const line = `[${new Date().toISOString()}] [cid=${correlationId}] ${message}`;
+    stderrLines.push(line);
+    console.error(line);
   };
 
   try {
