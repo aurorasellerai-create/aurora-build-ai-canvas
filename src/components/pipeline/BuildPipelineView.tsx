@@ -47,8 +47,40 @@ function formatEta(seconds: number): string {
   return r === 0 ? `${m}min` : `${m}min ${r}s`;
 }
 
+interface LogEntry {
+  ts: string;
+  level: string;
+  message: string;
+  stageStatus: string;
+  stageLabel: string;
+}
+
+const STAGE_KEEPALIVE: Record<string, string[]> = {
+  Queued: ["Aguardando worker disponível...", "Reservando slot no cluster..."],
+  Preparing: ["Analisando manifesto da aplicação...", "Preparando workspace isolado..."],
+  InstallingDependencies: ["Instalando dependências Capacitor...", "Resolvendo árvore npm...", "Cache de plugins Android atualizado..."],
+  RunningGradle: ["Compilando módulos Android...", "Resolvendo dependências Gradle...", "Processando recursos res/..."],
+  GeneratingAPK: ["Empacotando recursos APK...", "Linkando binário nativo..."],
+  GeneratingAAB: ["Empacotando Android App Bundle...", "Gerando módulo base...", "Indexando recursos por densidade..."],
+  SigningBundle: ["Finalizando assinatura...", "Validando integridade do bundle...", "Aplicando blocos v1+v2+v3..."],
+  Optimizing: ["Compactando bundle...", "Aplicando zipalign...", "Otimizando recursos finais..."],
+  Uploading: ["Enviando chunks para storage seguro...", "Verificando checksum SHA-256...", "Confirmando upload multipart..."],
+  SyncingCloud: ["Sincronizando metadados...", "Indexando build no histórico..."],
+  RunningValidator: ["Aurora Validator analisando manifest...", "Auditando permissões..."],
+  GeneratingReport: ["Gerando relatório técnico...", "Calculando assinatura final..."],
+  Finalizing: ["Emitindo URL de download segura...", "Fechando job..."],
+  _default: ["Pipeline ativa...", "Worker processando..."],
+};
+
+const STAGE_OBS_TAG: Record<string, string> = {
+  SigningBundle: "SIGNING",
+  Uploading: "UPLOAD_FINAL",
+  SyncingCloud: "UPLOAD_FINAL",
+  Finalizing: "JOB_FINALIZING",
+};
 
 const isFailureState = (status: string) => status === "error" || status === "timeout" || status === "cancelled";
+
 
 const statusLabel: Record<string, string> = {
   submitting: "Enviando",
