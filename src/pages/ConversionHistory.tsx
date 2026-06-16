@@ -64,7 +64,7 @@ const ConversionHistory = () => {
     setLoading(true);
     const { data } = await supabase
       .from("conversion_jobs")
-      .select("*")
+      .select("id, source_url, status, progress, step_label, download_url, error_message, processing_time_ms, created_at, updated_at")
       .order("created_at", { ascending: false });
     setJobs((data as ConversionJob[]) ?? []);
     setLoading(false);
