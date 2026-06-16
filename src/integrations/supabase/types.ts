@@ -736,6 +736,14 @@ export type Database = {
         Returns: boolean
       }
       expire_trials: { Args: never; Returns: undefined }
+      get_my_2fa_status: {
+        Args: never
+        Returns: {
+          backup_codes_remaining: number
+          enabled: boolean
+          last_used_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
