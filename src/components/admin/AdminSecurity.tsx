@@ -70,10 +70,15 @@ const AdminSecurity = ({ enabled = true }: AdminSectionProps) => {
   const { data: tfa, isLoading: loadingTfa } = useQuery({
     queryKey: ["admin-2fa-status", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("admin_2fa")
-        .select("enabled, last_used_at, backup_codes")
-        .eq("user_id", user!.id).maybeSingle();
-      return data;
+      const { data } = await (supabase as any).rpc("get_my_2fa_status");
+      const row = Array.isArray(data) ? data[0] : data;
+      return row
+        ? {
+            enabled: row.enabled,
+            last_used_at: row.last_used_at,
+            backup_codes: new Array(row.backup_codes_remaining ?? 0),
+          }
+        : null;
     },
     enabled: !!user && enabled,
   });
