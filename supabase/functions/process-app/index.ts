@@ -307,8 +307,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { job_id, url, resume } = parsed.data;
+    const { job_id, url, resume, client_correlation_id } = parsed.data;
     jobId = job_id;
+    if (client_correlation_id) {
+      correlationId = client_correlation_id;
+      logOut(`[TRACE] Using client correlation_id=${correlationId}`);
+    }
 
     // --- lookup job ---
     currentStep = "job_lookup";
