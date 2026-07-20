@@ -43,16 +43,37 @@ const STEPS = [
 const URL_VALIDATION_TIMEOUT_MS = 8000;
 const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 const SIGNING_MAX_DURATION_MS = 180 * 1000;
+const UPLOAD_STEP_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 5000;
 const UPLOAD_MAX_ATTEMPTS = 3;
 
 // ---------- helpers ----------
 
-const respond = (payload: Record<string, unknown>) =>
+// NOTE: respond() is intentionally a factory that takes the request so it can
+// resolve CORS headers per-call. The previous version referenced `req` from
+// module scope, which threw ReferenceError on every invocation — leaving jobs
+// hanging at the last DB-written stage (typically 90–97%) because the worker
+// exited before finalizing.
+const buildResponder = (req: Request) => (payload: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(payload), {
-    status: 200,
+    status,
     headers: { ...getCorsHeaders(req), ...SECURITY_RESPONSE_HEADERS, "Content-Type": "application/json" },
   });
+
+// withTimeout — wraps any promise with a hard deadline so signing/upload
+// can never hang forever. Rejects with a tagged Error so callers can log.
+async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
+  let handle: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    handle = setTimeout(() => reject(new Error(`[TIMEOUT] ${tag} excedeu ${ms}ms`)), ms) as unknown as number;
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (handle !== undefined) clearTimeout(handle);
+  }
+}
+
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
