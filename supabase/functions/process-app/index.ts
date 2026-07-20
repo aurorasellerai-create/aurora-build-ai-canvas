@@ -27,6 +27,7 @@ const BodySchema = z.object({
       message: "A URL deve usar HTTPS",
     }),
   resume: z.boolean().optional(),
+  client_correlation_id: z.string().trim().min(4).max(64).optional(),
 });
 
 const STEPS = [
