@@ -33,6 +33,7 @@ function getCorsHeaders(req?: Request) {
 
 const BodySchema = z.object({
   url: z.string().trim().url({ message: "URL inválida" }).startsWith("https://", { message: "URL deve usar HTTPS" }),
+  correlation_id: z.string().trim().min(4).max(64).optional(),
 });
 
 Deno.serve(async (req) => {
