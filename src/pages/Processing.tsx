@@ -64,6 +64,8 @@ const Processing = () => {
   ]);
   const [realtimeOk, setRealtimeOk] = useState(true);
   const [pollingNotice, setPollingNotice] = useState(false);
+  const [diag, setDiag] = useState<Diagnostics | null>(null);
+  const [diagCopied, setDiagCopied] = useState(false);
   const startedAtRef = useRef<number>(Date.now());
   const lastStageRef = useRef<number>(-1);
   const logsEndRef = useRef<HTMLDivElement>(null);
