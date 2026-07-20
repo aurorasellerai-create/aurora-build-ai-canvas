@@ -43,16 +43,37 @@ const STEPS = [
 const URL_VALIDATION_TIMEOUT_MS = 8000;
 const BUILD_MAX_DURATION_MS = 10 * 60 * 1000;
 const SIGNING_MAX_DURATION_MS = 180 * 1000;
+const UPLOAD_STEP_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 5000;
 const UPLOAD_MAX_ATTEMPTS = 3;
 
 // ---------- helpers ----------
 
-const respond = (payload: Record<string, unknown>) =>
+// NOTE: respond() is intentionally a factory that takes the request so it can
+// resolve CORS headers per-call. The previous version referenced `req` from
+// module scope, which threw ReferenceError on every invocation — leaving jobs
+// hanging at the last DB-written stage (typically 90–97%) because the worker
+// exited before finalizing.
+const buildResponder = (req: Request) => (payload: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(payload), {
-    status: 200,
+    status,
     headers: { ...getCorsHeaders(req), ...SECURITY_RESPONSE_HEADERS, "Content-Type": "application/json" },
   });
+
+// withTimeout — wraps any promise with a hard deadline so signing/upload
+// can never hang forever. Rejects with a tagged Error so callers can log.
+async function withTimeout<T>(promise: Promise<T>, ms: number, tag: string): Promise<T> {
+  let handle: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    handle = setTimeout(() => reject(new Error(`[TIMEOUT] ${tag} excedeu ${ms}ms`)), ms) as unknown as number;
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (handle !== undefined) clearTimeout(handle);
+  }
+}
+
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) return error.message;
@@ -213,6 +234,7 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
+  const respond = buildResponder(req);
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
@@ -220,6 +242,14 @@ Deno.serve(async (req) => {
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
   let finalStatusWritten = false;
+  let heartbeatHandle: number | undefined;
+  const stopHeartbeatSafe = () => {
+    if (heartbeatHandle !== undefined) {
+      clearInterval(heartbeatHandle);
+      heartbeatHandle = undefined;
+    }
+  };
+
   const logOut = (message: string) => {
     const line = `[${new Date().toISOString()}] [cid=${correlationId}] ${message}`;
     stdoutLines.push(line);
@@ -339,7 +369,7 @@ Deno.serve(async (req) => {
     // --- heartbeat: ping every 5s with current stage/progress ---
     let hbStage = initialStatus;
     let hbProgress = skipBuild ? 88 : 0;
-    const heartbeat = setInterval(() => {
+    heartbeatHandle = setInterval(() => {
       supabase
         .from("conversion_jobs")
         .update({
@@ -351,8 +381,9 @@ Deno.serve(async (req) => {
         .then(({ error }) => {
           if (error) console.warn("[HEARTBEAT] update failed:", error.message);
         });
-    }, HEARTBEAT_INTERVAL_MS);
-    const stopHeartbeat = () => clearInterval(heartbeat);
+    }, HEARTBEAT_INTERVAL_MS) as unknown as number;
+    const stopHeartbeat = stopHeartbeatSafe;
+
 
     // --- validate URL ---
     currentStep = "url_validation";
@@ -465,21 +496,42 @@ Deno.serve(async (req) => {
       logOut(`[RECOVERY] Skipping compile stages — reusing existing artifact reference`);
     }
 
-    // --- generate file & upload to storage (with retry x3 exponential backoff) ---
+    // --- generate file & upload to storage (retry x3, hard timeout per attempt) ---
     currentStep = "uploading";
     hbStage = "uploading";
     hbProgress = 92;
+    // Visible mid-upload progress so the UI never appears frozen between 90→100.
+    await supabase.from("conversion_jobs").update({
+      progress: 95,
+      step_label: "Enviando artefato para a nuvem...",
+      status: "uploading",
+      build_stage: "uploading",
+      last_log: "[UPLOAD] Iniciando envio do artefato",
+    }).eq("id", jobId);
     logOut(`[UPLOAD] Generating and uploading AAB for job ${jobId}`);
     let downloadUrl: string | null = null;
     let uploadErr: unknown = null;
     for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
+      const attemptStart = Date.now();
       try {
-        await supabase.from("conversion_jobs").update({ upload_attempts: attempt }).eq("id", jobId);
-        downloadUrl = await generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl);
-        if (downloadUrl) { uploadErr = null; break; }
+        await supabase.from("conversion_jobs").update({
+          upload_attempts: attempt,
+          last_log: `[UPLOAD] Tentativa ${attempt}/${UPLOAD_MAX_ATTEMPTS}`,
+        }).eq("id", jobId);
+        logOut(`[UPLOAD] attempt ${attempt}/${UPLOAD_MAX_ATTEMPTS} started`);
+        downloadUrl = await withTimeout(
+          generateAndUploadAAB(supabase, jobId, ownerUserId, url, supabaseUrl),
+          UPLOAD_STEP_TIMEOUT_MS,
+          `upload attempt ${attempt}`,
+        );
+        if (downloadUrl) {
+          logOut(`[UPLOAD] attempt ${attempt} succeeded in ${Date.now() - attemptStart}ms`);
+          uploadErr = null;
+          break;
+        }
       } catch (e) {
         uploadErr = e;
-        logErr(`[UPLOAD] attempt ${attempt}/${UPLOAD_MAX_ATTEMPTS} failed: ${getErrorMessage(e)}`);
+        logErr(`[UPLOAD] attempt ${attempt}/${UPLOAD_MAX_ATTEMPTS} failed after ${Date.now() - attemptStart}ms: ${getErrorMessage(e)}`);
         if (attempt < UPLOAD_MAX_ATTEMPTS) {
           await new Promise((r) => setTimeout(r, 1500 * Math.pow(2, attempt - 1)));
         }
@@ -487,17 +539,19 @@ Deno.serve(async (req) => {
     }
     if (!downloadUrl) {
       const msg = `[UPLOAD] Falha após ${UPLOAD_MAX_ATTEMPTS} tentativas: ${getErrorMessage(uploadErr)}`;
-      stopHeartbeat();
+      stopHeartbeatSafe();
       await markJobAsFailed(supabase, jobId, msg, "uploading", startTime);
       finalStatusWritten = true;
       return respond({ success: false, error: msg, step: "uploading", job_id: jobId });
     }
 
+
     // --- finalize job ---
     currentStep = "finalizing";
     hbStage = "finalizing";
     hbProgress = 99;
-    stopHeartbeat();
+    stopHeartbeatSafe();
+
     const { error: finalUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
@@ -577,6 +631,9 @@ Deno.serve(async (req) => {
 
     return respond({ success: false, error: "Falha interna durante o processamento.", step: currentStep, job_id: jobId });
   } finally {
+    // Guarantee no leaked heartbeat regardless of success/error path.
+    stopHeartbeatSafe();
+
     if (jobId && !finalStatusWritten) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
