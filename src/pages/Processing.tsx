@@ -32,6 +32,7 @@ type ProjectRow = {
   site_url: string | null;
   updated_at: string | null;
   created_at: string | null;
+  correlation_id: string | null;
 };
 
 const STAGES = [
