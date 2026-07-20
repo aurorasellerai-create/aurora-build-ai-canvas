@@ -83,29 +83,7 @@ const Generator = () => {
         return;
       }
 
-      // Consume credits
-      const credited = await consumeCredits("generate_app");
-      if (!credited) {
-        failGeneration(getGenerationFailureMessage("credits"));
-        return;
-      }
-
-      // Check build limit
-      const { data: canBuild, error: buildError } = await supabase.rpc("check_and_increment_build", {
-        p_user_id: user.id,
-      });
-
-      if (buildError) {
-        failGeneration(getGenerationFailureMessage("database", buildError.message));
-        return;
-      }
-
-      if (!canBuild) {
-        failGeneration(getGenerationFailureMessage("daily_limit"));
-        return;
-      }
-
-      // Create project
+      // Create project row first (quota + credits are enforced server-side by convert-app)
       const { data, error: insertError } = await supabase
         .from("projects")
         .insert({
@@ -123,6 +101,21 @@ const Generator = () => {
         failGeneration(getGenerationFailureMessage("database", insertError.message));
         return;
       }
+
+      // Dispatch the real build pipeline (convert-app enforces build quota + credits atomically)
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("convert-app", {
+        body: { url: formData.siteUrl },
+      });
+
+      if (fnError || !fnData?.success || !fnData?.job_id) {
+        const msg = fnData?.error || fnError?.message || "Falha ao iniciar o build.";
+        await supabase.from("projects").update({ status: "error", error_message: msg }).eq("id", data.id);
+        failGeneration(msg);
+        return;
+      }
+
+      // Link project ↔ conversion_job so the DB trigger mirrors progress/status/download_url
+      await supabase.from("projects").update({ conversion_job_id: fnData.job_id }).eq("id", data.id);
 
       clearLastGenerationError();
       navigate(`/processing/${data.id}`);
