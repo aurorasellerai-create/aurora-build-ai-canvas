@@ -67,22 +67,7 @@ const ConvertSite = () => {
         return;
       }
 
-      const credited = await consumeCredits("generate_app");
-      if (!credited) {
-        failGeneration(getGenerationFailureMessage("credits"));
-        return;
-      }
-
-      const { data: canBuild, error: buildError } = await supabase.rpc("check_and_increment_build", { p_user_id: user.id });
-      if (buildError) {
-        failGeneration(getGenerationFailureMessage("database", buildError.message));
-        return;
-      }
-      if (!canBuild) {
-        failGeneration(getGenerationFailureMessage("daily_limit"));
-        return;
-      }
-
+      // Create project row first (quota + credits are enforced server-side by convert-app)
       const { data, error: insertError } = await supabase
         .from("projects")
         .insert({ user_id: user.id, site_url: formData.siteUrl, app_name: formData.appName, format: formData.format, status: "processing", progress: 0 })
@@ -93,6 +78,20 @@ const ConvertSite = () => {
         failGeneration(getGenerationFailureMessage("database", insertError.message));
         return;
       }
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("convert-app", {
+        body: { url: formData.siteUrl },
+      });
+
+      if (fnError || !fnData?.success || !fnData?.job_id) {
+        const msg = fnData?.error || fnError?.message || "Falha ao iniciar o build.";
+        await supabase.from("projects").update({ status: "error", error_message: msg }).eq("id", data.id);
+        failGeneration(msg);
+        return;
+      }
+
+      await supabase.from("projects").update({ conversion_job_id: fnData.job_id }).eq("id", data.id);
+
       clearLastGenerationError();
       navigate(`/processing/${data.id}`);
     } catch (err) {
