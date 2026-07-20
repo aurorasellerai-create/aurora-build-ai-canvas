@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
     // --- heartbeat: ping every 5s with current stage/progress ---
     let hbStage = initialStatus;
     let hbProgress = skipBuild ? 88 : 0;
-    const heartbeat = setInterval(() => {
+    heartbeatHandle = setInterval(() => {
       supabase
         .from("conversion_jobs")
         .update({
@@ -381,8 +381,9 @@ Deno.serve(async (req) => {
         .then(({ error }) => {
           if (error) console.warn("[HEARTBEAT] update failed:", error.message);
         });
-    }, HEARTBEAT_INTERVAL_MS);
-    const stopHeartbeat = () => clearInterval(heartbeat);
+    }, HEARTBEAT_INTERVAL_MS) as unknown as number;
+    const stopHeartbeat = stopHeartbeatSafe;
+
 
     // --- validate URL ---
     currentStep = "url_validation";
