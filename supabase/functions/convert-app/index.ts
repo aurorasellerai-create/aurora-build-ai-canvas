@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
         step_label: "Build na fila...",
         build_stage: "queued",
         started_at: new Date().toISOString(),
+        correlation_id: correlationId,
       })
       .select()
       .single();
