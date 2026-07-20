@@ -1,0 +1,1 @@
+REVOKE SELECT (stdout_log, stderr_log, last_log, recovery_diagnosis, watchdog_reason) ON public.conversion_jobs FROM authenticated, anon;
