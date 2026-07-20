@@ -85,6 +85,7 @@ export type Database = {
           archived: boolean
           artifact_verified: boolean
           build_stage: string | null
+          correlation_id: string | null
           created_at: string
           deletion_scheduled_at: string | null
           download_url: string | null
@@ -119,6 +120,7 @@ export type Database = {
           archived?: boolean
           artifact_verified?: boolean
           build_stage?: string | null
+          correlation_id?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
           download_url?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           archived?: boolean
           artifact_verified?: boolean
           build_stage?: string | null
+          correlation_id?: string | null
           created_at?: string
           deletion_scheduled_at?: string | null
           download_url?: string | null
@@ -477,6 +480,7 @@ export type Database = {
         Row: {
           app_name: string
           conversion_job_id: string | null
+          correlation_id: string | null
           created_at: string
           download_url: string | null
           error_message: string | null
@@ -491,6 +495,7 @@ export type Database = {
         Insert: {
           app_name: string
           conversion_job_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           download_url?: string | null
           error_message?: string | null
@@ -505,6 +510,7 @@ export type Database = {
         Update: {
           app_name?: string
           conversion_job_id?: string | null
+          correlation_id?: string | null
           created_at?: string
           download_url?: string | null
           error_message?: string | null
@@ -751,6 +757,7 @@ export type Database = {
         Args: { _project_id: string }
         Returns: {
           build_stage: string
+          correlation_id: string
           last_log: string
           progress: number
           status: string
