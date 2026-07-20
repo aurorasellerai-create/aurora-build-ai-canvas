@@ -369,6 +369,7 @@ const Processing = () => {
                 type="button"
                 onClick={async () => {
                   const payload = [
+                    `# cid: ${project?.correlation_id || diag?.correlation_id || "-"}`,
                     `# stage: ${diag?.build_stage ?? "-"} | status: ${diag?.status ?? "-"} | progress: ${diag?.progress ?? "-"}`,
                     diag?.watchdog_reason ? `# watchdog: ${diag.watchdog_reason}` : "",
                     "",
