@@ -5,7 +5,20 @@ import { motion } from "framer-motion";
 import {
   Loader2, CheckCircle2, AlertTriangle, Clock, Terminal,
   Globe, Layers, Settings, Hammer, Package, ShieldCheck, Upload, WifiOff, RefreshCw,
+  Copy,
 } from "lucide-react";
+
+type Diagnostics = {
+  build_stage: string | null;
+  step_label: string | null;
+  status: string | null;
+  progress: number | null;
+  watchdog_reason: string | null;
+  last_log: string | null;
+  stdout_tail: string | null;
+  stderr_tail: string | null;
+  updated_at: string | null;
+};
 
 type ProjectRow = {
   id: string;
