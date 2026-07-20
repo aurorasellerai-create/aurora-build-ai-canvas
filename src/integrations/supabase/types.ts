@@ -476,6 +476,7 @@ export type Database = {
       projects: {
         Row: {
           app_name: string
+          conversion_job_id: string | null
           created_at: string
           download_url: string | null
           error_message: string | null
@@ -489,6 +490,7 @@ export type Database = {
         }
         Insert: {
           app_name: string
+          conversion_job_id?: string | null
           created_at?: string
           download_url?: string | null
           error_message?: string | null
@@ -502,6 +504,7 @@ export type Database = {
         }
         Update: {
           app_name?: string
+          conversion_job_id?: string | null
           created_at?: string
           download_url?: string | null
           error_message?: string | null
@@ -513,7 +516,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_conversion_job_id_fkey"
+            columns: ["conversion_job_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limit_hits: {
         Row: {
