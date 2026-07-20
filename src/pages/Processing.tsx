@@ -157,26 +157,28 @@ const Processing = () => {
     return () => clearTimeout(t);
   }, [realtimeOk]);
 
-  // Smoothly animate progress bar toward server value
+  // Smoothly ease the progress bar toward the SERVER value only.
+  // No artificial drift, no synthetic ramp, no local ceiling — the bar
+  // reflects exclusively the real backend state (projects.progress, itself
+  // mirrored from conversion_jobs.progress by trg_sync_project_from_conversion_job).
   useEffect(() => {
     let raf: number;
     const tick = () => {
       setAnimatedProgress((p) => {
-        // gentle drift while waiting on server, capped to 95 if still processing
-        const cap = isTerminal ? 100 : Math.max(targetProgress, Math.min(p + 0.15, 95));
-        const target = isDone ? 100 : cap;
-        const next = p + (target - p) * 0.08;
-        return Math.abs(target - p) < 0.05 ? target : next;
+        const target = isDone ? 100 : targetProgress;
+        if (target <= p) return target; // never regress and never overshoot server value
+        const next = p + (target - p) * 0.15;
+        return target - next < 0.1 ? target : next;
       });
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [targetProgress, isDone, isTerminal]);
+  }, [targetProgress, isDone]);
 
-  // Append stage logs as progress crosses thresholds
+  // Log each stage as SERVER-reported progress crosses it (no fake pre-emission).
   useEffect(() => {
-    const p = Math.round(animatedProgress);
+    const p = targetProgress;
     for (let i = lastStageRef.current + 1; i < STAGES.length; i++) {
       if (STAGES[i].at <= p) {
         const stage = STAGES[i];
@@ -184,7 +186,18 @@ const Processing = () => {
         lastStageRef.current = i;
       } else break;
     }
-  }, [animatedProgress]);
+  }, [targetProgress]);
+
+  // Stream real worker log lines (last_log / stdout tail) into the visible logs panel.
+  const lastServerLogRef = useRef<string>("");
+  useEffect(() => {
+    const line = diag?.last_log?.trim();
+    if (!line || line === lastServerLogRef.current) return;
+    lastServerLogRef.current = line;
+    const isErr = /error|fail|timeout|traceback/i.test(line);
+    setLogs((l) => [...l, { ts: new Date(), level: isErr ? "ERROR" : "INFO", message: line.slice(-500) }]);
+  }, [diag?.last_log]);
+
 
   // Terminal-state logs
   useEffect(() => {
