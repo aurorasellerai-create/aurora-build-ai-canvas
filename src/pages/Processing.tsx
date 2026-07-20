@@ -255,6 +255,19 @@ const Processing = () => {
               <p className="mt-1 break-words text-xs text-muted-foreground">
                 {project?.app_name || "App"} · {project?.site_url || "—"}
               </p>
+              {(project?.correlation_id || diag?.correlation_id) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const cid = project?.correlation_id || diag?.correlation_id || "";
+                    try { await navigator.clipboard.writeText(cid); } catch { /* noop */ }
+                  }}
+                  title="Copiar correlation ID"
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                >
+                  cid: {(project?.correlation_id || diag?.correlation_id || "").slice(0, 16)}
+                </button>
+              )}
             </div>
           </div>
 
