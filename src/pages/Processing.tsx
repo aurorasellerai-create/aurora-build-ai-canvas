@@ -33,6 +33,7 @@ type ProjectRow = {
   updated_at: string | null;
   created_at: string | null;
   correlation_id: string | null;
+  conversion_job_id: string | null;
 };
 
 const STAGES = [
@@ -86,7 +87,7 @@ const Processing = () => {
     const fetchProject = async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at, correlation_id")
+        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at, correlation_id, conversion_job_id")
         .eq("id", id)
         .maybeSingle();
       if (cancelled) return;
@@ -126,6 +127,42 @@ const Processing = () => {
     };
   }, [id]);
 
+  // Self-heal: if a project is stuck in "processing" without a conversion_job_id,
+  // the initial convert-app dispatch never completed. Re-invoke it exactly once
+  // so the pipeline (queued → preparing → … → completed) can actually run.
+  const selfHealTriedRef = useRef(false);
+  useEffect(() => {
+    if (!project || selfHealTriedRef.current) return;
+    const orphan =
+      project.status === "processing" &&
+      !project.conversion_job_id &&
+      !project.download_url &&
+      !!project.site_url;
+    if (!orphan) return;
+    selfHealTriedRef.current = true;
+    (async () => {
+      const cid = crypto?.randomUUID?.() ?? `heal-${Date.now()}`;
+      setLogs((l) => [...l, { ts: new Date(), level: "INFO", message: `[SELF-HEAL] Redisparando convert-app (cid=${cid.slice(0, 8)})` }]);
+      const { data, error } = await supabase.functions.invoke("convert-app", {
+        body: { url: project.site_url as string, correlation_id: cid },
+      });
+      if (error || !data?.success || !data?.job_id) {
+        const msg = data?.error || error?.message || "convert-app não retornou job_id";
+        setLogs((l) => [...l, { ts: new Date(), level: "ERROR", message: `[SELF-HEAL] Falhou: ${msg}` }]);
+        await supabase.from("projects").update({
+          status: "error",
+          error_message: msg,
+        }).eq("id", project.id);
+        return;
+      }
+      await supabase.from("projects").update({
+        conversion_job_id: data.job_id,
+        correlation_id: cid,
+      }).eq("id", project.id);
+      setLogs((l) => [...l, { ts: new Date(), level: "SUCCESS", message: `[SELF-HEAL] Job iniciado: ${data.job_id}` }]);
+    })();
+  }, [project]);
+
   // Poll diagnostics (stdout/stderr tails) every 3s until terminal
   useEffect(() => {
     if (!id) return;
@@ -157,26 +194,28 @@ const Processing = () => {
     return () => clearTimeout(t);
   }, [realtimeOk]);
 
-  // Smoothly animate progress bar toward server value
+  // Smoothly ease the progress bar toward the SERVER value only.
+  // No artificial drift, no synthetic ramp, no local ceiling — the bar
+  // reflects exclusively the real backend state (projects.progress, itself
+  // mirrored from conversion_jobs.progress by trg_sync_project_from_conversion_job).
   useEffect(() => {
     let raf: number;
     const tick = () => {
       setAnimatedProgress((p) => {
-        // gentle drift while waiting on server, capped to 95 if still processing
-        const cap = isTerminal ? 100 : Math.max(targetProgress, Math.min(p + 0.15, 95));
-        const target = isDone ? 100 : cap;
-        const next = p + (target - p) * 0.08;
-        return Math.abs(target - p) < 0.05 ? target : next;
+        const target = isDone ? 100 : targetProgress;
+        if (target <= p) return target; // never regress and never overshoot server value
+        const next = p + (target - p) * 0.15;
+        return target - next < 0.1 ? target : next;
       });
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [targetProgress, isDone, isTerminal]);
+  }, [targetProgress, isDone]);
 
-  // Append stage logs as progress crosses thresholds
+  // Log each stage as SERVER-reported progress crosses it (no fake pre-emission).
   useEffect(() => {
-    const p = Math.round(animatedProgress);
+    const p = targetProgress;
     for (let i = lastStageRef.current + 1; i < STAGES.length; i++) {
       if (STAGES[i].at <= p) {
         const stage = STAGES[i];
@@ -184,7 +223,18 @@ const Processing = () => {
         lastStageRef.current = i;
       } else break;
     }
-  }, [animatedProgress]);
+  }, [targetProgress]);
+
+  // Stream real worker log lines (last_log / stdout tail) into the visible logs panel.
+  const lastServerLogRef = useRef<string>("");
+  useEffect(() => {
+    const line = diag?.last_log?.trim();
+    if (!line || line === lastServerLogRef.current) return;
+    lastServerLogRef.current = line;
+    const isErr = /error|fail|timeout|traceback/i.test(line);
+    setLogs((l) => [...l, { ts: new Date(), level: isErr ? "ERROR" : "INFO", message: line.slice(-500) }]);
+  }, [diag?.last_log]);
+
 
   // Terminal-state logs
   useEffect(() => {

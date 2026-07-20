@@ -30,15 +30,21 @@ const BodySchema = z.object({
   client_correlation_id: z.string().trim().min(4).max(64).optional(),
 });
 
+// Progress checkpoints — every value here is written to the DB, so the
+// frontend progress bar (bound exclusively to conversion_jobs.progress) will
+// visibly cross each threshold: 5 → 12 → 20 → 30 → 40 → 50 → 60 → 70 → 80 → 90.
+// 95 is emitted mid-upload and 100 is emitted after successful finalize.
 const STEPS = [
-  { status: "preparing", progress: 10, label: "Analisando aplicativo...", tag: "PIPELINE" },
-  { status: "preparing", progress: 18, label: "Verificando compatibilidade mobile...", tag: "PIPELINE" },
-  { status: "installing_dependencies", progress: 28, label: "Instalando dependências Android...", tag: "PIPELINE" },
-  { status: "running_gradle", progress: 45, label: "Executando Gradle...", tag: "PIPELINE" },
-  { status: "signing", progress: 68, label: "Assinando pacote Android...", tag: "SIGNING" },
-  { status: "optimizing", progress: 80, label: "Otimizando AAB...", tag: "PIPELINE" },
-  { status: "uploading", progress: 90, label: "Enviando artefato...", tag: "UPLOAD" },
-  { status: "finalizing", progress: 97, label: "Finalizando...", tag: "PIPELINE" },
+  { status: "preparing",               progress: 5,  label: "URL recebida",           tag: "PIPELINE" },
+  { status: "preparing",               progress: 12, label: "URL validada",           tag: "PIPELINE" },
+  { status: "preparing",               progress: 20, label: "Detectando PWA",         tag: "PIPELINE" },
+  { status: "preparing",               progress: 30, label: "Gerando manifest",       tag: "PIPELINE" },
+  { status: "installing_dependencies", progress: 40, label: "Processando ícones",     tag: "PIPELINE" },
+  { status: "installing_dependencies", progress: 50, label: "Criando projeto Android", tag: "PIPELINE" },
+  { status: "running_gradle",          progress: 60, label: "Configurando Gradle",    tag: "PIPELINE" },
+  { status: "running_gradle",          progress: 70, label: "Compilando build",       tag: "PIPELINE" },
+  { status: "optimizing",              progress: 80, label: "Gerando AAB / APK",      tag: "PIPELINE" },
+  { status: "signing",                 progress: 90, label: "Assinando bundle",       tag: "SIGNING" },
 ];
 
 const URL_VALIDATION_TIMEOUT_MS = 8000;
