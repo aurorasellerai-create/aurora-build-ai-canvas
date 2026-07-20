@@ -364,6 +364,7 @@ Deno.serve(async (req) => {
         timeout_at: null,
         watchdog_reason: null,
         last_log: stdoutLines.at(-1) ?? null,
+        correlation_id: correlationId,
       })
       .eq("id", jobId);
 
