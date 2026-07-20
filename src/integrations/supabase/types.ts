@@ -747,6 +747,20 @@ export type Database = {
         Returns: boolean
       }
       expire_trials: { Args: never; Returns: undefined }
+      get_job_diagnostics: {
+        Args: { _project_id: string }
+        Returns: {
+          build_stage: string
+          last_log: string
+          progress: number
+          status: string
+          stderr_tail: string
+          stdout_tail: string
+          step_label: string
+          updated_at: string
+          watchdog_reason: string
+        }[]
+      }
       get_my_2fa_status: {
         Args: never
         Returns: {
