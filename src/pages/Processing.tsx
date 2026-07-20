@@ -124,6 +124,27 @@ const Processing = () => {
     };
   }, [id]);
 
+  // Poll diagnostics (stdout/stderr tails) every 3s until terminal
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const fetchDiag = async () => {
+      const { data, error } = await supabase.rpc("get_job_diagnostics", { _project_id: id });
+      if (cancelled || error) return;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row) setDiag(row as Diagnostics);
+    };
+    fetchDiag();
+    const poll = setInterval(() => {
+      if (!isTerminal) fetchDiag();
+      else {
+        fetchDiag();
+        clearInterval(poll);
+      }
+    }, 3000);
+    return () => { cancelled = true; clearInterval(poll); };
+  }, [id, isTerminal]);
+
   // If realtime drops, surface polling notice
   useEffect(() => {
     if (realtimeOk) {
