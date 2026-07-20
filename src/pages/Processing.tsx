@@ -18,6 +18,7 @@ type Diagnostics = {
   stdout_tail: string | null;
   stderr_tail: string | null;
   updated_at: string | null;
+  correlation_id: string | null;
 };
 
 type ProjectRow = {
