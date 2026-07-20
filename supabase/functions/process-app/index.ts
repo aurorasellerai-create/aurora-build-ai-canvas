@@ -550,7 +550,8 @@ Deno.serve(async (req) => {
     currentStep = "finalizing";
     hbStage = "finalizing";
     hbProgress = 99;
-    stopHeartbeat();
+    stopHeartbeatSafe();
+
     const { error: finalUpdateError } = await supabase
       .from("conversion_jobs")
       .update({
