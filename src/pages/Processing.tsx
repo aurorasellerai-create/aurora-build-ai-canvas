@@ -334,6 +334,86 @@ const Processing = () => {
             </div>
           </div>
 
+          {/* Diagnóstico do worker (stdout/stderr) */}
+          <div className="rounded-lg border border-border bg-background/40 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+                <Terminal className="h-3.5 w-3.5" /> Terminal do worker
+                {diag?.build_stage && (
+                  <span className="ml-2 rounded-full border border-secondary/30 bg-secondary/10 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                    {diag.build_stage}
+                  </span>
+                )}
+                {diag?.step_label && (
+                  <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                    · {diag.step_label}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const payload = [
+                    `# stage: ${diag?.build_stage ?? "-"} | status: ${diag?.status ?? "-"} | progress: ${diag?.progress ?? "-"}`,
+                    diag?.watchdog_reason ? `# watchdog: ${diag.watchdog_reason}` : "",
+                    "",
+                    "## last_log",
+                    diag?.last_log || "(vazio)",
+                    "",
+                    "## stdout",
+                    diag?.stdout_tail || "(vazio)",
+                    "",
+                    "## stderr",
+                    diag?.stderr_tail || "(vazio)",
+                  ].join("\n");
+                  try {
+                    await navigator.clipboard.writeText(payload);
+                    setDiagCopied(true);
+                    setTimeout(() => setDiagCopied(false), 1500);
+                  } catch { /* noop */ }
+                }}
+                className="flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              >
+                <Copy className="h-3 w-3" /> {diagCopied ? "Copiado" : "Copiar"}
+              </button>
+            </div>
+
+            {diag?.watchdog_reason && (
+              <div className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                ⚠ {diag.watchdog_reason}
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">stdout</div>
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-black/60 px-2 py-2 font-mono text-[10.5px] leading-relaxed text-emerald-300/90">
+{diag?.stdout_tail?.trim() || "(sem saída ainda)"}
+                </pre>
+              </div>
+              <div>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">stderr</div>
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-black/60 px-2 py-2 font-mono text-[10.5px] leading-relaxed text-rose-300/90">
+{diag?.stderr_tail?.trim() || "(sem erros)"}
+                </pre>
+              </div>
+            </div>
+
+            {diag?.last_log && (
+              <div className="mt-3">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Última linha</div>
+                <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded-md bg-black/40 px-2 py-2 font-mono text-[10.5px] leading-relaxed text-foreground/90">
+{diag.last_log.trim()}
+                </pre>
+              </div>
+            )}
+
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Atualiza a cada 3s · exibe apenas os últimos ~4KB de cada stream · visível somente ao dono do projeto.
+            </p>
+          </div>
+
+
           {isError && (
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
