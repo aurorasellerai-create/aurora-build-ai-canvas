@@ -631,6 +631,9 @@ Deno.serve(async (req) => {
 
     return respond({ success: false, error: "Falha interna durante o processamento.", step: currentStep, job_id: jobId });
   } finally {
+    // Guarantee no leaked heartbeat regardless of success/error path.
+    stopHeartbeatSafe();
+
     if (jobId && !finalStatusWritten) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
