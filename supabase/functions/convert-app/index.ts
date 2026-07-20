@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({ job_id: job.id, url }),
+      body: JSON.stringify({ job_id: job.id, url, client_correlation_id: correlationId }),
     }).then(async (response) => {
       const payload = await response.text();
       console.log("[CONVERT] process-app response:", payload);
