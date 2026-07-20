@@ -86,7 +86,7 @@ const Processing = () => {
     const fetchProject = async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at")
+        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at, correlation_id")
         .eq("id", id)
         .maybeSingle();
       if (cancelled) return;
