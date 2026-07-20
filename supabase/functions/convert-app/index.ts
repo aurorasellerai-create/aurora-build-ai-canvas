@@ -99,8 +99,9 @@ Deno.serve(async (req) => {
       return respond({ success: false, error: "Dados inválidos", step: "input_validation", details: parsed.error.flatten().fieldErrors });
     }
 
-    const { url } = parsed.data;
-    console.log(`[CONVERT] Creating job for ${url}`);
+    const { url, correlation_id: clientCid } = parsed.data;
+    const correlationId = clientCid || crypto.randomUUID();
+    console.log(`[CONVERT] [cid=${correlationId}] Creating job for ${url}`);
 
     // Server-side enforcement: build quota + credit consumption (cannot be bypassed by direct API calls)
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey, {
