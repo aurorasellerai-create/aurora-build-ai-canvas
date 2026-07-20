@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
     });
     EdgeRuntime.waitUntil(dispatchProcess);
 
-    return respond({ success: true, job_id: job.id, message: "Processo iniciado" }, 202);
+    return respond({ success: true, job_id: job.id, correlation_id: correlationId, message: "Processo iniciado" }, 202);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
     console.error("[CONVERT] Fatal error:", err);
