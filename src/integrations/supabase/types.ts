@@ -694,6 +694,166 @@ export type Database = {
         }
         Relationships: []
       }
+      validator_ai_explanations: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          finding_key: string
+          id: string
+          model: string | null
+          payload: Json
+          severity: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          finding_key: string
+          id?: string
+          model?: string | null
+          payload: Json
+          severity?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          finding_key?: string
+          id?: string
+          model?: string | null
+          payload?: Json
+          severity?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validator_ai_explanations_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "validator_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validator_analyses: {
+        Row: {
+          apis: Json
+          app_format: string
+          bundle_config: Json
+          compile_sdk: number | null
+          components: Json
+          correlation_id: string | null
+          created_at: string
+          deep_links: Json
+          dex_summary: Json
+          error: string | null
+          file_hash: string | null
+          file_name: string | null
+          file_size: number | null
+          findings: Json
+          finished_at: string | null
+          id: string
+          manifest: Json
+          min_sdk: number | null
+          package_name: string | null
+          permissions: Json
+          project_id: string | null
+          score: number | null
+          score_breakdown: Json
+          sdks: Json
+          signature: Json
+          started_at: string | null
+          status: string
+          storage_path: string
+          target_sdk: number | null
+          updated_at: string
+          user_id: string
+          version_code: number | null
+          version_name: string | null
+        }
+        Insert: {
+          apis?: Json
+          app_format?: string
+          bundle_config?: Json
+          compile_sdk?: number | null
+          components?: Json
+          correlation_id?: string | null
+          created_at?: string
+          deep_links?: Json
+          dex_summary?: Json
+          error?: string | null
+          file_hash?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          findings?: Json
+          finished_at?: string | null
+          id?: string
+          manifest?: Json
+          min_sdk?: number | null
+          package_name?: string | null
+          permissions?: Json
+          project_id?: string | null
+          score?: number | null
+          score_breakdown?: Json
+          sdks?: Json
+          signature?: Json
+          started_at?: string | null
+          status?: string
+          storage_path: string
+          target_sdk?: number | null
+          updated_at?: string
+          user_id: string
+          version_code?: number | null
+          version_name?: string | null
+        }
+        Update: {
+          apis?: Json
+          app_format?: string
+          bundle_config?: Json
+          compile_sdk?: number | null
+          components?: Json
+          correlation_id?: string | null
+          created_at?: string
+          deep_links?: Json
+          dex_summary?: Json
+          error?: string | null
+          file_hash?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          findings?: Json
+          finished_at?: string | null
+          id?: string
+          manifest?: Json
+          min_sdk?: number | null
+          package_name?: string | null
+          permissions?: Json
+          project_id?: string | null
+          score?: number | null
+          score_breakdown?: Json
+          sdks?: Json
+          signature?: Json
+          started_at?: string | null
+          status?: string
+          storage_path?: string
+          target_sdk?: number | null
+          updated_at?: string
+          user_id?: string
+          version_code?: number | null
+          version_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validator_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_dedupe: {
         Row: {
           created_at: string

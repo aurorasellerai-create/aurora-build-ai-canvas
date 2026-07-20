@@ -1,100 +1,74 @@
-# Pipeline Resilience & Stuck-Build Recovery
+# Aurora Validator AI — Refactor definitivo (dados 100% reais)
 
-Goal: eliminate builds frozen at 90% signing / 95% processing. Every job must terminate as `completed`, `failed`, `stalled`, or `recovering` — never infinite processing.
+Vou construir o parser real do AAB, uma única fonte de verdade (Analysis Service), Edge Function de explicações contextuais e migrar os 4 componentes de UI para consumir apenas esses dados. Escopo grande — divido em 5 etapas executadas sequencialmente numa mesma entrega.
 
-Implementation is split across **DB schema**, **worker**, **edge functions**, and **frontend**, in that order, each layer additive and safe for in-flight builds.
+## 1. Backend — parser real do AAB
 
----
+**Nova Edge Function `analyze-aab`** (Deno). Recebe `{ storage_path, project_id? }`, baixa o AAB do bucket privado `aab-files` via signed URL, e:
 
-## 1. Database (migration)
+- Abre o AAB como ZIP (`jsr:@zip-js/zip-js`).
+- Decodifica `base/manifest/AndroidManifest.xml` (binário AXML) com um decoder JS puro (biblioteca `npm:app-info-parser`/AXML fallback inline) → package, versionCode/Name, min/target/compileSdk, permissões, activities, services, receivers, providers, intent-filters (deep links), `usesCleartextTraffic`, `networkSecurityConfig`, `exported`, backup flags.
+- Extrai `BundleConfig.pb` (protobuf mínimo) para descobrir splits/densities/languages.
+- Lê `META-INF/*.RSA|EC|DSA` → assinatura (esquema v1/v2/v3), issuer, valid-from/to, algoritmo.
+- Enumera `base/dex/*` — hashes SHA-256 e tamanho (não desassembla, mas gera evidência).
+- Detecta SDKs por presença de arquivos/resources: `firebase-*`, `google-play-services`, `admob`, `facebook`, `onesignal`, `crashlytics`, `revenuecat`, `stripe`, etc.
+- Detecta APIs sensíveis: cleartext, `MANAGE_EXTERNAL_STORAGE`, `REQUEST_INSTALL_PACKAGES`, foreground services sem `foregroundServiceType`, background location, health/accessibility, deep links sem `autoVerify`, exports permissivos.
+- Calcula score real com fórmula publicada (peso por severidade × itens avaliados).
+- Persiste resultado em `validator_analyses` (nova tabela) + emite Realtime.
 
-Extend `conversion_jobs` with heartbeat + recovery fields:
+Timeout hard 45s, cap 500MB (já suportado no upload). Zero acesso do worker Node — mantém tudo em Edge Function, mais simples e sem depender do worker. Se um AAB grande exigir análise profunda extra (DEX symbols, resources.arsc), fica marcado como `deep_scan_pending` e um endpoint futuro do worker completa — nada bloqueante nesta rodada.
 
-- `last_heartbeat timestamptz` — updated by worker every 5 s
-- `heartbeat_stage text` — stage reported on last heartbeat
-- `heartbeat_progress int` — progress reported on last heartbeat
-- `signing_started_at timestamptz` — used by signing-timeout guard
-- `upload_attempts int default 0` — retry counter
-- `recovery_attempts int default 0` — partial-recovery counter
-- `artifact_verified boolean default false` — set true only after size+signature check
-- Index on `(status, last_heartbeat)` for the stall sweeper
+## 2. Banco — fonte única
 
-Extend the existing watchdog RPC `mark_stale_conversion_jobs_as_timeout`:
+Migração cria:
+- `validator_analyses` (user_id, project_id?, storage_path, file_hash, package_name, version_name, version_code, min_sdk, target_sdk, compile_sdk, manifest jsonb, permissions jsonb, sdks jsonb, apis jsonb, deep_links jsonb, signature jsonb, findings jsonb, score int, score_breakdown jsonb, status, error, correlation_id).
+- Cache por `file_hash` (SHA-256 do AAB) — reanalisar mesmo arquivo devolve resultado sem reprocessar.
+- RLS: dono lê/escreve; admin lê tudo. GRANTs corretos. Realtime habilitado.
+- `validator_ai_explanations` (analysis_id, finding_key, source, explanation jsonb, model, created_at) — cache das explicações IA para não recomputar.
 
-- Add a sibling RPC `mark_stalled_conversion_jobs(_heartbeat_max interval)` that flips active jobs with `last_heartbeat < now() - 60s` to `status = 'stalled'` (not `timeout`), preserving stage/progress, and writes a `[PIPELINE] Worker heartbeat timeout` line into `last_log`.
-- Add `signing_timeout` handling: if `build_stage = 'signing'` and `signing_started_at < now() - 180s`, mark `status = 'signing_timeout'`.
+## 3. Analysis Service (fonte única no frontend)
 
-No changes to RLS — new columns inherit existing policies. The existing user-side UPDATE policies remain limited to cancel/timeout transitions.
+`src/lib/validatorAnalysisService.ts`:
+- `startAnalysis(file, format)` → upload + invoke `analyze-aab` + retorna id.
+- `useAnalysis(id)` → hook React Query + Realtime na `validator_analyses`.
+- `useLatestAnalysis(userId)` → última análise concluída (para landing e histórico).
+- Tipos TS derivados do schema real (`AnalysisResult`, `Finding`, `ManifestData`, `Signature`, `SdkDetection`, etc.).
+- Substitui `validatorHistory` + `validatorRemoteHistory` sem duplicação — mantém API pública compatível encapsulando por dentro.
 
-## 2. Worker (`worker/src/worker.js` + `pipeline.js`)
+## 4. Explicações IA contextuais
 
-- New helper `startHeartbeat(jobId, getStage)` runs `setInterval(5000)` writing `last_heartbeat = now()`, `heartbeat_stage`, `heartbeat_progress`. Returns a `stop()` function used in `finally`.
-- Wrap both `convert-aab` and `aab-to-apk` workers with the heartbeat.
-- Signing step: before invoking `apksigner`/`jarsigner`, set `signing_started_at = now()` and `build_stage = 'signing'`. Run with a 180 s `AbortController`; on timeout, persist `status = 'signing_timeout'`, capture last 4 KB of stderr/stdout into `stderr_log`/`stdout_log`, exit step.
-- Upload step: wrap `supabase.storage.upload` in `withRetry(fn, { attempts: 3, baseMs: 1500 })` (exponential backoff 1.5 s / 3 s / 6 s). Increment `upload_attempts` each try. After upload, call `verifyArtifact(storagePath)` which:
-  - re-downloads HEAD to confirm `content-length > 0`
-  - for `.apk`/`.aab`, runs lightweight zip-magic check (`PK\x03\x04`)
-  - sets `artifact_verified = true` before flipping `status = 'done'`/`completed`
-- Partial recovery: on job start, if `download_url` is already set and `artifact_verified = false`, skip Gradle/compile and jump to `signing → upload → finalize`. Increment `recovery_attempts`.
-- All worker logs use structured prefixes: `[PIPELINE]`, `[SIGNING]`, `[UPLOAD]`, `[HEARTBEAT]`, `[RECOVERY]`.
+**Edge Function `explain-finding`**:
+- Input: `{ analysis_id, finding_key }`.
+- Server-side: procura primeiro em `permissionsKnowledgeBase` (curada, links oficiais confiáveis). Se existir, chama Lovable AI (`google/gemini-3-flash-preview`) só para **reescrever** com contexto do AAB analisado (packageName, targetSdk, arquivo onde apareceu, elementos manifest relacionados) — usa a KB como grounding para não alucinar links. Se **não** existir na KB, gera 100% via IA com prompt reforçado exigindo referência oficial verificável.
+- Retorna JSON estruturado: `{ explanation, impact, playStoreRisk, securityRisk, recommendation: { steps[], manifestSnippet, codeSnippet, androidCompat[] }, docs, playStorePolicy }`.
+- Persiste em `validator_ai_explanations` (cache por `analysis_id + finding_key`).
+- Trata 429/402 com fallback para versão heurística (nunca quebra a UI).
 
-## 3. Edge functions / cron
+`generateAiExplanation.ts` vira thin client que chama a Edge Function via React Query + cache local. Textos fixos removidos — heurística só como fallback de erro.
 
-- New scheduled job (pg_cron, every 30 s) hits a new edge function `pipeline-watchdog` that calls both `mark_stale_conversion_jobs_as_timeout` and `mark_stalled_conversion_jobs('60 seconds')` + signing-timeout sweep. This guarantees stuck jobs resolve even if the worker dies entirely.
-- `process-app` edge function: when re-dispatching a job already in `stalled`/`signing_timeout`, send a `resume: true` flag so the worker takes the partial-recovery path.
-- Preserves existing auth, rate limits, CORS, and credit logic — no changes to `convert-app`, monetization, or RLS.
+## 5. UI — migração dos 4 componentes
 
-## 4. Frontend
+- **`ValidatorUpload.tsx`**: `createAuroraValidatorResult()` removido. Após upload, chama `startAnalysis()`, guarda `analysis_id`, navega para `/validator/:id`.
+- **`ValidatorDetail.tsx`**: consome `useAnalysis(id)`. Renderiza manifest real, permissões reais com severidade real, deep links reais, assinatura real, SDKs reais, findings reais. Score vindo do backend com breakdown clicável (fórmula visível). Botões "Documentação"/"Política Play Store" recebem URL do finding (não mais genérico). Auto-fix panel mostra correções específicas por finding.
+- **`AiExplanationCard.tsx` + `generateAiExplanation.ts`**: chamam `explain-finding`. Cada card mostra: onde foi encontrado (arquivo + elemento manifest), qual regra Android, política Play Store relacionada, impacto, risco, passos de correção (com snippets), compat Android 13/14/15.
+- **`ValidatorPremium.tsx`**: consome o mesmo `useAnalysis(id)` — zero lógica duplicada. Cards before/after usam findings resolvidos vs pendentes.
+- **`AuroraValidatorSection.tsx`** (landing): se usuário logado tiver análise concluída, mostra a real com badge "Sua última análise"; senão, mostra exemplo estático claramente rotulado "Exemplo — envie um AAB para análise real". `createAuroraValidatorResult` sobrevive apenas nesse modo demo e é renomeado para `getValidatorDemoData` para deixar explícito.
+- **`auroraValidator.ts`**: convertido em módulo de demo + tipos compartilhados. Nenhum outro componente importa `createAuroraValidatorResult` fora da landing.
 
-- `src/hooks/useConversionJob.ts`:
-  - Track `lastHeartbeatAt` from the row; if `> 45 s` stale while status is non-terminal, show banner **"Recovering pipeline state..."**.
-  - Auto-fallback from realtime to 5 s polling when the channel disconnects, then reconnect realtime on visibility change.
-  - Treat `stalled`, `signing_timeout`, `timeout` as terminal-recoverable: surface retry button.
-- `src/lib/buildStateMachine.ts`: add `stalled`, `signing_timeout`, `recovering` to `BuildJobStatus`, mark `stalled`/`signing_timeout` as non-final (retry allowed) and `completed`/`failed`/`cancelled` as final.
-- `src/components/pipeline/BuildPipelineView.tsx`: render heartbeat chip ("Última atividade há Xs"), recovery banner, and a **"Tentar novamente desta etapa"** button when stalled. Button calls existing convert/process endpoint with `resume = true`.
-- `src/components/pipeline/BuildErrorPanel.tsx`: surface stderr/stdout tail and a "Ver logs" expand for `signing_timeout`.
+## 6. Testes e validação
 
-## 5. Observability
+- Vitest para o AXML decoder e o score calculator com fixtures de manifests reais.
+- Teste E2E manual: subo 2 AABs distintos (um app simples + um com Firebase/permissões sensíveis), confirmo relatórios diferentes, links por finding, textos IA únicos por app.
+- Report final no chat: arquivos alterados, componentes migrados, evidência de dois AABs produzindo saídas diferentes.
 
-- All new worker log lines prefixed with `[PIPELINE] / [SIGNING] / [UPLOAD] / [HEARTBEAT] / [RECOVERY]`.
-- `system_logs` entries on every state transition: `stalled`, `signing_timeout`, `recovery_started`, `recovery_succeeded`, `artifact_verified`, `upload_retry`.
+## Detalhes técnicos
 
-## 6. Safety / preservation
+- **Sem worker novo**: parser roda inteiro em Edge Function (limite Deno funciona bem até 500MB usando streaming + `ReadableStream`).
+- **AXML decoder**: implementação inline (~180 linhas) baseada no formato Android binary XML — não depende de pacote instável. Fallback para `npm:app-info-parser@0.6.5` se disponível no runtime Deno.
+- **Score**: `score = 100 − Σ(peso_severidade × count)` com pesos 15/5/1 (critical/warning/info), clampado 0–100. Breakdown persistido.
+- **Cache**: file_hash SHA-256 evita reprocessar; analysis_id + finding_key evita reexplicar.
+- **Realtime**: `postgres_changes` em `validator_analyses` no cliente durante `status='processing'`.
+- **Segurança**: bucket `aab-files` permanece privado; Edge Function usa service role só para signed URL de leitura + insert do resultado.
+- **Rollback seguro**: nenhum componente atual é deletado — `createAuroraValidatorResult` só é despromovido para demo. Se algo quebrar, é reversível.
 
-- Pure additive DB columns + new RPC — no destructive changes, no RLS rewrites.
-- Credits, Kiwify webhook, Stripe, validator, AI Copilot untouched.
-- SSRF guards, rate limits, admin PIN, founder roles untouched.
-- In-flight jobs without `last_heartbeat` are treated as legacy and only fall under the existing 10-minute global watchdog — they cannot be falsely marked stalled.
-
----
-
-## Technical details (for review)
-
-```text
-conversion_jobs lifecycle (after change)
-
-queued → preparing → running_gradle → signing → uploading → finalizing → completed
-                                          │           │
-                                          │           └─ upload retry ×3 ─ fail → failed
-                                          └─ >180s ─ signing_timeout ─ resume ─ signing
-        any stage no heartbeat >60s ─ stalled ─ user retry ─ resume partial pipeline
-        any stage no progress >10min ─ timeout (existing watchdog)
-```
-
-## Files touched
-
-- migration: add columns + 1 RPC (no data writes)
-- `worker/src/worker.js`, `worker/src/pipeline.js`
-- `supabase/functions/pipeline-watchdog/index.ts` (new)
-- `supabase/functions/process-app/index.ts` (resume flag)
-- `src/hooks/useConversionJob.ts`
-- `src/lib/buildStateMachine.ts`
-- `src/components/pipeline/BuildPipelineView.tsx`
-- `src/components/pipeline/BuildErrorPanel.tsx`
-- cron schedule via `supabase--insert`
-
-## Out of scope (explicitly)
-
-- No changes to credit logic, paywall, Kiwify, Stripe.
-- No changes to auth, RLS rewrites, or PIN gate.
-- No UI redesign beyond the new heartbeat chip / recovery banner / retry button.
+Ao aprovar, executo etapas 1→6 nesta ordem numa sequência de turnos, com validação de build a cada etapa antes da próxima.
