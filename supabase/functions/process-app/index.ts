@@ -27,6 +27,7 @@ const BodySchema = z.object({
       message: "A URL deve usar HTTPS",
     }),
   resume: z.boolean().optional(),
+  client_correlation_id: z.string().trim().min(4).max(64).optional(),
 });
 
 const STEPS = [
@@ -238,7 +239,7 @@ Deno.serve(async (req) => {
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
-  const correlationId = crypto.randomUUID().slice(0, 8);
+  let correlationId = crypto.randomUUID().slice(0, 8);
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
   let finalStatusWritten = false;
@@ -306,8 +307,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { job_id, url, resume } = parsed.data;
+    const { job_id, url, resume, client_correlation_id } = parsed.data;
     jobId = job_id;
+    if (client_correlation_id) {
+      correlationId = client_correlation_id;
+      logOut(`[TRACE] Using client correlation_id=${correlationId}`);
+    }
 
     // --- lookup job ---
     currentStep = "job_lookup";
@@ -359,6 +364,7 @@ Deno.serve(async (req) => {
         timeout_at: null,
         watchdog_reason: null,
         last_log: stdoutLines.at(-1) ?? null,
+        correlation_id: correlationId,
       })
       .eq("id", jobId);
 

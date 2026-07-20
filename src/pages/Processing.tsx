@@ -18,6 +18,7 @@ type Diagnostics = {
   stdout_tail: string | null;
   stderr_tail: string | null;
   updated_at: string | null;
+  correlation_id: string | null;
 };
 
 type ProjectRow = {
@@ -31,6 +32,7 @@ type ProjectRow = {
   site_url: string | null;
   updated_at: string | null;
   created_at: string | null;
+  correlation_id: string | null;
 };
 
 const STAGES = [
@@ -84,7 +86,7 @@ const Processing = () => {
     const fetchProject = async () => {
       const { data, error } = await supabase
         .from("projects")
-        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at")
+        .select("id, status, progress, download_url, error_message, app_name, format, site_url, updated_at, created_at, correlation_id")
         .eq("id", id)
         .maybeSingle();
       if (cancelled) return;
@@ -253,6 +255,19 @@ const Processing = () => {
               <p className="mt-1 break-words text-xs text-muted-foreground">
                 {project?.app_name || "App"} · {project?.site_url || "—"}
               </p>
+              {(project?.correlation_id || diag?.correlation_id) && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const cid = project?.correlation_id || diag?.correlation_id || "";
+                    try { await navigator.clipboard.writeText(cid); } catch { /* noop */ }
+                  }}
+                  title="Copiar correlation ID"
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                >
+                  cid: {(project?.correlation_id || diag?.correlation_id || "").slice(0, 16)}
+                </button>
+              )}
             </div>
           </div>
 
@@ -354,6 +369,7 @@ const Processing = () => {
                 type="button"
                 onClick={async () => {
                   const payload = [
+                    `# cid: ${project?.correlation_id || diag?.correlation_id || "-"}`,
                     `# stage: ${diag?.build_stage ?? "-"} | status: ${diag?.status ?? "-"} | progress: ${diag?.progress ?? "-"}`,
                     diag?.watchdog_reason ? `# watchdog: ${diag.watchdog_reason}` : "",
                     "",

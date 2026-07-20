@@ -33,6 +33,7 @@ function getCorsHeaders(req?: Request) {
 
 const BodySchema = z.object({
   url: z.string().trim().url({ message: "URL inválida" }).startsWith("https://", { message: "URL deve usar HTTPS" }),
+  correlation_id: z.string().trim().min(4).max(64).optional(),
 });
 
 Deno.serve(async (req) => {
@@ -98,8 +99,9 @@ Deno.serve(async (req) => {
       return respond({ success: false, error: "Dados inválidos", step: "input_validation", details: parsed.error.flatten().fieldErrors });
     }
 
-    const { url } = parsed.data;
-    console.log(`[CONVERT] Creating job for ${url}`);
+    const { url, correlation_id: clientCid } = parsed.data;
+    const correlationId = clientCid || crypto.randomUUID();
+    console.log(`[CONVERT] [cid=${correlationId}] Creating job for ${url}`);
 
     // Server-side enforcement: build quota + credit consumption (cannot be bypassed by direct API calls)
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey, {
@@ -137,6 +139,7 @@ Deno.serve(async (req) => {
         step_label: "Build na fila...",
         build_stage: "queued",
         started_at: new Date().toISOString(),
+        correlation_id: correlationId,
       })
       .select()
       .single();
@@ -157,7 +160,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({ job_id: job.id, url }),
+      body: JSON.stringify({ job_id: job.id, url, client_correlation_id: correlationId }),
     }).then(async (response) => {
       const payload = await response.text();
       console.log("[CONVERT] process-app response:", payload);
@@ -188,7 +191,7 @@ Deno.serve(async (req) => {
     });
     EdgeRuntime.waitUntil(dispatchProcess);
 
-    return respond({ success: true, job_id: job.id, message: "Processo iniciado" }, 202);
+    return respond({ success: true, job_id: job.id, correlation_id: correlationId, message: "Processo iniciado" }, 202);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
     console.error("[CONVERT] Fatal error:", err);

@@ -83,6 +83,10 @@ const Generator = () => {
         return;
       }
 
+      // Frontend-generated correlation id, traced end-to-end (project → conversion_job → process-app logs)
+      const correlationId = (crypto?.randomUUID?.() ?? `cid-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`);
+      console.log(`[BUILD] [cid=${correlationId}] Dispatching convert-app for ${formData.siteUrl}`);
+
       // Create project row first (quota + credits are enforced server-side by convert-app)
       const { data, error: insertError } = await supabase
         .from("projects")
@@ -93,6 +97,7 @@ const Generator = () => {
           format: formData.format,
           status: "processing",
           progress: 0,
+          correlation_id: correlationId,
         })
         .select()
         .single();
@@ -104,7 +109,7 @@ const Generator = () => {
 
       // Dispatch the real build pipeline (convert-app enforces build quota + credits atomically)
       const { data: fnData, error: fnError } = await supabase.functions.invoke("convert-app", {
-        body: { url: formData.siteUrl },
+        body: { url: formData.siteUrl, correlation_id: correlationId },
       });
 
       if (fnError || !fnData?.success || !fnData?.job_id) {
@@ -116,6 +121,7 @@ const Generator = () => {
 
       // Link project ↔ conversion_job so the DB trigger mirrors progress/status/download_url
       await supabase.from("projects").update({ conversion_job_id: fnData.job_id }).eq("id", data.id);
+      console.log(`[BUILD] [cid=${correlationId}] job_id=${fnData.job_id} project_id=${data.id}`);
 
       clearLastGenerationError();
       navigate(`/processing/${data.id}`);
