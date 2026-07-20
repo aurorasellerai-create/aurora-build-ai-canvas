@@ -127,6 +127,42 @@ const Processing = () => {
     };
   }, [id]);
 
+  // Self-heal: if a project is stuck in "processing" without a conversion_job_id,
+  // the initial convert-app dispatch never completed. Re-invoke it exactly once
+  // so the pipeline (queued → preparing → … → completed) can actually run.
+  const selfHealTriedRef = useRef(false);
+  useEffect(() => {
+    if (!project || selfHealTriedRef.current) return;
+    const orphan =
+      project.status === "processing" &&
+      !project.conversion_job_id &&
+      !project.download_url &&
+      !!project.site_url;
+    if (!orphan) return;
+    selfHealTriedRef.current = true;
+    (async () => {
+      const cid = crypto?.randomUUID?.() ?? `heal-${Date.now()}`;
+      setLogs((l) => [...l, { ts: new Date(), level: "INFO", message: `[SELF-HEAL] Redisparando convert-app (cid=${cid.slice(0, 8)})` }]);
+      const { data, error } = await supabase.functions.invoke("convert-app", {
+        body: { url: project.site_url as string, correlation_id: cid },
+      });
+      if (error || !data?.success || !data?.job_id) {
+        const msg = data?.error || error?.message || "convert-app não retornou job_id";
+        setLogs((l) => [...l, { ts: new Date(), level: "ERROR", message: `[SELF-HEAL] Falhou: ${msg}` }]);
+        await supabase.from("projects").update({
+          status: "error",
+          error_message: msg,
+        }).eq("id", project.id);
+        return;
+      }
+      await supabase.from("projects").update({
+        conversion_job_id: data.job_id,
+        correlation_id: cid,
+      }).eq("id", project.id);
+      setLogs((l) => [...l, { ts: new Date(), level: "SUCCESS", message: `[SELF-HEAL] Job iniciado: ${data.job_id}` }]);
+    })();
+  }, [project]);
+
   // Poll diagnostics (stdout/stderr tails) every 3s until terminal
   useEffect(() => {
     if (!id) return;
