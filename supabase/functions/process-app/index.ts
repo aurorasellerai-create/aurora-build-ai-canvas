@@ -234,6 +234,7 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
+  const respond = buildResponder(req);
   let currentStep = "startup";
   let jobId: string | null = null;
   const startTime = Date.now();
@@ -241,6 +242,14 @@ Deno.serve(async (req) => {
   const stdoutLines: string[] = [];
   const stderrLines: string[] = [];
   let finalStatusWritten = false;
+  let heartbeatHandle: number | undefined;
+  const stopHeartbeatSafe = () => {
+    if (heartbeatHandle !== undefined) {
+      clearInterval(heartbeatHandle);
+      heartbeatHandle = undefined;
+    }
+  };
+
   const logOut = (message: string) => {
     const line = `[${new Date().toISOString()}] [cid=${correlationId}] ${message}`;
     stdoutLines.push(line);
